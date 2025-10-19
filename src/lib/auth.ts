@@ -10,6 +10,7 @@ const authService = new AuthService();
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "your-secret-key-change-in-production"
 );
+
 export async function getUserFromRequest(request: NextRequest): Promise<UserPayload> {
   let token: string | null = null;
   const authHeader = request.headers.get("authorization");
@@ -18,7 +19,7 @@ export async function getUserFromRequest(request: NextRequest): Promise<UserPayl
   }
 
   if (!token) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     token = cookieStore.get("token")?.value || null;
   }
 
@@ -50,7 +51,7 @@ export async function getUserFromSession(): Promise<{
   role: string;
 } | null> {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = await cookies(); 
     const token = cookieStore.get("token")?.value;
 
     if (!token) return null;
