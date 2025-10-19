@@ -50,7 +50,7 @@ export async function getUserFromSession(): Promise<{
   role: string;
 } | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
     if (!token) return null;
