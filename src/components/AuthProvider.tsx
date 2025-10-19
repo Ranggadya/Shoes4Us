@@ -33,12 +33,15 @@ type AuthContextValue = {
   refresh: () => Promise<void>;
 };
 
+// ==================
+// Context creation
+// ==================
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function fetchJson<T>(
-  input: RequestInfo,
-  init?: RequestInit
-): Promise<T> {
+// ==================
+// Helper fetch wrapper
+// ==================
+async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, {
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
@@ -59,13 +62,16 @@ type AuthResponse = {
   data: { user: User; token: string };
 };
 
+// ==================
+// AuthProvider
+// ==================
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔹 Ambil user & token dari localStorage saat load awal
+  // 🔹 Load user & token from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     const savedToken = localStorage.getItem("token");
@@ -77,21 +83,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  // 🔹 Load profil dari backend (opsional)
+  // 🔹 Fetch user profile (verify token)
   const loadProfile = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     setError(null);
+
     try {
       const result = await fetchJson<{ success: boolean; data: { user: User } }>(
         "/api/auth/me",
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
+
       setUser(result.data.user);
+      localStorage.setItem("user", JSON.stringify(result.data.user));
     } catch (err) {
-      console.error(err);
+      console.error("❌ Gagal memuat profil:", err);
       setUser(null);
       setError(err instanceof Error ? err.message : "Gagal memuat profil");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (payload: { email: string; password: string }) => {
       setError(null);
       setIsLoading(true);
+
       try {
         const result = await fetchJson<AuthResponse>("/api/auth/login", {
           method: "POST",
@@ -112,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(user);
         setToken(token);
 
+        // ✅ Simpan token & user di localStorage
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("token", token);
       } catch (err) {
@@ -129,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (payload: { name: string; email: string; password: string }) => {
       setError(null);
       setIsLoading(true);
+
       try {
         const result = await fetchJson<AuthResponse>("/api/auth/register", {
           method: "POST",
@@ -156,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setUser(null);
     setToken(null);
+
     localStorage.removeItem("user");
     localStorage.removeItem("token");
   }, []);
@@ -172,7 +191,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: logoutRequest,
       refresh: loadProfile,
     }),
-    [user, token, isLoading, error, loginRequest, registerRequest, logoutRequest, loadProfile]
+    [
+      user,
+      token,
+      isLoading,
+      error,
+      loginRequest,
+      registerRequest,
+      logoutRequest,
+      loadProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -180,8 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!context)
+    throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

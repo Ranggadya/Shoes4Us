@@ -7,7 +7,7 @@ import ProductListSkeleton from "./skeletons/ProductListSkeleton";
 import { ArrowRight } from "lucide-react";
 
 type Product = {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   price: number;
@@ -26,12 +26,15 @@ export default function FeaturedProducts() {
       try {
         const response = await fetch("/api/products?limit=8");
         const data = await response.json();
-        
-        if (data.success) {
-          setProducts(data.data.products);
+
+        if (data?.success && Array.isArray(data.data?.items)) {
+          setProducts(data.data.items);
+        } else {
+          setProducts([]); // fallback biar aman
         }
       } catch (error) {
-        console.error("Error fetching featured products:", error);
+        console.error("❌ Error fetching featured products:", error);
+        setProducts([]); 
       } finally {
         setLoading(false);
       }
@@ -39,7 +42,6 @@ export default function FeaturedProducts() {
 
     fetchFeaturedProducts();
   }, []);
-
   if (loading) {
     return (
       <section className="py-16 bg-white">
