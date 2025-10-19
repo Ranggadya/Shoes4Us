@@ -11,8 +11,8 @@ interface WishlistItem {
 }
 
 interface WishlistResponse {
-  data: {
-    items: WishlistItem[];
+  data?: {
+    items?: WishlistItem[];
   };
 }
 
@@ -31,8 +31,9 @@ export default function WishlistButton({
   const [wishlistId, setWishlistId] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // ✅ Cek status wishlist
   useEffect(() => {
-    void checkWishlistStatus(); // void untuk suppress warning async tanpa await
+    void checkWishlistStatus();
   }, [productId]);
 
   const checkWishlistStatus = async (): Promise<void> => {
@@ -49,9 +50,8 @@ export default function WishlistButton({
       setIsAuthenticated(true);
       const data: WishlistResponse = await res.json();
 
-      const item = data.data.items.find(
-        (item) => item.productId === productId
-      );
+      const items = data?.data?.items ?? []; // ✅ aman walau undefined
+      const item = items.find((item) => item.productId === productId);
 
       if (item) {
         setIsWishlisted(true);
@@ -62,6 +62,7 @@ export default function WishlistButton({
     }
   };
 
+  // ✅ Toggle add/remove wishlist
   const handleToggle = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -83,7 +84,7 @@ export default function WishlistButton({
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error?.message || "Failed to remove from wishlist");
+          throw new Error(data.error?.message || "Gagal menghapus wishlist");
         }
 
         setIsWishlisted(false);
@@ -97,23 +98,20 @@ export default function WishlistButton({
           body: JSON.stringify({ productId }),
         });
 
+        const data = await res.json();
+
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error?.message || "Failed to add to wishlist");
+          throw new Error(data.error?.message || "Gagal menambahkan wishlist");
         }
 
-        const data: { data: { wishlist: WishlistItem } } = await res.json();
+        const wishlistItem = data?.data?.wishlist;
         setIsWishlisted(true);
-        setWishlistId(data.data.wishlist.id);
+        setWishlistId(wishlistItem?.id ?? null);
         toast.success("Ditambahkan ke wishlist");
       }
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Error toggling wishlist:", error.message);
-        toast.error(error.message || "Terjadi kesalahan");
-      } else {
-        toast.error("Terjadi kesalahan tak terduga");
-      }
+      console.error("Error toggling wishlist:", error);
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -123,11 +121,7 @@ export default function WishlistButton({
     <button
       onClick={handleToggle}
       disabled={loading}
-      className={`
-        flex items-center justify-center 
-        min-w-[44px] min-h-[44px] 
-        p-2 rounded-full 
-        transition-all duration-200
+      className={`flex items-center justify-center min-w-[44px] min-h-[44px] p-2 rounded-full transition-all duration-200
         ${
           isWishlisted
             ? "bg-red-50 text-red-500 hover:bg-red-100"
