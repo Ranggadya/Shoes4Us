@@ -116,35 +116,38 @@ export default function ProductDetailClient({
     }
   }, [productId]);
 
-  // Check wishlist status
-  useEffect(() => {
-    const checkWishlistStatus = async () => {
-      if (!user) return;
+useEffect(() => {
+  const checkWishlistStatus = async () => {
+    if (!user) return;
 
-      try {
-        const res = await fetch("/api/wishlist");
-        if (res.ok) {
-          const data = await res.json();
-         type WishlistItem = {
-          id: string;
-          productId: string | number;
-        };
+    try {
+      const res = await fetch("/api/wishlist");
+      if (!res.ok) return;
 
-        const item = (data.data.items as WishlistItem[]).find(
-          (item) => item.productId === productId
-        );
-          if (item) {
-            setIsWishlisted(true);
-            setWishlistId(item.id);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking wishlist status:", error);
+      const data = await res.json();
+
+      type WishlistItem = {
+        id: string;
+        productId: string | number;
+      };
+
+      const items: WishlistItem[] = data?.data?.items ?? [];
+      const item = items.find((item) => item.productId === productId);
+
+      if (item) {
+        setIsWishlisted(true);
+        setWishlistId(item.id);
+      } else {
+        setIsWishlisted(false);
       }
-    };
+    } catch (error) {
+      console.error("Error checking wishlist status:", error);
+    }
+  };
 
-    checkWishlistStatus();
-  }, [productId, user]);
+  checkWishlistStatus();
+}, [productId, user]);
+
 
   const handleAddToCart = async () => {
     if (!product) return;
