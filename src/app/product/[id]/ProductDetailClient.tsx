@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -26,7 +27,7 @@ import {
 } from "lucide-react";
 
 type Product = {
-  id: number;
+  id: string;
   name: string;
   price: number;
   description: string | null;
@@ -70,7 +71,7 @@ export default function ProductDetailClient({
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [wishlistId, setWishlistId] = useState<number | null>(null);
+  const [wishlistId, setWishlistId] = useState<string | null>(null);
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -124,9 +125,14 @@ export default function ProductDetailClient({
         const res = await fetch("/api/wishlist");
         if (res.ok) {
           const data = await res.json();
-          const item = data.data.items.find(
-            (item: any) => item.productId === productId
-          );
+         type WishlistItem = {
+          id: string;
+          productId: string | number;
+        };
+
+        const item = (data.data.items as WishlistItem[]).find(
+          (item) => item.productId === productId
+        );
           if (item) {
             setIsWishlisted(true);
             setWishlistId(item.id);
@@ -155,7 +161,7 @@ export default function ProductDetailClient({
     }
 
     try {
-      await addItem({ productId: product.id, quantity, size });
+      await addItem({ productId: String(product.id), quantity, size });
       toast.success("Produk berhasil ditambahkan ke keranjang!");
     } catch (err) {
       toast.error(
@@ -179,7 +185,7 @@ export default function ProductDetailClient({
     }
 
     try {
-      await addItem({ productId: product.id, quantity, size });
+      await addItem({ productId: String(product.id), quantity, size });
       router.push("/cart");
     } catch (err) {
       toast.error(

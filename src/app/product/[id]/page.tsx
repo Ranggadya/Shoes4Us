@@ -1,10 +1,10 @@
 import ProductDetailClient from "./ProductDetailClient";
-
-export default function ProductDetailPage({
+export default async function ProductDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const productId = Number(params.id);
+  const { id } = await params;
+  const productId = Number(id);
   return <ProductDetailClient productId={productId} />;
 }
