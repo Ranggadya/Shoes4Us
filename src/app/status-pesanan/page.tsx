@@ -1,43 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { OrderStatus } from "@prisma/client"; // ✅ Import dari Prisma
 import OrderTracking from "@/components/OrderTracking";
 import { useAuth } from "@/components/AuthProvider";
 import EmptyOrders from "@/components/empty-states/EmptyOrders";
 
-type OrderStatus = "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED";
-
 type OrderItem = {
-  id: number;
+  id: string;
   product: {
-    id: number;
+    id: string;
     name: string;
   };
+  quantity: number;
+  price: number;
 };
 
 type Order = {
-  id: number;
+  id: string;
+  orderNumber: string;
   status: OrderStatus;
-  statusLabel: string;
+  totalAmount: number;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
+  shippingAddress?: string;
+  shippingCity?: string;
+  paymentMethod?: string;
 };
 
 type OrdersResponse = {
   success: boolean;
-  data: { orders: Order[] };
+  data: {
+    orders: Order[];
+    total: number;
+    page: number;
+    totalPages: number;
+  };
 };
 
 export default function StatusPesananPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const { user, token, isLoading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!user) {
+      console.log("🔍 [StatusPesanan] Fetching orders...");
+      console.log("🔑 [StatusPesanan] User:", user ? "Ada" : "Tidak ada");
+      console.log("🔑 [StatusPesanan] Token:", token ? "Ada" : "Tidak ada");
+
+      if (!user || !token) {
+        console.log("⚠️ [StatusPesanan] User/token tidak ada, skip fetch");
         setOrders([]);
         setError(null);
         return;
@@ -45,18 +62,38 @@ export default function StatusPesananPage() {
 
       setLoading(true);
       setError(null);
+      
       try {
+        console.log("📤 [StatusPesanan] Mengirim request ke /api/orders");
+        
         const response = await fetch("/api/orders", {
-          credentials: "include",
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ Kirim token!
+          },
+          cache: "no-store",
         });
+
+        console.log("📥 [StatusPesanan] Response status:", response.status);
+
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
-          throw new Error(body?.error?.message ?? "Gagal memuat pesanan.");
+          console.error("❌ [StatusPesanan] Response error:", body);
+          throw new Error(body?.message ?? "Gagal memuat pesanan.");
         }
 
         const data = (await response.json()) as OrdersResponse;
-        setOrders(data.data.orders);
+        console.log("📦 [StatusPesanan] Response data:", data);
+        console.log("📦 [StatusPesanan] Data.data:", data.data);
+        
+        // ✅ Handle jika struktur berbeda
+        const ordersList = data.data?.orders || [];
+        console.log("📦 [StatusPesanan] Jumlah orders:", ordersList.length);
+
+        setOrders(ordersList);
       } catch (err) {
+        console.error("❌ [StatusPesanan] Error:", err);
         setError(err instanceof Error ? err.message : "Gagal memuat pesanan.");
       } finally {
         setLoading(false);
@@ -66,7 +103,45 @@ export default function StatusPesananPage() {
     if (!authLoading) {
       fetchOrders();
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, token]);
+
+  const getStatusLabel = (status: OrderStatus): string => {
+    const labels: Record<OrderStatus, string> = {
+      PENDING: "Menunggu Pembayaran",
+      PROCESSING: "Sedang Diproses",
+      PAID: "Sudah Dibayar",
+      SHIPPED: "Dalam Pengiriman",
+      DELIVERED: "Terkirim",
+      CANCELLED: "Dibatalkan",
+    };
+    return labels[status] || status;
+  };
+
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-10 px-6">
+        <p className="text-gray-600">Memuat data...</p>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-10 px-6">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">
+            Silakan login untuk melihat riwayat pesanan Anda.
+          </p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800"
+          >
+            Login
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-6">
@@ -74,16 +149,18 @@ export default function StatusPesananPage() {
         Status Pesanan Anda
       </h1>
 
-      {authLoading ? (
-        <p className="text-gray-600">Memuat data...</p>
-      ) : !user ? (
-        <p className="text-gray-600">
-          Silakan login untuk melihat riwayat pesanan Anda.
-        </p>
-      ) : loading ? (
+      {loading ? (
         <p className="text-gray-600">Memuat status pesanan...</p>
       ) : error ? (
-        <p className="text-red-600">{error}</p>
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+          >
+            Coba Lagi
+          </button>
+        </div>
       ) : orders.length === 0 ? (
         <EmptyOrders />
       ) : (
@@ -97,8 +174,8 @@ export default function StatusPesananPage() {
                 key={order.id}
                 orderId={order.id}
                 productName={productName}
-                currentStatus={order.status}
-                statusLabel={order.statusLabel}
+                currentStatus={order.status} 
+                statusLabel={getStatusLabel(order.status)}
                 estimatedArrival={null}
               />
             );
