@@ -86,16 +86,12 @@ export default function AdminProductPage() {
     }
   }, [user, isLoading, router]);
 
-  // Load products from API
   useEffect(() => {
     fetchProducts();
   }, []);
-
-  // Apply filters whenever search/filter/sort changes
   useEffect(() => {
     applyFilters();
   }, [products, searchQuery, categoryFilter, stockFilter, sortBy]);
-
   const fetchProducts = async () => {
     setLoading(true);
     setError(null);
@@ -104,9 +100,40 @@ export default function AdminProductPage() {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Gagal memuat produk");
+
       const data = await response.json();
-      // API returns { data: { products } } for limit query
-      setProducts(data.data.items || []);
+
+      console.log("✅ Data produk dari API:", data);
+      if (data?.data?.items?.length) {
+        console.log("➡️ Struktur category contoh:", data.data.items[0].category);
+      }
+      type RawProduct = {
+        id: string;
+        name: string;
+        category: string | { name: string } | null;
+        price: number;
+        stock?: number | null; 
+        description?: string | null;
+        imageUrl?: string;
+        slug?: string;
+      };
+
+      const rawItems: RawProduct[] = data.data?.items || data.data || [];
+      const normalized: Product[] = rawItems.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        stock: p.stock ?? 0, 
+        description: p.description ?? null,
+        imageUrl: p.imageUrl ?? "",
+        slug: p.slug ?? "",
+        category:
+          typeof p.category === "object" && p.category !== null
+            ? p.category.name
+            : p.category ?? "Tanpa Kategori",
+      }));
+
+      setProducts(normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
       toast.error("Gagal memuat produk");
@@ -114,6 +141,8 @@ export default function AdminProductPage() {
       setLoading(false);
     }
   };
+
+
 
   const applyFilters = () => {
     let filtered = [...products];
@@ -126,8 +155,9 @@ export default function AdminProductPage() {
           p.name.toLowerCase().includes(query) ||
           (typeof p.category === "string"
             ? p.category.toLowerCase()
-            : p.category.name.toLowerCase()
+            : p.category?.name?.toLowerCase() ?? ""
           ).includes(query)
+
           ||
           p.description?.toLowerCase().includes(query)
       );
@@ -137,7 +167,10 @@ export default function AdminProductPage() {
     if (categoryFilter) {
       filtered = filtered.filter(
         (p) =>
-          (typeof p.category === "string" ? p.category : p.category.name) === categoryFilter
+          (typeof p.category === "string"
+            ? p.category
+            : p.category?.name ?? ""
+          ) === categoryFilter
       );
 
     }
@@ -228,7 +261,7 @@ export default function AdminProductPage() {
       const response = await fetch(url, {
         method,
         credentials: "include",
-        body: formData, 
+        body: formData,
       });
 
       if (!response.ok) {
@@ -573,10 +606,21 @@ export default function AdminProductPage() {
                 {/* Product Info */}
                 <div className="p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">
-                    {typeof product.category === "string"
-                      ? product.category
-                      : product.category?.name}
+                    {(() => {
+                      const cat = product.category;
+                      if (!cat) return "Tanpa Kategori";
+                      if (typeof cat === "string") return cat;
+                      if (typeof cat === "object" && "name" in cat) return cat.name;
+                      try {
+                        return JSON.stringify(cat);
+                      } catch {
+                        return "Kategori Tidak Dikenal";
+                      }
+                    })()}
                   </p>
+
+
+
                   <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2">
                     {product.name}
                   </h3>
