@@ -17,10 +17,19 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface Product {
   id: string;
   name: string;
-  category: string;
+  category: string | Category;
   price: number;
   stock: number | null;
   description: string | null;
@@ -97,7 +106,7 @@ export default function AdminProductPage() {
       if (!response.ok) throw new Error("Gagal memuat produk");
       const data = await response.json();
       // API returns { data: { products } } for limit query
-      setProducts(data.data.products || []);
+      setProducts(data.data.items || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
       toast.error("Gagal memuat produk");
@@ -115,14 +124,22 @@ export default function AdminProductPage() {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query) ||
+          (typeof p.category === "string"
+            ? p.category.toLowerCase()
+            : p.category.name.toLowerCase()
+          ).includes(query)
+          ||
           p.description?.toLowerCase().includes(query)
       );
     }
 
     // Category filter
     if (categoryFilter) {
-      filtered = filtered.filter((p) => p.category === categoryFilter);
+      filtered = filtered.filter(
+        (p) =>
+          (typeof p.category === "string" ? p.category : p.category.name) === categoryFilter
+      );
+
     }
 
     // Stock filter
@@ -162,7 +179,7 @@ export default function AdminProductPage() {
     if (product) {
       setEditId(product.id);
       setName(product.name);
-      setCategory(product.category);
+      setCategory(typeof product.category === "string" ? product.category : product.category.name);
       setPrice(product.price.toString());
       setStock(product.stock?.toString() ?? "");
       setDescription(product.description ?? "");
@@ -211,7 +228,7 @@ export default function AdminProductPage() {
       const response = await fetch(url, {
         method,
         credentials: "include",
-        body: formData, // ⬅️ ubah ini
+        body: formData, 
       });
 
       if (!response.ok) {
@@ -556,7 +573,9 @@ export default function AdminProductPage() {
                 {/* Product Info */}
                 <div className="p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">
-                    {product.category}
+                    {typeof product.category === "string"
+                      ? product.category
+                      : product.category?.name}
                   </p>
                   <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2">
                     {product.name}
