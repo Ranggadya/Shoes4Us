@@ -5,7 +5,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.supabase.co", // ✅ izinkan semua bucket Supabase
+        hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "api.qrserver.com", 
+        pathname: "/v1/**",          
       },
     ],
   },
