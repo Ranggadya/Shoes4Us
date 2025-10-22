@@ -421,7 +421,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-3">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                              {typeof p.category === 'object' && p.category?.name ? p.category.name : p.category}
+                              {typeof p.category === 'string'
+                                ? p.category
+                                : p.category?.name || 'Tidak ada kategori'}
                             </span>
                           </td>
                           <td className="p-3">
