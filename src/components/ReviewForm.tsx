@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 
 interface ReviewFormProps {
-  productId: number;
+  productId: string;
   onSuccess: () => void;
 }
 

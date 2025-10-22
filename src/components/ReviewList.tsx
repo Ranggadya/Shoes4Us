@@ -33,7 +33,7 @@ interface ReviewSummary {
 }
 
 interface ReviewListProps {
-  productId: number;
+  productId: string;
   refreshTrigger?: number;
 }
 

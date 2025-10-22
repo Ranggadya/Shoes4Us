@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
   ShoppingCart,
@@ -25,6 +25,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAdmin, logout } = useAuth();
 
   // Close dropdown when clicking outside
@@ -112,13 +113,21 @@ export default function Navbar() {
                   <span>Produk</span>
                 </Link>
 
-                <Link
-                  href="/cart"
-                  className="flex items-center space-x-1 hover:text-blue-600 transition"
-                >
-                  <ShoppingCart size={18} />
-                  <span>Keranjang</span>
-                </Link>
+                {pathname !== "/cart" ? (
+                  <Link
+                    href="/cart"
+                    className="flex items-center space-x-1 hover:text-blue-600 transition"
+                  >
+                    <ShoppingCart size={18} />
+                    <span>Keranjang</span>
+                  </Link>
+                ) : (
+                  <div className="flex items-center space-x-1 text-blue-600 cursor-default">
+                    <ShoppingCart size={18} />
+                    <span>Keranjang</span>
+                  </div>
+                )}
+
               </>
             )}
 
@@ -131,7 +140,7 @@ export default function Navbar() {
                   <Heart size={18} />
                   <span>Wishlist</span>
                 </Link>
-                
+
                 <Link
                   href="/status-pesanan"
                   className="flex items-center space-x-1 hover:text-blue-600 transition"
