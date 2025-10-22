@@ -1,8 +1,52 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { supabase } from "@/lib/supabase";
-import { v4 as uuidv4 } from "uuid";
 import { getUserFromSession } from "@/lib/auth";
+
+export async function GET(_: Request, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params;
+
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, message: "Produk tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        product: {
+          ...product,
+          imageUrl:
+            product.imageUrl ||
+            null, 
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Gagal mengambil produk:", error);
+    return NextResponse.json(
+      { success: false, message: "Gagal mengambil data produk" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -58,10 +102,21 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         price,
         stock,
         description,
-        imageUrl,
+        imageUrl, 
         categoryId,
       },
-      include: { category: true },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ success: true, data: updatedProduct });
