@@ -275,10 +275,9 @@ export default function AdminDashboard() {
     setSortBy("newest");
   };
 
-  // Ganti status pesanan
   const handleStatusChange = async (orderId: string, newStatus: string, currentStatus: string) => {
     if (newStatus === currentStatus) {
-      return; // No change
+      return;
     }
 
     if (!confirm(`Ubah status pesanan #${orderId} dari "${currentStatus}" menjadi "${newStatus}"?`)) return;
@@ -286,8 +285,10 @@ export default function AdminDashboard() {
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ status: newStatus }),
       });
 
@@ -548,11 +549,11 @@ export default function AdminDashboard() {
                     onChange={(e) => setFilterStatus(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium"
                   >
-                    <option value="ALL">Semua Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="PROCESSING">Processing</option>
                     <option value="SHIPPED">Shipped</option>
-                    <option value="COMPLETED">Completed</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="PAID">Paid</option>
                     <option value="CANCELLED">Cancelled</option>
                   </select>
                 </div>
@@ -755,7 +756,8 @@ export default function AdminDashboard() {
                                   <option value="PENDING">Pending</option>
                                   <option value="PROCESSING">Processing</option>
                                   <option value="SHIPPED">Shipped</option>
-                                  <option value="COMPLETED">Completed</option>
+                                  <option value="DELIVERED">Delivered</option>
+                                  <option value="PAID">Paid</option>
                                   <option value="CANCELLED">Cancelled</option>
                                 </select>
                               </div>
@@ -975,7 +977,8 @@ export default function AdminDashboard() {
                           <option value="PENDING">Pending</option>
                           <option value="PROCESSING">Processing</option>
                           <option value="SHIPPED">Shipped</option>
-                          <option value="COMPLETED">Completed</option>
+                          <option value="DELIVERED">Delivered</option>
+                          <option value="PAID">Paid</option>
                           <option value="CANCELLED">Cancelled</option>
                         </select>
                       </div>
