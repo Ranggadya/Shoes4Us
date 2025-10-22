@@ -12,28 +12,27 @@ import { OrderStatus } from "@prisma/client";
 
 export class OrderController {
   private readonly service = new OrderService();
-
-  /**
-   * 🔹 USER: Dapatkan semua pesanan milik user login
-   */
   async getMyOrders(req: NextRequest): Promise<Response> {
-    try {
-      const user = await requireAuth(req);
-      const { searchParams } = new URL(req.url);
+  try {
+    const user = await requireAuth(req);
+    const { searchParams } = new URL(req.url);
 
-      const page = Number(searchParams.get("page") ?? 1);
-      const limit = Number(searchParams.get("limit") ?? 20);
+    const page = Number(searchParams.get("page") ?? 1);
+    const limit = Number(searchParams.get("limit") ?? 20);
 
-      const result = await this.service.listMine(user.userId, page, limit);
-      return createSuccessResponse(result, "Daftar pesanan berhasil diambil");
-    } catch (e) {
-      return handleError(e);
-    }
+    const result = await this.service.listMine(user.userId, page, limit);
+    const response = {
+      orders: result.data,
+      total: result.pagination.total,
+      page: result.pagination.page,
+      totalPages: result.pagination.totalPages,
+    };
+    
+    return createSuccessResponse(response, "Daftar pesanan berhasil diambil");
+  } catch (e) {
+    return handleError(e);
   }
-
-  /**
-   * 🔹 USER: Dapatkan detail 1 pesanan
-   */
+}
   async getOrderDetail(
     req: NextRequest,
     params: { orderId: string }
@@ -52,21 +51,22 @@ export class OrderController {
     }
   }
 
-  /**
-   * 🔹 USER: Buat pesanan baru dari keranjang
-   */
   async createOrder(req: NextRequest): Promise<Response> {
     try {
       const user = await requireAuth(req);
       const body = await req.json();
-
+      console.log("📦 [OrderController] BODY REQUEST:");
+      console.log(JSON.stringify(body, null, 2));
       const parsed = createOrderSchema.safeParse(body);
+      console.log("✅ [OrderController] HASIL VALIDASI:", parsed.success);
+
       if (!parsed.success) {
-        throw new ValidationError(
-          "Data pesanan tidak valid",
-        );
+        console.error("❌ [OrderController] DETAIL ERROR VALIDASI:");
+        console.error(parsed.error.issues); // <-- Penting!
+        throw new ValidationError("Data pesanan tidak valid");
       }
 
+      // 🧩 Jika lolos validasi, lanjut checkout
       const order = await this.service.checkout(user.userId, parsed.data);
       return createSuccessResponse(order, "Pesanan berhasil dibuat");
     } catch (e) {
@@ -74,9 +74,6 @@ export class OrderController {
     }
   }
 
-  /**
-   * 🔹 ADMIN: Update status pesanan
-   */
   async updateOrderStatus(
     req: NextRequest,
     params: { orderId: string }
@@ -106,9 +103,6 @@ export class OrderController {
     }
   }
 
-  /**
-   * 🔹 USER / ADMIN: Batalkan pesanan
-   */
   async cancelOrder(
     req: NextRequest,
     params: { orderId: string }
@@ -129,10 +123,6 @@ export class OrderController {
       return handleError(e);
     }
   }
-
-  /**
-   * 🔹 ADMIN: Ambil semua pesanan
-   */
   async getAllOrdersForAdmin(
     page = 1,
     limit = 20,

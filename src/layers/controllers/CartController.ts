@@ -27,8 +27,9 @@ export class CartController {
       const body = await req.json();
 
       const parsed = addToCartSchema.safeParse(body);
-      if (!parsed.success)
+      if (!parsed.success) {
         throw new ValidationError("Data input tidak valid");
+      }
 
       const { productId, quantity } = parsed.data;
       const result = await service.addToCart(user.userId, productId, quantity);
@@ -37,32 +38,35 @@ export class CartController {
       return handleError(e);
     }
   }
-  static async updateItem(req: NextRequest, params: { itemId: string }): Promise<Response> {
+
+  static async updateItem(req: NextRequest, params: { id: string }): Promise<Response> {
     try {
       const user = await requireAuth(req);
       const body = await req.json();
 
       const parsed = updateCartItemSchema.safeParse(body);
-      if (!parsed.success)
+      if (!parsed.success) {
         throw new ValidationError("Data input tidak valid");
+      }
 
       const { quantity } = parsed.data;
-      const result = await service.updateItemQuantity(user.userId, params.itemId, quantity);
+      const result = await service.updateItemQuantity(user.userId, params.id, quantity);
       return createSuccessResponse(result, "Jumlah item diperbarui");
     } catch (e) {
       return handleError(e);
     }
   }
 
-  static async removeItem(req: NextRequest, params: { itemId: string }): Promise<Response> {
+  static async removeItem(req: NextRequest, params: { id: string }): Promise<Response> {
     try {
       const user = await requireAuth(req);
-      const result = await service.removeItem(user.userId, params.itemId);
+      const result = await service.removeItem(user.userId, params.id);
       return createSuccessResponse(result, "Item berhasil dihapus dari keranjang");
     } catch (e) {
       return handleError(e);
     }
   }
+
   static async clearCart(req: NextRequest): Promise<Response> {
     try {
       const user = await requireAuth(req);
