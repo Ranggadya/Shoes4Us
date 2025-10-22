@@ -32,7 +32,14 @@ type Product = {
   price: number;
   description: string | null;
   imageUrl: string | null;
-  category: string;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
   stock: number;
 };
 
@@ -44,21 +51,19 @@ type ProductResponse = {
 const AVAILABLE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"];
 
 // Mock product images for gallery (in real app, would come from backend)
+// ✅ hanya tampilkan gambar produk asli dari database
 const getProductImages = (mainImage: string | null) => {
-  return [
-    mainImage ?? "/sepatu1.jpeg",
-    "/sepatu2.jpeg",
-    "/sepatu3.jpeg",
-    "/sepatu4.jpeg",
-  ];
+  if (mainImage) return [mainImage];
+  return ["/placeholder-image.jpg"]; // atau kosong: return [];
 };
+
 
 type TabType = "description" | "reviews" | "shipping" | "sizeguide";
 
 export default function ProductDetailClient({
   productId,
 }: {
-  productId: number;
+  productId: string;
 }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -77,22 +82,25 @@ export default function ProductDetailClient({
   const [totalReviews, setTotalReviews] = useState(0);
 
   useEffect(() => {
+    if (!productId || typeof productId !== "string") {
+      setError("ID produk tidak valid");
+      setLoading(false);
+      return;
+    }
+
     const fetchProduct = async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const response = await fetch(`/api/products/${productId}`, {
+        setLoading(true);
+        const res = await fetch(`/api/products/${productId}`, {
           credentials: "include",
         });
 
-        if (!response.ok) {
-          throw new Error("Produk tidak ditemukan");
-        }
+        if (!res.ok) throw new Error("Produk tidak ditemukan");
 
-        const data = (await response.json()) as ProductResponse;
+        const data: ProductResponse = await res.json();
         setProduct(data.data.product);
 
-        // Fetch review summary
+        // Ambil data rating & review summary
         const reviewRes = await fetch(`/api/reviews?productId=${productId}`);
         const reviewData = await reviewRes.json();
         if (reviewData.success && reviewData.data.summary) {
@@ -108,45 +116,40 @@ export default function ProductDetailClient({
       }
     };
 
-    if (Number.isFinite(productId)) {
-      fetchProduct();
-    } else {
-      setError("ID produk tidak valid");
-      setLoading(false);
-    }
+    fetchProduct();
   }, [productId]);
 
-useEffect(() => {
-  const checkWishlistStatus = async () => {
-    if (!user) return;
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!user) return;
 
-    try {
-      const res = await fetch("/api/wishlist");
-      if (!res.ok) return;
+      try {
+        const res = await fetch("/api/wishlist");
+        if (!res.ok) return;
 
-      const data = await res.json();
+        const data = await res.json();
 
-      type WishlistItem = {
-        id: string;
-        productId: string | number;
-      };
+        type WishlistItem = {
+          id: string;
+          productId: string | number;
+        };
 
-      const items: WishlistItem[] = data?.data?.items ?? [];
-      const item = items.find((item) => item.productId === productId);
+        const items: WishlistItem[] = data?.data?.items ?? [];
+        const item = items.find((item) => item.productId === productId);
 
-      if (item) {
-        setIsWishlisted(true);
-        setWishlistId(item.id);
-      } else {
-        setIsWishlisted(false);
+        if (item) {
+          setIsWishlisted(true);
+          setWishlistId(item.id);
+        } else {
+          setIsWishlisted(false);
+        }
+      } catch (error) {
+        console.error("Error checking wishlist status:", error);
       }
-    } catch (error) {
-      console.error("Error checking wishlist status:", error);
-    }
-  };
+    };
 
-  checkWishlistStatus();
-}, [productId, user]);
+    checkWishlistStatus();
+  }, [productId, user]);
 
 
   const handleAddToCart = async () => {
@@ -249,7 +252,7 @@ useEffect(() => {
           text: `Check out ${product?.name} on Shoes4Us`,
           url: window.location.href,
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
@@ -309,7 +312,7 @@ useEffect(() => {
             </Link>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-500 hover:text-gray-700">
-              {product.category}
+              {product.category?.name ?? "Uncategorized"}
             </span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-900 font-medium">{product.name}</span>
@@ -347,27 +350,29 @@ useEffect(() => {
             </div>
 
             {/* Thumbnail Gallery */}
-            <div className="grid grid-cols-4 gap-3">
-              {productImages.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 transition ${
-                    selectedImageIndex === idx
-                      ? "border-black"
-                      : "border-gray-200 hover:border-gray-400"
-                  }`}
-                >
-                  <Image
-                    src={img}
-                    alt={`${product.name} view ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 1024px) 12vw, 25vw"
-                  />
-                </button>
-              ))}
-            </div>
+            {productImages.length > 0 && (
+              <div className="grid grid-cols-4 gap-3">
+                {productImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition ${selectedImageIndex === idx
+                        ? "border-black"
+                        : "border-gray-200 hover:border-gray-400"
+                      }`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${product.name} view ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 1024px) 12vw, 25vw"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
           </div>
 
           {/* Product Info */}
@@ -375,7 +380,7 @@ useEffect(() => {
             {/* Category & Name */}
             <div>
               <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold uppercase tracking-wider rounded-full">
-                {product.category}
+                {product.category?.name ?? "Uncategorized"}
               </span>
               <h1 className="text-4xl font-bold text-gray-900 mt-3">
                 {product.name}
@@ -428,11 +433,10 @@ useEffect(() => {
                     key={option}
                     onClick={() => setSize(option)}
                     disabled={product.stock === 0}
-                    className={`px-4 py-3 rounded-lg border-2 font-semibold transition ${
-                      size === option
-                        ? "bg-black text-white border-black"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    }`}
+                    className={`px-4 py-3 rounded-lg border-2 font-semibold transition ${size === option
+                      ? "bg-black text-white border-black"
+                      : "border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                      }`}
                   >
                     {option}
                   </button>
@@ -502,11 +506,10 @@ useEffect(() => {
             <div className="flex gap-3">
               <button
                 onClick={handleWishlist}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 font-semibold transition ${
-                  isWishlisted
-                    ? "bg-red-50 border-red-500 text-red-600"
-                    : "border-gray-300 text-gray-700 hover:border-gray-400"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 font-semibold transition ${isWishlisted
+                  ? "bg-red-50 border-red-500 text-red-600"
+                  : "border-gray-300 text-gray-700 hover:border-gray-400"
+                  }`}
               >
                 <Heart
                   className={`w-5 h-5 ${isWishlisted ? "fill-red-600" : ""}`}
@@ -568,41 +571,37 @@ useEffect(() => {
             <div className="flex overflow-x-auto">
               <button
                 onClick={() => setActiveTab("description")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
-                  activeTab === "description"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${activeTab === "description"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Description
               </button>
               <button
                 onClick={() => setActiveTab("reviews")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
-                  activeTab === "reviews"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${activeTab === "reviews"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Reviews ({totalReviews})
               </button>
               <button
                 onClick={() => setActiveTab("shipping")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
-                  activeTab === "shipping"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${activeTab === "shipping"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Shipping & Returns
               </button>
               <button
                 onClick={() => setActiveTab("sizeguide")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
-                  activeTab === "sizeguide"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${activeTab === "sizeguide"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Size Guide
               </button>
@@ -649,7 +648,7 @@ useEffect(() => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="font-semibold">Category:</span>{" "}
-                    {product.category}
+                    {product.category?.name ?? "Uncategorized"}
                   </div>
                   <div>
                     <span className="font-semibold">Available Sizes:</span> 38
