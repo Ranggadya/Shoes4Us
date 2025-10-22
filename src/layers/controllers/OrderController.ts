@@ -13,26 +13,26 @@ import { OrderStatus } from "@prisma/client";
 export class OrderController {
   private readonly service = new OrderService();
   async getMyOrders(req: NextRequest): Promise<Response> {
-  try {
-    const user = await requireAuth(req);
-    const { searchParams } = new URL(req.url);
+    try {
+      const user = await requireAuth(req);
+      const { searchParams } = new URL(req.url);
 
-    const page = Number(searchParams.get("page") ?? 1);
-    const limit = Number(searchParams.get("limit") ?? 20);
+      const page = Number(searchParams.get("page") ?? 1);
+      const limit = Number(searchParams.get("limit") ?? 20);
 
-    const result = await this.service.listMine(user.userId, page, limit);
-    const response = {
-      orders: result.data,
-      total: result.pagination.total,
-      page: result.pagination.page,
-      totalPages: result.pagination.totalPages,
-    };
-    
-    return createSuccessResponse(response, "Daftar pesanan berhasil diambil");
-  } catch (e) {
-    return handleError(e);
+      const result = await this.service.listMine(user.userId, page, limit);
+      const response = {
+        orders: result.data,
+        total: result.pagination.total,
+        page: result.pagination.page,
+        totalPages: result.pagination.totalPages,
+      };
+
+      return createSuccessResponse(response, "Daftar pesanan berhasil diambil");
+    } catch (e) {
+      return handleError(e);
+    }
   }
-}
   async getOrderDetail(
     req: NextRequest,
     params: { orderId: string }
@@ -123,11 +123,15 @@ export class OrderController {
       return handleError(e);
     }
   }
-  async getAllOrdersForAdmin(
-    page = 1,
-    limit = 20,
-    status?: OrderStatus
-  ): Promise<unknown> {
-    return this.service.listAll(page, limit, status);
-  }
+ async getAllOrdersForAdmin(
+  page = 1,
+  limit = 100,
+  status?: OrderStatus
+) {
+  const result = await this.service.listAll(page, limit, status);
+  return {
+    data: result.data,
+    pagination: result.pagination,
+  };
+}
 }
