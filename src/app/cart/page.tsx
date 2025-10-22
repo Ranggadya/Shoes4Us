@@ -83,6 +83,7 @@ export default function CartPage() {
         </h1>
         {cart?.items.length ? (
           <button
+            type="button"
             onClick={handleClear}
             className="text-sm text-red-600 hover:underline"
           >
@@ -122,24 +123,39 @@ export default function CartPage() {
                   </span>
                   <div className="flex items-center border border-gray-300 rounded">
                     <button
+                      type="button"
                       className="px-4 py-2 hover:bg-gray-100 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      onClick={() => handleDecrease(item.id, item.quantity)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDecrease(item.id, item.quantity)
+                      }}
                       aria-label="Kurangi jumlah"
                     >
                       −
                     </button>
                     <span className="px-4 py-2 text-sm border-x border-gray-300">{item.quantity}</span>
                     <button
+                      type="button"
                       className="px-4 py-2 hover:bg-gray-100 text-sm min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      onClick={() => handleIncrease(item.id, item.quantity)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleIncrease(item.id, item.quantity)
+                      }}
                       aria-label="Tambah jumlah"
                     >
                       +
                     </button>
                   </div>
                   <button
+                    type="button"
                     className="text-sm text-red-500 hover:underline px-2 py-2 min-h-[44px]"
-                    onClick={() => handleRemove(item.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemove(item.id)
+                    }}
                   >
                     Hapus
                   </button>
