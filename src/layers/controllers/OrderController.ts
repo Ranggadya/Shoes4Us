@@ -12,6 +12,7 @@ import { OrderStatus } from "@prisma/client";
 
 export class OrderController {
   private readonly service = new OrderService();
+
   async getMyOrders(req: NextRequest): Promise<Response> {
     try {
       const user = await requireAuth(req);
@@ -33,6 +34,7 @@ export class OrderController {
       return handleError(e);
     }
   }
+
   async getOrderDetail(
     req: NextRequest,
     params: { orderId: string }
@@ -55,18 +57,12 @@ export class OrderController {
     try {
       const user = await requireAuth(req);
       const body = await req.json();
-      console.log("📦 [OrderController] BODY REQUEST:");
-      console.log(JSON.stringify(body, null, 2));
-      const parsed = createOrderSchema.safeParse(body);
-      console.log("✅ [OrderController] HASIL VALIDASI:", parsed.success);
 
+      const parsed = createOrderSchema.safeParse(body);
       if (!parsed.success) {
-        console.error("❌ [OrderController] DETAIL ERROR VALIDASI:");
-        console.error(parsed.error.issues); // <-- Penting!
         throw new ValidationError("Data pesanan tidak valid");
       }
 
-      // 🧩 Jika lolos validasi, lanjut checkout
       const order = await this.service.checkout(user.userId, parsed.data);
       return createSuccessResponse(order, "Pesanan berhasil dibuat");
     } catch (e) {
@@ -79,19 +75,20 @@ export class OrderController {
     params: { orderId: string }
   ): Promise<Response> {
     try {
-      await requireAdmin(req);
-      const body = await req.json();
-
-      const parsed = updateOrderStatusSchema.safeParse(body);
-      if (!parsed.success) {
-        throw new ValidationError(
-          "Data status tidak valid",
-        );
+      const user = await requireAuth(req);
+      if (user.role !== "ADMIN") {
+        throw new UnauthorizedError("Hanya admin yang dapat mengubah status pesanan");
       }
 
+      const body = await req.json();
+      const parsed = updateOrderStatusSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new ValidationError("Data status tidak valid");
+      }
       const updated = await this.service.updateStatus(
         params.orderId,
-        parsed.data.status
+        parsed.data.status,
+        user.role
       );
 
       return createSuccessResponse(
@@ -117,21 +114,26 @@ export class OrderController {
         );
       }
 
-      const result = await this.service.updateStatus(params.orderId, "CANCELLED");
+      const result = await this.service.updateStatus(
+        params.orderId,
+        "CANCELLED",
+        user.role
+      );
       return createSuccessResponse(result, "Pesanan berhasil dibatalkan");
     } catch (e) {
       return handleError(e);
     }
   }
- async getAllOrdersForAdmin(
-  page = 1,
-  limit = 100,
-  status?: OrderStatus
-) {
-  const result = await this.service.listAll(page, limit, status);
-  return {
-    data: result.data,
-    pagination: result.pagination,
-  };
-}
+
+  async getAllOrdersForAdmin(
+    page = 1,
+    limit = 100,
+    status?: OrderStatus
+  ) {
+    const result = await this.service.listAll(page, limit, status);
+    return {
+      data: result.data,
+      pagination: result.pagination,
+    };
+  }
 }
