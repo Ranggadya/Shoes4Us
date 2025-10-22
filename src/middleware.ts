@@ -15,6 +15,7 @@ export async function middleware(req: NextRequest) {
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
+
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return NextResponse.json(
@@ -33,16 +34,9 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { payload } = await jwtVerify(token, secret);
-
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-user-id", payload.userId as string);
-    requestHeaders.set("x-user-role", payload.role as string);
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    req.headers.set("x-user-id", payload.userId as string);
+    req.headers.set("x-user-role", payload.role as string);
+    return NextResponse.next();
   } catch (err) {
     console.error("❌ Invalid token:", err);
     return NextResponse.json(
@@ -57,9 +51,9 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/cart/:path*", 
-    "/api/orders/:path*",  
-    "/api/users/:path*",   
-    "/api/admin/:path*",    
+    "/api/cart/:path*",
+    "/api/orders/:path*",
+    "/api/users/:path*",
+    "/api/admin/:path*",
   ],
 };
