@@ -82,35 +82,34 @@ export class OrderService {
     };
   }
 
-  async updateStatus(orderId: string, newStatus: OrderStatus) {
-  if (!orderId) throw new AppError("Order ID wajib diisi", 400);
+  async updateStatus(orderId: string, newStatus: OrderStatus, userRole: string = "USER") {
+    if (!orderId) throw new AppError("Order ID wajib diisi", 400);
 
-  const order = await this.orderRepo.findOrderById(orderId);
-  if (!order) throw new AppError("Pesanan tidak ditemukan", 404);
+    const order = await this.orderRepo.findOrderById(orderId);
+    if (!order) throw new AppError("Pesanan tidak ditemukan", 404);
 
-  const allowedTransitions =
-    this.ALLOWED_TRANSITIONS[order.status as OrderStatus]; // ✅ fix error
+    const allowedTransitions = this.ALLOWED_TRANSITIONS[order.status as OrderStatus];
 
-  if (!allowedTransitions.includes(newStatus)) {
-    throw new AppError(
-      `Perubahan status tidak valid: ${order.status} → ${newStatus}`,
-      400
-    );
+    if (userRole !== "ADMIN" && !allowedTransitions.includes(newStatus)) {
+      throw new AppError(
+        `Perubahan status tidak valid: ${order.status} → ${newStatus}`,
+        400
+      );
+    }
+    if (newStatus === "CANCELLED") {
+      await Promise.all(
+        order.items.map((item) =>
+          this.productRepo.adjustStock(item.productId, item.quantity)
+        )
+      );
+    }
+
+    const updatedOrder = await this.orderRepo.updateStatus(orderId, newStatus);
+
+    return {
+      message: `Status pesanan berhasil diubah menjadi ${newStatus}`,
+      order: updatedOrder,
+    };
   }
 
-  if (newStatus === "CANCELLED") {
-    await Promise.all(
-      order.items.map((item) =>
-        this.productRepo.adjustStock(item.productId, item.quantity)
-      )
-    );
-  }
-
-  const updatedOrder = await this.orderRepo.updateStatus(orderId, newStatus);
-
-  return {
-    message: `Status pesanan berhasil diubah menjadi ${newStatus}`,
-    order: updatedOrder,
-  };
-}
 }
