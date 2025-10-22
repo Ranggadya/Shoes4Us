@@ -4,10 +4,6 @@ import { handleError } from "@/exceptions/handlerError";
 
 const controller = new OrderController();
 
-/**
- * ✅ GET /api/orders/:orderId
- * Menampilkan detail pesanan user
- */
 export async function GET(
   req: NextRequest,
   { params }: { params: { orderId: string } }
@@ -24,7 +20,7 @@ export async function PATCH(
   { params }: { params: { orderId: string } }
 ): Promise<Response> {
   try {
-    return await controller.cancelOrder(req, params);
+    return await controller.updateOrderStatus(req, params);
   } catch (error) {
     return handleError(error);
   }
