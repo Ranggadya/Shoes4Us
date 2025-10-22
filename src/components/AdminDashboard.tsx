@@ -19,10 +19,20 @@ import {
 interface Product {
   id: string;
   name: string;
-  category: string;
+  category:
+  | string
+  | {
+    id: string;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
   price: number;
   stock: number | null;
 }
+
 
 interface Order {
   id: string;
@@ -95,22 +105,40 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/orders?page=1&limit=100", {
+
+      console.log("🔍 [AdminDashboard] Fetching products...");
+      console.log("🔑 [AdminDashboard] Token:", token ? "Ada" : "Tidak ada");
+
+      const response = await fetch("/api/products?page=1&pageSize=100", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         cache: "no-store",
       });
 
+      console.log("📥 [AdminDashboard] Products response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Gagal memuat produk");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ [AdminDashboard] Products error:", errorData);
+        throw new Error(errorData?.message || "Gagal memuat produk");
       }
 
       const data = await response.json();
-      setOrders(data.data?.data || []);
+      console.log("📦 [AdminDashboard] Products FULL response:", data);
+      console.log("📦 [AdminDashboard] data.data:", data.data);
+      console.log("📦 [AdminDashboard] data.data?.items:", data.data?.items);
+      console.log("📦 [AdminDashboard] data.data?.products:", data.data?.products);
+
+      const productsList = data.data?.items || data.data?.products || data.data || [];
+      console.log("📦 [AdminDashboard] Products list:", productsList);
+      console.log("📦 [AdminDashboard] Jumlah products:", productsList.length);
+
+      setProducts(productsList);
     } catch (err) {
+      console.error("❌ [AdminDashboard] Error fetching products:", err);
       setError(err instanceof Error ? err.message : "Gagal memuat produk");
     } finally {
       setLoading(false);
@@ -121,8 +149,13 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/orders?scope=all", {
-        credentials: "include",
+      const response = await fetch("/api/orders?page=1&limit=100", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -130,7 +163,7 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      setOrders(data.data?.orders || []);
+      setOrders(data.data?.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat pesanan");
     } finally {
@@ -388,7 +421,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-3">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                              {p.category}
+                              {typeof p.category === 'object' && p.category?.name ? p.category.name : p.category}
                             </span>
                           </td>
                           <td className="p-3">
