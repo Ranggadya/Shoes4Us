@@ -39,6 +39,7 @@ model User {
   orders              Order[]
   wishlist            Wishlist[]
   passwordResetTokens PasswordResetToken[]
+  reviews  Review[]
 
   @@map("users")
 }
@@ -96,11 +97,11 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // 🔹 Relasi
   category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   cartItems  CartItem[]
   orderItems OrderItem[]
-  wishlist   Wishlist[] // ✅ Tambahkan back relation ke Wishlist
+  wishlist   Wishlist[] 
+  reviews  Review[]
 
   @@index([categoryId])
   @@index([slug])
@@ -188,3 +189,16 @@ model PasswordResetToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  productId  String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+
