@@ -50,7 +50,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   // State produk & orders
@@ -95,8 +95,13 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/products?pageSize=50", {
-        credentials: "include",
+      const response = await fetch("/api/orders?page=1&limit=100", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -104,7 +109,7 @@ export default function AdminDashboard() {
       }
 
       const data = await response.json();
-      setProducts(data.data?.products || []);
+      setOrders(data.data?.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat produk");
     } finally {
@@ -689,10 +694,10 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-3">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                                  order.status === "SHIPPED" ? "bg-blue-100 text-blue-800" :
-                                    order.status === "PROCESSING" ? "bg-yellow-100 text-yellow-800" :
-                                      order.status === "CANCELLED" ? "bg-red-100 text-red-800" :
-                                        "bg-gray-100 text-gray-800"
+                                order.status === "SHIPPED" ? "bg-blue-100 text-blue-800" :
+                                  order.status === "PROCESSING" ? "bg-yellow-100 text-yellow-800" :
+                                    order.status === "CANCELLED" ? "bg-red-100 text-red-800" :
+                                      "bg-gray-100 text-gray-800"
                                 }`}>
                                 {order.status}
                               </span>
@@ -736,10 +741,10 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <span className="font-mono text-sm font-bold text-white">#{order.id}</span>
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "COMPLETED" ? "bg-green-400 text-green-900" :
-                              order.status === "SHIPPED" ? "bg-blue-400 text-blue-900" :
-                                order.status === "PROCESSING" ? "bg-yellow-400 text-yellow-900" :
-                                  order.status === "CANCELLED" ? "bg-red-400 text-red-900" :
-                                    "bg-gray-400 text-gray-900"
+                            order.status === "SHIPPED" ? "bg-blue-400 text-blue-900" :
+                              order.status === "PROCESSING" ? "bg-yellow-400 text-yellow-900" :
+                                order.status === "CANCELLED" ? "bg-red-400 text-red-900" :
+                                  "bg-gray-400 text-gray-900"
                             }`}>
                             {order.status}
                           </span>
