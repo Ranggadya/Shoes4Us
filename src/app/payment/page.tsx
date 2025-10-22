@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useCart } from "@/components/CartContext";
 import { formatCurrency } from "@/lib/utils/format";
+import toast from "react-hot-toast";
 
 const DELIVERY_FEE = 15000;
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { cart, isLoading, error, refresh } = useCart();
+  const { token, user } = useAuth();
+  const { cart, isLoading, error } = useCart();
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -29,76 +30,114 @@ export default function PaymentPage() {
 
   const handlePay = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!user) {
       router.push("/login");
       return;
     }
-
     if (!cart || cart.items.length === 0) {
       setFormError("Keranjang masih kosong.");
       return;
     }
-
     if (!name || !address || !city || !postalCode || !phone) {
       setFormError("Lengkapi informasi pengiriman terlebih dahulu.");
       return;
     }
-
     setFormError(null);
     setShowPopup(true);
   };
 
+  // 🔥 FUNGSI INI YANG PENTING - COPY EXACT SEPERTI INI!
   const handleConfirm = async () => {
-    if (!cart || cart.items.length === 0) {
-      setFormError("Keranjang masih kosong.");
-      setShowPopup(false);
+    console.log("🚀 handleConfirm DIPANGGIL");
+
+    // Step 1: Cek cart
+    console.log("📦 STEP 1: Cart object:", cart);
+
+    if (!cart) {
+      alert("Cart is null!");
       return;
     }
 
+    console.log("📦 STEP 2: Cart.items:", cart.items);
+
+    if (!cart.items || cart.items.length === 0) {
+      alert("Cart items kosong!");
+      return;
+    }
+
+    console.log("📦 STEP 3: Jumlah items:", cart.items.length);
+    console.log("📦 STEP 4: Item pertama:", cart.items[0]);
+
     setSubmitting(true);
-    setFormError(null);
 
     try {
-      const orderRes = await fetch("/api/orders", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shippingAddress: address,
-          shippingCity: city,
-          shippingPostalCode: postalCode,
-          shippingPhone: phone,
-          paymentMethod: method,
-        }),
+      // Step 2: Map items
+      const mappedItems = cart.items.map((item, index) => {
+        console.log(`📦 STEP 5.${index}: Mapping item:`, item);
+        const mapped = {
+          productId: item.product.id,
+          quantity: item.quantity,
+          size: item.size || undefined,
+        };
+        console.log(`📦 STEP 6.${index}: Hasil mapping:`, mapped);
+        return mapped;
       });
 
-      if (!orderRes.ok) {
-        const body = await orderRes.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? body?.message ?? "Gagal membuat pesanan.");
-      }
+      console.log("📦 STEP 7: Semua mapped items:", mappedItems);
 
-      const { data: orderData } = await orderRes.json();
-      const payRes = await fetch(`/api/payment/${orderData.id}`, {
+      // Step 3: Buat payload
+      const payload = {
+        items: mappedItems,
+        shippingAddress: address,
+        shippingCity: city,
+        shippingPostalCode: postalCode,
+        shippingPhone: phone,
+        paymentMethod: method,
+      };
+
+      console.log("📦 STEP 8: Payload object:", payload);
+      console.log("📦 STEP 9: Payload.items:", payload.items);
+      console.log("📦 STEP 10: Type of payload.items:", typeof payload.items);
+      console.log("📦 STEP 11: Is Array?:", Array.isArray(payload.items));
+
+      // Step 4: Stringify
+      const bodyString = JSON.stringify(payload);
+      console.log("📦 STEP 12: Body string:");
+      console.log(bodyString);
+
+      // Step 5: Kirim request
+      console.log("📦 STEP 13: Mengirim request ke /api/orders");
+
+      const response = await fetch("/api/orders", {
         method: "POST",
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: bodyString,
       });
 
-      if (!payRes.ok) {
-        const body = await payRes.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? body?.message ?? "Gagal memproses pembayaran.");
+      console.log("📦 STEP 14: Response status:", response.status);
+
+      const data = await response.json();
+      console.log("📦 STEP 15: Response data:", data);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Gagal membuat pesanan");
       }
 
-      const { paymentUrl } = await payRes.json();
-      window.location.href = paymentUrl;
+      toast.success("Pesanan berhasil dibuat!");
+      setShowPopup(false);
+      router.push("/status-pesanan");
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Gagal memproses pesanan.");
+      console.error("❌ ERROR:", err);
+      const errorMsg = err instanceof Error ? err.message : "Gagal memproses pesanan";
+      setFormError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
-
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-center p-6">
@@ -150,6 +189,7 @@ export default function PaymentPage() {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full border rounded-lg p-2"
                 placeholder="Masukkan nama lengkap"
+                required
               />
             </div>
             <div>
@@ -160,6 +200,7 @@ export default function PaymentPage() {
                 className="w-full border rounded-lg p-2"
                 rows={3}
                 placeholder="Masukkan alamat lengkap"
+                required
               ></textarea>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -171,6 +212,7 @@ export default function PaymentPage() {
                   onChange={(e) => setCity(e.target.value)}
                   className="w-full border rounded-lg p-2"
                   placeholder="Contoh: Bandung"
+                  required
                 />
               </div>
               <div>
@@ -181,6 +223,7 @@ export default function PaymentPage() {
                   onChange={(e) => setPostalCode(e.target.value)}
                   className="w-full border rounded-lg p-2"
                   placeholder="40115"
+                  required
                 />
               </div>
             </div>
@@ -192,6 +235,7 @@ export default function PaymentPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full border rounded-lg p-2"
                 placeholder="08xxxxxxxxxx"
+                required
               />
             </div>
             <div>
@@ -207,9 +251,7 @@ export default function PaymentPage() {
               </select>
             </div>
 
-            {formError && (
-              <p className="text-sm text-red-600">{formError}</p>
-            )}
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
 
             <button
               type="submit"
@@ -245,10 +287,10 @@ export default function PaymentPage() {
         <>
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowPopup(false)}
+            onClick={() => !submitting && setShowPopup(false)}
           ></div>
 
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md mx-auto relative">
               <h2 className="text-2xl font-bold mb-4 text-center">
                 Detail Pembayaran
@@ -301,12 +343,15 @@ export default function PaymentPage() {
                   <div className="bg-gray-100 p-3 rounded-lg mt-2">
                     <p className="font-semibold">Bank BCA</p>
                     <p>
-                      No. VA:{" "}
-                      <span className="font-mono">1234567890123456</span>
+                      No. VA: <span className="font-mono">1234567890123456</span>
                     </p>
                     <p>a.n. Shoes4Us</p>
                   </div>
                 </div>
+              )}
+
+              {formError && (
+                <p className="text-sm text-red-600 mt-3 text-center">{formError}</p>
               )}
 
               <button
@@ -317,12 +362,14 @@ export default function PaymentPage() {
                 {submitting ? "Memproses..." : "Konfirmasi Pembayaran"}
               </button>
 
-              <button
-                onClick={() => setShowPopup(false)}
-                className="absolute top-3 right-4 text-gray-500 hover:text-gray-700 text-xl"
-              >
-                ×
-              </button>
+              {!submitting && (
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="absolute top-3 right-4 text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  ×
+                </button>
+              )}
             </div>
           </div>
         </>
