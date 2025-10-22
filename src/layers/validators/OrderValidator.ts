@@ -1,29 +1,28 @@
-// src/schemas/order.schema.ts
-import { z } from 'zod';
-import { OrderStatus } from '@prisma/client';
+import { z } from "zod";
+import { OrderStatus } from "@prisma/client";
 
-/**
- * Schema untuk membuat order baru
- */
 export const createOrderSchema = z.object({
   shippingAddress: z
     .string()
-    .min(10, { message: 'Shipping address must be at least 10 characters' })
-    .max(500, { message: 'Shipping address cannot exceed 500 characters' }),
+    .min(10, { message: "Alamat pengiriman minimal 10 karakter" })
+    .max(500),
+  shippingCity: z.string().min(2, { message: "Kota wajib diisi" }),
+  shippingPostalCode: z.string().min(3, { message: "Kode pos wajib diisi" }),
+  shippingPhone: z.string().min(8, { message: "Nomor telepon wajib diisi" }),
+  paymentMethod: z.enum(["Kartu Kredit", "QRIS", "Transfer Bank"]),
+  items: z
+    .array(
+      z.object({
+        productId: z.string(),
+        quantity: z.number().int().positive(),
+      })
+    )
+    .min(1, { message: "Minimal satu item dalam pesanan" }),
 });
 
-/**
- * Schema untuk update status order
- */
 export const updateOrderStatusSchema = z.object({
-  status: z.nativeEnum(OrderStatus)
-    .refine(val => Object.values(OrderStatus).includes(val), {
-      message: 'Invalid order status',
-    }),
+  status: z.nativeEnum(OrderStatus),
 });
 
-/**
- * Contoh type TypeScript yang bisa dipakai untuk input validasi
- */
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
