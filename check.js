@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const carts = await prisma.cart.findMany({ include: { items: true } }); console.log(JSON.stringify(carts, null, 2)); } main().finally(() => prisma.$disconnect());

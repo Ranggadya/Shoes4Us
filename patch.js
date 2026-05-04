@@ -1,0 +1,1 @@
+const fs = require('fs'); const file = 'src/layers/services/OrderService.ts'; let content = fs.readFileSync(file, 'utf8'); content = content.replace('if (!cart || cart.items.length === 0) {', 'console.log(\checkout userId: \, cart items: \\); if (!cart || cart.items.length === 0) {'); fs.writeFileSync(file, content);

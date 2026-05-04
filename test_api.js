@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const cart = await prisma.cart.findFirst({ include: { items: true } }); console.log(cart); } main().finally(() => prisma.$disconnect());
