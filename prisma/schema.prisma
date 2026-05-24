@@ -106,6 +106,8 @@ model Product {
 
   @@index([categoryId])
   @@index([slug])
+  @@index([isActive, createdAt])
+  @@index([isActive, categoryId])
   @@map("products")
 }
 
@@ -134,9 +136,9 @@ model CartItem {
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([cartId, productId])
   @@index([cartId])
   @@index([productId])
+  @@index([cartId, productId, size])
   @@map("cart_items")
 }
 
@@ -157,6 +159,8 @@ model Order {
   items              OrderItem[]
   paymentUrl         String?
 
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
   @@map("orders")
 }
 

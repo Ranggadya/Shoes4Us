@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 type Product = {
   id: string;
@@ -121,7 +122,7 @@ export default function GlobalSearch() {
           {suggestions.map((product) => (
             <Link
               key={product.id}
-              href={`/product/${product.slug}`}
+              href={`/product/${product.id}`}
               onClick={() => {
                 setShowSuggestions(false);
                 setSearchQuery("");
@@ -130,10 +131,12 @@ export default function GlobalSearch() {
             >
               {/* Product Image */}
               {product.imageUrl ? (
-                <img
+                <Image
                   src={product.imageUrl}
                   alt={product.name}
-                  className="w-12 h-12 object-cover rounded"
+                  width={48}
+                  height={48}
+                  className="object-cover rounded"
                 />
               ) : (
                 <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">

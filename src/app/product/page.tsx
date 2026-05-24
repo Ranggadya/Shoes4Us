@@ -18,26 +18,12 @@ type Product = {
   imageUrl: string | null;
 };
 
-type ProductResponse = {
-  success: boolean;
-  data: {
-    items: Product[];
-  };
-};
-
-type CategoryResponse = {
-  success: boolean;
-  data: { categories: string[] };
-};
-
-const DEFAULT_CATEGORIES = ["casual", "formal", "sports"];
 const PRODUCTS_PER_PAGE = 20;
 
 export default function ProductListPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get("search") || "";
   
-  const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -96,7 +82,6 @@ export default function ProductListPage() {
         const items = productJson.data.items;
         const meta = productJson.meta;
 
-        setProducts(items);
         setFilteredProducts(items);
         setTotalItems(meta?.total || items.length);
       } catch (err) {

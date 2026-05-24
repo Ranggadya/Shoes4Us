@@ -1,13 +1,12 @@
 import "./globals.css";
 import "react-loading-skeleton/dist/skeleton.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/components/AuthProvider";
 import { CartProvider } from "@/components/CartContext"; 
+import { WishlistProvider } from "@/components/WishlistContext";
 import ErrorBoundaryWrapper from "@/components/ErrorBoundary";
 import MainLayout from "@/components/MainLayout";
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Shoes4Us",
@@ -21,36 +20,38 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
+      <body className="flex flex-col min-h-screen">
         <ErrorBoundaryWrapper>
           <AuthProvider>
-            <CartProvider>
-              <Toaster 
-                position="top-right"
-                toastOptions={{
-                  duration: 3000,
-                  style: {
-                    background: '#363636',
-                    color: '#fff',
-                  },
-                  success: {
+            <WishlistProvider>
+              <CartProvider>
+                <Toaster 
+                  position="top-right"
+                  toastOptions={{
                     duration: 3000,
-                    iconTheme: {
-                      primary: '#10b981',
-                      secondary: '#fff',
+                    style: {
+                      background: '#363636',
+                      color: '#fff',
                     },
-                  },
-                  error: {
-                    duration: 4000,
-                    iconTheme: {
-                      primary: '#ef4444',
-                      secondary: '#fff',
+                    success: {
+                      duration: 3000,
+                      iconTheme: {
+                        primary: '#10b981',
+                        secondary: '#fff',
+                      },
                     },
-                  },
-                }}
-              />
-              <MainLayout>{children}</MainLayout>
-            </CartProvider>
+                    error: {
+                      duration: 4000,
+                      iconTheme: {
+                        primary: '#ef4444',
+                        secondary: '#fff',
+                      },
+                    },
+                  }}
+                />
+                <MainLayout>{children}</MainLayout>
+              </CartProvider>
+            </WishlistProvider>
           </AuthProvider>
         </ErrorBoundaryWrapper>
       </body>

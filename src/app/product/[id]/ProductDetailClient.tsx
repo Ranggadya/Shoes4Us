@@ -66,7 +66,6 @@ export default function ProductDetailClient({
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [wishlistId, setWishlistId] = useState<string | null>(null);
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -130,7 +129,6 @@ export default function ProductDetailClient({
         );
           if (item) {
             setIsWishlisted(true);
-            setWishlistId(item.id);
           }
         }
       } catch (error) {
@@ -197,9 +195,9 @@ export default function ProductDetailClient({
     }
 
     try {
-      if (isWishlisted && wishlistId) {
+      if (isWishlisted) {
         // Remove from wishlist
-        const res = await fetch(`/api/wishlist/${wishlistId}`, {
+        const res = await fetch(`/api/wishlist/${productId}`, {
           method: "DELETE",
         });
 
@@ -208,7 +206,6 @@ export default function ProductDetailClient({
         }
 
         setIsWishlisted(false);
-        setWishlistId(null);
         toast.success("Dihapus dari wishlist");
       } else {
         // Add to wishlist
@@ -222,9 +219,7 @@ export default function ProductDetailClient({
           throw new Error("Failed to add to wishlist");
         }
 
-        const data = await res.json();
         setIsWishlisted(true);
-        setWishlistId(data.data.wishlist.id);
         toast.success("Ditambahkan ke wishlist");
       }
     } catch (error) {
@@ -324,15 +319,10 @@ export default function ProductDetailClient({
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority
               />
-              {product.stock < 10 && product.stock > 0 && (
-                <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                  Only {product.stock} left!
-                </div>
-              )}
               {product.stock === 0 && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                   <span className="bg-red-500 text-white px-6 py-3 rounded-lg text-lg font-bold">
-                    OUT OF STOCK
+                    STOK HABIS
                   </span>
                 </div>
               )}
@@ -463,12 +453,10 @@ export default function ProductDetailClient({
               <p className="text-sm text-gray-500 mt-2">
                 <Package className="w-4 h-4 inline mr-1" />
                 {product.stock > 0 ? (
-                  <span>
-                    {product.stock} items available in stock
-                  </span>
+                  <span>Produk tersedia</span>
                 ) : (
                   <span className="text-red-500 font-semibold">
-                    Out of stock
+                    Stok habis
                   </span>
                 )}
               </p>

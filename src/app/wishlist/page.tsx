@@ -58,11 +58,11 @@ export default function WishlistPage() {
     }
   };
 
-  const handleRemove = async (wishlistId: string) => {
-    setRemovingId(wishlistId);
+  const handleRemove = async (item: WishlistItem) => {
+    setRemovingId(item.id);
 
     try {
-      const res = await fetch(`/api/wishlist/${wishlistId}`, {
+      const res = await fetch(`/api/wishlist/${item.productId}`, {
         method: "DELETE",
       });
 
@@ -70,7 +70,7 @@ export default function WishlistPage() {
         throw new Error("Failed to remove item");
       }
 
-      setWishlistItems((prev) => prev.filter((item) => item.id !== wishlistId));
+      setWishlistItems((prev) => prev.filter((current) => current.id !== item.id));
       toast.success("Dihapus dari wishlist");
     } catch (error) {
       console.error("Error removing item:", error);
@@ -252,7 +252,7 @@ export default function WishlistPage() {
                   </button>
 
                   <button
-                    onClick={() => handleRemove(item.id)}
+                    onClick={() => handleRemove(item)}
                     disabled={removingId === item.id}
                     className="
                       flex items-center justify-center

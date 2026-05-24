@@ -5,7 +5,7 @@ import OrderTracking from "@/components/OrderTracking";
 import { useAuth } from "@/components/AuthProvider";
 import EmptyOrders from "@/components/empty-states/EmptyOrders";
 
-type OrderStatus = "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED";
+type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
 type OrderItem = {
   id: string;
@@ -111,7 +111,7 @@ export default function StatusPesananPage() {
                 key={order.id}
                 orderId={order.orderNumber}
                 productName={productName}
-                currentStatus={order.status as any}
+                currentStatus={order.status}
                 statusLabel={statusLabels[order.status] || order.status}
                 estimatedArrival={null}
               />

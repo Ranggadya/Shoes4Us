@@ -132,14 +132,6 @@ export default function Navbar() {
                   <Heart size={18} />
                   <span>Wishlist</span>
                 </Link>
-                
-                <Link
-                  href="/status-pesanan"
-                  className="flex items-center space-x-1 hover:text-blue-600 transition"
-                >
-                  <Package size={18} />
-                  <span>Status</span>
-                </Link>
               </>
             )}
 
@@ -174,7 +166,7 @@ export default function Navbar() {
                         onClick={() => setIsOpen(false)}
                       >
                         <UserCircle size={18} />
-                        <span>Data Pengguna</span>
+                        <span>Profile</span>
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -282,15 +274,6 @@ export default function Navbar() {
                     <Heart size={20} />
                     <span className="font-medium">Wishlist</span>
                   </Link>
-
-                  <Link
-                    href="/status-pesanan"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
-                    onClick={closeMobileMenu}
-                  >
-                    <Package size={20} />
-                    <span className="font-medium">Status Pesanan</span>
-                  </Link>
                 </>
               )}
 
@@ -319,10 +302,10 @@ export default function Navbar() {
                     href="/profile"
                     className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
                     onClick={closeMobileMenu}
-                  >
-                    <UserCircle size={20} />
-                    <span className="font-medium">Data Pengguna</span>
-                  </Link>
+                    >
+                      <UserCircle size={20} />
+                      <span className="font-medium">Profile</span>
+                    </Link>
 
                   <button
                     onClick={handleLogout}

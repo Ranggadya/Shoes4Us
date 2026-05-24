@@ -21,16 +21,15 @@ import {
   Eye,
   X,
   RotateCcw,
-  Star
 } from "lucide-react";
 import Link from "next/link";
 
-type OrderStatus = "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED";
+type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
 type OrderItem = {
-  id: number;
+  id: string;
   product: {
-    id: number;
+    id: string;
     name: string;
     imageUrl?: string;
   };
@@ -40,9 +39,10 @@ type OrderItem = {
 };
 
 type Order = {
-  id: number;
+  id: string;
+  orderNumber: string;
   status: OrderStatus;
-  total: number;
+  totalAmount: number;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
@@ -74,6 +74,13 @@ const getStatusConfig = (status: OrderStatus) => {
       bg: "bg-blue-50",
       border: "border-blue-200",
     },
+    PAID: {
+      label: "Sudah Dibayar",
+      icon: CheckCircle,
+      color: "text-green-600",
+      bg: "bg-green-50",
+      border: "border-green-200",
+    },
     SHIPPED: {
       label: "Sedang Dikirim",
       icon: Truck,
@@ -81,7 +88,7 @@ const getStatusConfig = (status: OrderStatus) => {
       bg: "bg-purple-50",
       border: "border-purple-200",
     },
-    COMPLETED: {
+    DELIVERED: {
       label: "Selesai",
       icon: CheckCircle,
       color: "text-green-600",
@@ -147,7 +154,9 @@ export default function UserOrdersPage() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const matchesId = order.id.toString().includes(query);
+      const matchesId =
+        order.id.toLowerCase().includes(query) ||
+        order.orderNumber.toLowerCase().includes(query);
       const matchesProduct = order.items.some(item => 
         item.product.name.toLowerCase().includes(query)
       );
@@ -165,15 +174,15 @@ export default function UserOrdersPage() {
     pending: orders.filter(o => o.status === "PENDING").length,
     processing: orders.filter(o => o.status === "PROCESSING").length,
     shipped: orders.filter(o => o.status === "SHIPPED").length,
-    completed: orders.filter(o => o.status === "COMPLETED").length,
+    completed: orders.filter(o => o.status === "DELIVERED").length,
     cancelled: orders.filter(o => o.status === "CANCELLED").length,
     totalSpent: orders
       .filter(o => o.status !== "CANCELLED")
-      .reduce((sum, o) => sum + o.total, 0),
+      .reduce((sum, o) => sum + o.totalAmount, 0),
   };
 
   // Cancel order
-  const handleCancelOrder = async (orderId: number) => {
+  const handleCancelOrder = async (orderId: string) => {
     if (!confirm("Apakah Anda yakin ingin membatalkan pesanan ini?")) return;
 
     try {
@@ -198,7 +207,7 @@ export default function UserOrdersPage() {
   };
 
   // Download invoice (mock)
-  const handleDownloadInvoice = (orderId: number) => {
+  const handleDownloadInvoice = (orderId: string) => {
     toast.success(`Invoice #${orderId} sedang diunduh...`);
     // In production, this would trigger actual PDF download
   };
@@ -324,7 +333,7 @@ export default function UserOrdersPage() {
                   <option value="PENDING">Menunggu Pembayaran</option>
                   <option value="PROCESSING">Sedang Diproses</option>
                   <option value="SHIPPED">Sedang Dikirim</option>
-                  <option value="COMPLETED">Selesai</option>
+                  <option value="DELIVERED">Selesai</option>
                   <option value="CANCELLED">Dibatalkan</option>
                 </select>
               </div>
@@ -408,7 +417,7 @@ export default function UserOrdersPage() {
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-sm text-gray-600">ID Pesanan</p>
-                        <p className="font-mono font-semibold text-gray-900">#{order.id}</p>
+                        <p className="font-mono font-semibold text-gray-900">#{order.orderNumber}</p>
                       </div>
                       <div className="hidden sm:block w-px h-10 bg-gray-300"></div>
                       <div className="hidden sm:block">
@@ -466,7 +475,7 @@ export default function UserOrdersPage() {
                     <div className="mt-6 pt-4 border-t flex justify-between items-center">
                       <span className="text-gray-600">Total Pembayaran</span>
                       <span className="text-xl font-bold text-gray-900">
-                        {formatCurrency(order.total)}
+                        {formatCurrency(order.totalAmount)}
                       </span>
                     </div>
                   </div>
@@ -481,7 +490,7 @@ export default function UserOrdersPage() {
                       <span>Detail</span>
                     </button>
 
-                    {order.status === "COMPLETED" && (
+                    {order.status === "DELIVERED" && (
                       <>
                         <button
                           onClick={() => handleDownloadInvoice(order.id)}
@@ -539,7 +548,7 @@ export default function UserOrdersPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Detail Pesanan #{selectedOrder.id}</h2>
+                <h2 className="text-xl font-semibold">Detail Pesanan #{selectedOrder.orderNumber}</h2>
                 <button
                   onClick={() => setSelectedOrder(null)}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -619,7 +628,7 @@ export default function UserOrdersPage() {
                         <tr>
                           <td colSpan={3} className="p-3 text-right font-semibold">Total</td>
                           <td className="p-3 text-right font-bold text-lg">
-                            {formatCurrency(selectedOrder.total)}
+                            {formatCurrency(selectedOrder.totalAmount)}
                           </td>
                         </tr>
                       </tfoot>
@@ -655,7 +664,7 @@ export default function UserOrdersPage() {
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4">
-                  {selectedOrder.status === "COMPLETED" && (
+                  {selectedOrder.status === "DELIVERED" && (
                     <button
                       onClick={() => handleDownloadInvoice(selectedOrder.id)}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"

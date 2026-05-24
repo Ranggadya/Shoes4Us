@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { formatCurrency } from "@/lib/utils/format";
 import WishlistButton from "./WishlistButton";
 
@@ -14,12 +14,6 @@ type Product = {
 };
 
 export default function ProductCard({ product }: { product: Product }) {
-  const router = useRouter();
-
-  const handleDetailClick = () => {
-    router.push(`/product/${product.id}`);
-  };
-
   const imageSrc =
     product.imageUrl && product.imageUrl.startsWith("http")
       ? product.imageUrl 
@@ -34,7 +28,6 @@ export default function ProductCard({ product }: { product: Product }) {
           fill
           className="object-cover"
           sizes="(min-width: 768px) 33vw, 100vw"
-          unoptimized 
         />
 
         {/* Wishlist Button */}
@@ -56,13 +49,13 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.description ?? "Tidak ada deskripsi"}
         </p>
 
-        <button
-          onClick={handleDetailClick}
-          className="bg-black text-white w-full py-2 rounded-lg font-medium hover:bg-gray-800 transition"
-          suppressHydrationWarning
+        <Link
+          href={`/product/${product.id}`}
+          prefetch
+          className="block bg-black text-white w-full py-2 rounded-lg font-medium hover:bg-gray-800 transition text-center"
         >
           Lihat Detail
-        </button>
+        </Link>
       </div>
     </div>
   );

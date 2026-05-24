@@ -1,10 +1,9 @@
 "use client";
-"use client";
 
 import React from "react";
 import { CheckCircle, Circle, Truck, Package, Home, XCircle } from "lucide-react";
 
-type OrderStatus = "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED";
+type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
 interface OrderTrackingProps {
   orderId: string | number;
@@ -21,8 +20,9 @@ const steps: Array<{
 }> = [
   { status: "PENDING", label: "Diterima", icon: Circle },
   { status: "PROCESSING", label: "Diproses", icon: Package },
+  { status: "PAID", label: "Dibayar", icon: CheckCircle },
   { status: "SHIPPED", label: "Dikirim", icon: Truck },
-  { status: "COMPLETED", label: "Selesai", icon: Home },
+  { status: "DELIVERED", label: "Selesai", icon: Home },
 ];
 
 export default function OrderTracking({
@@ -45,7 +45,7 @@ export default function OrderTracking({
           className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
             isCancelled
               ? "bg-red-100 text-red-600"
-              : currentStatus === "COMPLETED"
+              : currentStatus === "DELIVERED"
               ? "bg-green-100 text-green-600"
               : "bg-blue-100 text-blue-600"
           }`}
