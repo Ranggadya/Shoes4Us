@@ -99,13 +99,21 @@ export class CartRepository {
   }
 
   async setItemQuantity(cartId: string, itemId: string, quantity: number) {
+    const existingItem = await prisma.cartItem.findFirst({
+      where: { id: itemId, cartId },
+    });
+
+    if (!existingItem) {
+      return null;
+    }
+
     if (quantity <= 0) {
-      await prisma.cartItem.delete({ where: { id: itemId } });
+      await prisma.cartItem.delete({ where: { id: existingItem.id } });
       return null;
     }
 
     return prisma.cartItem.update({
-      where: { id: itemId },
+      where: { id: existingItem.id },
       data: { quantity },
       include: {
         product: {
@@ -122,8 +130,8 @@ export class CartRepository {
     });
   }
   async removeItem(cartId: string, productId: string) {
-    return prisma.cartItem.delete({
-      where: { cartId_productId: { cartId, productId } },
+    return prisma.cartItem.deleteMany({
+      where: { cartId, productId },
     });
   }
 
@@ -132,8 +140,8 @@ export class CartRepository {
   }
 
   async findCartItem(cartId: string, productId: string) {
-    return prisma.cartItem.findUnique({
-      where: { cartId_productId: { cartId, productId } },
+    return prisma.cartItem.findFirst({
+      where: { cartId, productId },
       include: {
         product: {
           select: {
