@@ -18,11 +18,25 @@ import {
   Box,
 } from "lucide-react";
 
-const CATEGORIES = [
-  { value: "Running", label: "Running", icon: "🏃", description: "Sepatu lari dan olahraga" },
-  { value: "Casual", label: "Casual", icon: "👟", description: "Sepatu kasual sehari-hari" },
-  { value: "Sports", label: "Sports", icon: "⚽", description: "Sepatu olahraga & basket" },
-  { value: "Formal", label: "Formal", icon: "👞", description: "Sepatu formal & kerja" },
+const CATALOG_CATEGORIES = [
+  { value: "Sneakers", label: "Sneakers", icon: "S", description: "Sneakers dan lifestyle" },
+  { value: "Sport", label: "Sport", icon: "P", description: "Sepatu olahraga & basket" },
+  { value: "Running", label: "Running", icon: "R", description: "Sepatu lari dan training" },
+  { value: "Casual", label: "Casual", icon: "C", description: "Sepatu kasual sehari-hari" },
+  { value: "Formal", label: "Formal", icon: "F", description: "Sepatu formal & kerja" },
+];
+
+const PRODUCT_AUDIENCES = [
+  { value: "UNISEX", label: "Unisex" },
+  { value: "MEN", label: "Pria" },
+  { value: "WOMEN", label: "Wanita" },
+  { value: "KIDS", label: "Anak-Anak" },
+];
+
+const PRODUCT_SEGMENTS = [
+  { value: "SHOES", label: "Sepatu" },
+  { value: "APPAREL", label: "Pakaian" },
+  { value: "ACCESSORIES", label: "Aksesoris" },
 ];
 
 export default function AddProductPage() {
@@ -36,6 +50,13 @@ export default function AddProductPage() {
   const [stock, setStock] = useState("0");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [brand, setBrand] = useState("");
+  const [audience, setAudience] = useState("UNISEX");
+  const [segment, setSegment] = useState("SHOES");
+  const [isNewArrival, setIsNewArrival] = useState(true);
+  const [isExclusive, setIsExclusive] = useState(false);
+  const [isComingSoon, setIsComingSoon] = useState(false);
+  const [isSale, setIsSale] = useState(false);
 
   // UI state
   const [imagePreviewError, setImagePreviewError] = useState(false);
@@ -75,6 +96,13 @@ export default function AddProductPage() {
       formData.append("price", price);
       formData.append("stock", stock || "0");
       formData.append("description", description || "");
+      formData.append("brand", brand.trim());
+      formData.append("audience", audience);
+      formData.append("segment", segment);
+      formData.append("isNewArrival", String(isNewArrival));
+      formData.append("isExclusive", String(isExclusive));
+      formData.append("isComingSoon", String(isComingSoon));
+      formData.append("isSale", String(isSale));
       if (imageUrl) {
         formData.append("imageUrl", imageUrl);
       }
@@ -103,7 +131,7 @@ export default function AddProductPage() {
     }
   };
 
-  const selectedCategory = CATEGORIES.find((c) => c.value === category);
+  const selectedCategory = CATALOG_CATEGORIES.find((c) => c.value === category);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -212,7 +240,7 @@ export default function AddProductPage() {
                 Kategori Produk <span className="text-red-600">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {CATEGORIES.map((cat) => (
+                {CATALOG_CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
                     type="button"
@@ -244,6 +272,99 @@ export default function AddProductPage() {
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-indigo-50 rounded-lg">
+                <Box className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Klasifikasi Katalog</h2>
+                <p className="text-sm text-gray-600">Dipakai oleh filter navbar dan mega menu</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Brand
+                </label>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="Nike, Adidas, New Balance"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target
+                </label>
+                <select
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  disabled={loading}
+                >
+                  {PRODUCT_AUDIENCES.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Segment
+                </label>
+                <select
+                  value={segment}
+                  onChange={(e) => setSegment(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  disabled={loading}
+                >
+                  {PRODUCT_SEGMENTS.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+              {[
+                { label: "New Arrival", checked: isNewArrival, onChange: setIsNewArrival },
+                { label: "Eksklusif", checked: isExclusive, onChange: setIsExclusive },
+                { label: "Coming Soon", checked: isComingSoon, onChange: setIsComingSoon },
+                { label: "Sale", checked: isSale, onChange: setIsSale },
+              ].map((item) => (
+                <label
+                  key={item.label}
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={(e) => item.onChange(e.target.checked)}
+                    disabled={loading}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  {item.label}
+                </label>
+              ))}
+            </div>
+
+            {selectedCategory && (
+              <p className="mt-4 text-xs text-gray-500">
+                Kategori aktif: {selectedCategory.label}
+              </p>
+            )}
           </div>
 
           {/* Step 2: Price & Stock */}

@@ -1,10 +1,33 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ProductAudience, ProductSegment } from "@prisma/client";
 import { getUserFromSession } from "@/lib/auth";
 import { ProductController } from "@/layers/controllers/ProductController";
 import { handleError } from "@/exceptions/handlerError";
 
 const productController = new ProductController();
+const PRODUCT_AUDIENCES = ["UNISEX", "MEN", "WOMEN", "KIDS"] as const;
+const PRODUCT_SEGMENTS = ["SHOES", "APPAREL", "ACCESSORIES"] as const;
+
+const parseBooleanField = (formData: FormData, key: string, fallback = false) => {
+  const value = formData.get(key);
+  if (value === null) return fallback;
+  return value === "true" || value === "on" || value === "1";
+};
+
+const parseAudience = (value: FormDataEntryValue | null): ProductAudience => {
+  const audience = typeof value === "string" ? value : "UNISEX";
+  return PRODUCT_AUDIENCES.includes(audience as (typeof PRODUCT_AUDIENCES)[number])
+    ? (audience as ProductAudience)
+    : ProductAudience.UNISEX;
+};
+
+const parseSegment = (value: FormDataEntryValue | null): ProductSegment => {
+  const segment = typeof value === "string" ? value : "SHOES";
+  return PRODUCT_SEGMENTS.includes(segment as (typeof PRODUCT_SEGMENTS)[number])
+    ? (segment as ProductSegment)
+    : ProductSegment.SHOES;
+};
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -36,6 +59,13 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
     const category = formData.get("category") as string;
     const description = formData.get("description") as string | null;
     const imageUrl = formData.get("imageUrl") as string | null;
+    const brand = ((formData.get("brand") as string | null) || "").trim();
+    const segment = parseSegment(formData.get("segment"));
+    const audience = parseAudience(formData.get("audience"));
+    const isNewArrival = parseBooleanField(formData, "isNewArrival");
+    const isExclusive = parseBooleanField(formData, "isExclusive");
+    const isComingSoon = parseBooleanField(formData, "isComingSoon");
+    const isSale = parseBooleanField(formData, "isSale");
 
     if (!name || !price || !category) {
       return NextResponse.json(
@@ -73,6 +103,13 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
         description,
         imageUrl,
         categoryId,
+        brand: brand || null,
+        segment,
+        audience,
+        isNewArrival,
+        isExclusive,
+        isComingSoon,
+        isSale,
       },
       include: { category: true },
     });

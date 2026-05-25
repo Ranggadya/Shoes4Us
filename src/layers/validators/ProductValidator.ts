@@ -1,6 +1,10 @@
 
 import { z } from 'zod';
 
+const productAudienceSchema = z.enum(["UNISEX", "MEN", "WOMEN", "KIDS"]);
+const productSegmentSchema = z.enum(["SHOES", "APPAREL", "ACCESSORIES"]);
+const productCollectionSchema = z.enum(["new-arrivals", "exclusive", "coming-soon", "sale"]);
+
 // Create Product
 export const createProductSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters').max(255),
@@ -14,6 +18,13 @@ export const createProductSchema = z.object({
   stock: z.number().int().min(0, 'Stock cannot be negative'),
   imageUrl: z.string().url().optional(),
   categoryId: z.string().uuid('Invalid category ID'),
+  brand: z.string().trim().min(1).max(80).nullable().optional(),
+  segment: productSegmentSchema.optional(),
+  audience: productAudienceSchema.optional(),
+  isNewArrival: z.boolean().optional(),
+  isExclusive: z.boolean().optional(),
+  isComingSoon: z.boolean().optional(),
+  isSale: z.boolean().optional(),
 });
 
 export const updateProductSchema = z.object({
@@ -24,6 +35,13 @@ export const updateProductSchema = z.object({
   stock: z.number().int().min(0).optional(),
   imageUrl: z.string().url().optional(),
   categoryId: z.string().uuid().optional(),
+  brand: z.string().trim().min(1).max(80).nullable().optional(),
+  segment: productSegmentSchema.optional(),
+  audience: productAudienceSchema.optional(),
+  isNewArrival: z.boolean().optional(),
+  isExclusive: z.boolean().optional(),
+  isComingSoon: z.boolean().optional(),
+  isSale: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -32,9 +50,28 @@ export const productFilterSchema = z
     search: z.string().optional(),
     categoryId: z.string().uuid().optional(),
     categorySlug: z.string().optional(),
+    segment: productSegmentSchema.optional(),
+    audience: productAudienceSchema.optional(),
+    brand: z.string().optional(),
+    collection: productCollectionSchema.optional(),
+    isNewArrival: z.boolean().optional(),
+    isExclusive: z.boolean().optional(),
+    isComingSoon: z.boolean().optional(),
+    isSale: z.boolean().optional(),
     minPrice: z.number().nonnegative().optional(),
     maxPrice: z.number().nonnegative().optional(),
-    sortBy: z.enum(["newest", "price-asc", "price-desc", "name-asc", "name-desc"]).optional(),
+    sortBy: z
+      .enum([
+        "newest",
+        "oldest",
+        "price-asc",
+        "price-desc",
+        "price-low",
+        "price-high",
+        "name-asc",
+        "name-desc",
+      ])
+      .optional(),
     page: z.number().int().positive().optional(),
     limit: z.number().int().positive().max(100).optional(),
   })

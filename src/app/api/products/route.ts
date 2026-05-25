@@ -1,11 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ProductAudience, ProductSegment } from "@prisma/client";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { getUserFromSession } from "@/lib/auth";
 import { ProductController } from "@/layers/controllers/ProductController";
 
 const productController = new ProductController();
+const PRODUCT_AUDIENCES = ["UNISEX", "MEN", "WOMEN", "KIDS"] as const;
+const PRODUCT_SEGMENTS = ["SHOES", "APPAREL", "ACCESSORIES"] as const;
+
+const parseBooleanField = (formData: FormData, key: string, fallback = false) => {
+  const value = formData.get(key);
+  if (value === null) return fallback;
+  return value === "true" || value === "on" || value === "1";
+};
+
+const parseAudience = (value: FormDataEntryValue | null): ProductAudience => {
+  const audience = typeof value === "string" ? value : "UNISEX";
+  return PRODUCT_AUDIENCES.includes(audience as (typeof PRODUCT_AUDIENCES)[number])
+    ? (audience as ProductAudience)
+    : ProductAudience.UNISEX;
+};
+
+const parseSegment = (value: FormDataEntryValue | null): ProductSegment => {
+  const segment = typeof value === "string" ? value : "SHOES";
+  return PRODUCT_SEGMENTS.includes(segment as (typeof PRODUCT_SEGMENTS)[number])
+    ? (segment as ProductSegment)
+    : ProductSegment.SHOES;
+};
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +50,13 @@ export async function POST(req: Request) {
     const stock = Number(formData.get("stock")) || 0;
     const image = formData.get("image") as File | null;
     const imageUrl = formData.get("imageUrl") as string | null;
+    const brand = ((formData.get("brand") as string | null) || "").trim();
+    const segment = parseSegment(formData.get("segment"));
+    const audience = parseAudience(formData.get("audience"));
+    const isNewArrival = parseBooleanField(formData, "isNewArrival", true);
+    const isExclusive = parseBooleanField(formData, "isExclusive");
+    const isComingSoon = parseBooleanField(formData, "isComingSoon");
+    const isSale = parseBooleanField(formData, "isSale");
 
     // 🧠 Validasi field
     if (!name || !price || !category) {
@@ -52,7 +82,7 @@ export async function POST(req: Request) {
       } = supabase.storage.from("products").getPublicUrl(fileName);
 
       finalImageUrl = publicUrl;
-    } else if (imageUrl && imageUrl.startsWith("http")) {
+    } else if (imageUrl) {
       finalImageUrl = imageUrl;
     } else {
       return NextResponse.json(
@@ -89,6 +119,13 @@ export async function POST(req: Request) {
         imageUrl: finalImageUrl,
         slug: name.toLowerCase().replace(/\s+/g, "-"),
         categoryId,
+        brand: brand || null,
+        segment,
+        audience,
+        isNewArrival,
+        isExclusive,
+        isComingSoon,
+        isSale,
       },
     });
 

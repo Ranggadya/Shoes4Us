@@ -21,6 +21,19 @@ enum OrderStatus {
   PAID
 }
 
+enum ProductAudience {
+  UNISEX
+  MEN
+  WOMEN
+  KIDS
+}
+
+enum ProductSegment {
+  SHOES
+  APPAREL
+  ACCESSORIES
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -85,17 +98,24 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  slug        String   @unique
-  description String?
-  price       Decimal  @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  imageUrl    String?
-  categoryId  String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  description    String?
+  price          Decimal         @db.Decimal(10, 2)
+  stock          Int             @default(0)
+  imageUrl       String?
+  categoryId     String
+  brand          String?
+  segment        ProductSegment  @default(SHOES)
+  audience       ProductAudience @default(UNISEX)
+  isNewArrival   Boolean         @default(true)
+  isExclusive    Boolean         @default(false)
+  isComingSoon   Boolean         @default(false)
+  isSale         Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   // 🔹 Relasi
   category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -108,6 +128,13 @@ model Product {
   @@index([slug])
   @@index([isActive, createdAt])
   @@index([isActive, categoryId])
+  @@index([segment, isActive])
+  @@index([audience, isActive])
+  @@index([brand])
+  @@index([isNewArrival, createdAt])
+  @@index([isExclusive, createdAt])
+  @@index([isComingSoon, createdAt])
+  @@index([isSale, createdAt])
   @@map("products")
 }
 

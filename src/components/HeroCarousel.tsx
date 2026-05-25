@@ -16,7 +16,7 @@ const slides = [
   },
   {
     id: 2,
-    image: "/sepatu2.jpeg",
+    image: "/sport2.png",
     title: "Sepatu Olahraga Premium",
     subtitle: "Performa maksimal untuk aktivitas Anda",
     cta: "Lihat Koleksi",
@@ -24,7 +24,7 @@ const slides = [
   },
   {
     id: 3,
-    image: "/sepatu3.jpeg",
+    image: "/sepatu8.jpeg",
     title: "Casual & Stylish",
     subtitle: "Tampil percaya diri setiap hari",
     cta: "Jelajahi",
@@ -62,7 +62,7 @@ export default function HeroCarousel() {
   };
 
   return (
-    <div className="relative w-full h-[500px] overflow-hidden bg-gray-900">
+    <div className="relative left-1/2 w-screen -translate-x-1/2 h-[420px] sm:h-[520px] lg:h-[clamp(640px,78vh,860px)] overflow-hidden bg-gray-900">
       {/* Slides */}
       {slides.map((slide, index) => (
         <div
@@ -86,11 +86,11 @@ export default function HeroCarousel() {
 
           {/* Content */}
           <div className="relative h-full flex items-center justify-center">
-            <div className="text-center text-white px-6 max-w-3xl">
-              <h1 className="text-5xl md:text-6xl font-bold mb-4 animate-fade-in">
+            <div className="text-center text-white px-6 max-w-4xl">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 animate-fade-in">
                 {slide.title}
               </h1>
-              <p className="text-xl md:text-2xl mb-8 animate-fade-in-delay">
+              <p className="text-lg sm:text-xl md:text-2xl mb-8 animate-fade-in-delay">
                 {slide.subtitle}
               </p>
               <Link

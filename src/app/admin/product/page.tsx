@@ -35,6 +35,13 @@ interface Product {
   description: string | null;
   imageUrl?: string;
   slug: string;
+  brand?: string | null;
+  audience?: "UNISEX" | "MEN" | "WOMEN" | "KIDS";
+  segment?: "SHOES" | "APPAREL" | "ACCESSORIES";
+  isNewArrival?: boolean;
+  isExclusive?: boolean;
+  isComingSoon?: boolean;
+  isSale?: boolean;
 }
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc" | "name-asc" | "stock-asc";
@@ -44,12 +51,26 @@ const CATEGORIES = [
   "Sneakers",
   "Casual",
   "Formal",
+  "Sport",
   "Sports",
   "Basketball",
   "Football",
   "Training",
   "Lifestyle",
   "Other",
+];
+
+const PRODUCT_AUDIENCES = [
+  { value: "UNISEX", label: "Unisex" },
+  { value: "MEN", label: "Pria" },
+  { value: "WOMEN", label: "Wanita" },
+  { value: "KIDS", label: "Anak-Anak" },
+];
+
+const PRODUCT_SEGMENTS = [
+  { value: "SHOES", label: "Sepatu" },
+  { value: "APPAREL", label: "Pakaian" },
+  { value: "ACCESSORIES", label: "Aksesoris" },
 ];
 
 export default function AdminProductPage() {
@@ -65,6 +86,13 @@ export default function AdminProductPage() {
   const [stock, setStock] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [brand, setBrand] = useState("");
+  const [audience, setAudience] = useState<"UNISEX" | "MEN" | "WOMEN" | "KIDS">("UNISEX");
+  const [segment, setSegment] = useState<"SHOES" | "APPAREL" | "ACCESSORIES">("SHOES");
+  const [isNewArrival, setIsNewArrival] = useState(true);
+  const [isExclusive, setIsExclusive] = useState(false);
+  const [isComingSoon, setIsComingSoon] = useState(false);
+  const [isSale, setIsSale] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   // UI states
@@ -130,6 +158,8 @@ export default function AdminProductPage() {
           ).includes(query)
           ||
           p.description?.toLowerCase().includes(query)
+          ||
+          p.brand?.toLowerCase().includes(query)
       );
     }
 
@@ -184,6 +214,13 @@ export default function AdminProductPage() {
       setStock(product.stock?.toString() ?? "");
       setDescription(product.description ?? "");
       setImageUrl(product.imageUrl ?? "");
+      setBrand(product.brand ?? "");
+      setAudience(product.audience ?? "UNISEX");
+      setSegment(product.segment ?? "SHOES");
+      setIsNewArrival(product.isNewArrival ?? true);
+      setIsExclusive(product.isExclusive ?? false);
+      setIsComingSoon(product.isComingSoon ?? false);
+      setIsSale(product.isSale ?? false);
     } else {
       resetForm();
     }
@@ -203,6 +240,13 @@ export default function AdminProductPage() {
     setStock("");
     setDescription("");
     setImageUrl("");
+    setBrand("");
+    setAudience("UNISEX");
+    setSegment("SHOES");
+    setIsNewArrival(true);
+    setIsExclusive(false);
+    setIsComingSoon(false);
+    setIsSale(false);
   };
 
   const handleSave = async () => {
@@ -224,6 +268,13 @@ export default function AdminProductPage() {
       formData.append("stock", stock || "0");
       formData.append("description", description);
       formData.append("imageUrl", imageUrl);
+      formData.append("brand", brand.trim());
+      formData.append("audience", audience);
+      formData.append("segment", segment);
+      formData.append("isNewArrival", String(isNewArrival));
+      formData.append("isExclusive", String(isExclusive));
+      formData.append("isComingSoon", String(isComingSoon));
+      formData.append("isSale", String(isSale));
 
       const response = await fetch(url, {
         method,
@@ -577,6 +628,28 @@ export default function AdminProductPage() {
                       ? product.category
                       : product.category?.name}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {product.brand && (
+                      <span className="rounded bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700">
+                        {product.brand}
+                      </span>
+                    )}
+                    {product.audience && (
+                      <span className="rounded bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                        {product.audience}
+                      </span>
+                    )}
+                    {product.isExclusive && (
+                      <span className="rounded bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                        Eksklusif
+                      </span>
+                    )}
+                    {product.isSale && (
+                      <span className="rounded bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700">
+                        Sale
+                      </span>
+                    )}
+                  </div>
                   <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2">
                     {product.name}
                   </h3>
@@ -675,6 +748,79 @@ export default function AdminProductPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Catalog Classification */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Brand
+                      </label>
+                      <input
+                        type="text"
+                        value={brand}
+                        onChange={(e) => setBrand(e.target.value)}
+                        placeholder="Nike, Adidas"
+                        disabled={loading}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Target
+                      </label>
+                      <select
+                        value={audience}
+                        onChange={(e) => setAudience(e.target.value as typeof audience)}
+                        disabled={loading}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        {PRODUCT_AUDIENCES.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Segment
+                      </label>
+                      <select
+                        value={segment}
+                        onChange={(e) => setSegment(e.target.value as typeof segment)}
+                        disabled={loading}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        {PRODUCT_SEGMENTS.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 rounded-lg border border-gray-200 p-3">
+                    {[
+                      { label: "New Arrival", checked: isNewArrival, onChange: setIsNewArrival },
+                      { label: "Eksklusif", checked: isExclusive, onChange: setIsExclusive },
+                      { label: "Coming Soon", checked: isComingSoon, onChange: setIsComingSoon },
+                      { label: "Sale", checked: isSale, onChange: setIsSale },
+                    ].map((item) => (
+                      <label key={item.label} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={(e) => item.onChange(e.target.checked)}
+                          disabled={loading}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {item.label}
+                      </label>
+                    ))}
                   </div>
 
                   {/* Price & Stock */}

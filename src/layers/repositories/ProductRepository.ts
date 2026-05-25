@@ -1,7 +1,7 @@
 // src/layers/repositories/product.repository.ts
 import { prisma } from '@/lib/prisma';
 import { ProductCreateInput, ProductUpdateInput, ProductFilterInput } from '@/types/ProductType';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProductAudience } from '@prisma/client';
 
 export class ProductRepository {
   async findAll(filter?: ProductFilterInput & { page?: number; limit?: number }) {
@@ -11,6 +11,8 @@ export class ProductRepository {
       where.OR = [
         { name: { contains: filter.search, mode: 'insensitive' } },
         { description: { contains: filter.search, mode: 'insensitive' } },
+        { brand: { contains: filter.search, mode: 'insensitive' } },
+        { category: { name: { contains: filter.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -19,7 +21,60 @@ export class ProductRepository {
     }
 
     if (filter?.categorySlug) {
-      where.category = { slug: filter.categorySlug };
+      const categorySlugs =
+        filter.categorySlug === 'sport'
+          ? ['sport', 'sports']
+          : [filter.categorySlug];
+      where.category = { slug: { in: categorySlugs } };
+    }
+
+    if (filter?.segment) {
+      where.segment = filter.segment;
+    }
+
+    if (filter?.audience) {
+      where.audience =
+        filter.audience === 'UNISEX'
+          ? ProductAudience.UNISEX
+          : { in: [filter.audience, ProductAudience.UNISEX] };
+    }
+
+    if (filter?.brand) {
+      where.brand = { contains: filter.brand, mode: 'insensitive' };
+    }
+
+    if (filter?.collection) {
+      switch (filter.collection) {
+        case 'exclusive':
+          where.isExclusive = true;
+          break;
+        case 'coming-soon':
+          where.isComingSoon = true;
+          break;
+        case 'sale':
+          where.isSale = true;
+          break;
+        case 'new-arrivals':
+        default:
+          where.isNewArrival = true;
+          break;
+      }
+    }
+
+    if (filter?.isNewArrival !== undefined) {
+      where.isNewArrival = filter.isNewArrival;
+    }
+
+    if (filter?.isExclusive !== undefined) {
+      where.isExclusive = filter.isExclusive;
+    }
+
+    if (filter?.isComingSoon !== undefined) {
+      where.isComingSoon = filter.isComingSoon;
+    }
+
+    if (filter?.isSale !== undefined) {
+      where.isSale = filter.isSale;
     }
 
     if (filter?.minPrice !== undefined || filter?.maxPrice !== undefined) {
@@ -38,11 +93,16 @@ export class ProductRepository {
     
     if (filter?.sortBy) {
       switch (filter.sortBy) {
+        case 'price-low':
         case 'price-asc':
           orderBy = { price: 'asc' };
           break;
+        case 'price-high':
         case 'price-desc':
           orderBy = { price: 'desc' };
+          break;
+        case 'oldest':
+          orderBy = { createdAt: 'asc' };
           break;
         case 'name-asc':
           orderBy = { name: 'asc' };

@@ -18,21 +18,47 @@ type Product = {
   imageUrl: string | null;
 };
 
+type ProductListFilters = {
+  category: string;
+  segment: string;
+  audience: string;
+  brand: string;
+  collection: string;
+  isSale: boolean;
+  minPrice: number;
+  maxPrice: number;
+  sortBy: string;
+};
+
 const PRODUCTS_PER_PAGE = 20;
 
 export default function ProductListPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get("search") || "";
+  const categoryQuery = searchParams?.get("category") || "";
+  const segmentQuery = searchParams?.get("segment") || "";
+  const audienceQuery = searchParams?.get("audience") || "";
+  const brandQuery = searchParams?.get("brand") || "";
+  const collectionQuery = searchParams?.get("collection") || "";
+  const saleQuery = searchParams?.get("sale") || searchParams?.get("isSale") || "";
+  const minPriceQuery = searchParams?.get("minPrice");
+  const maxPriceQuery = searchParams?.get("maxPrice");
+  const sortByQuery = searchParams?.get("sortBy") || "newest";
   
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
-    category: "",
-    minPrice: 0,
-    maxPrice: 5000000,
-    sortBy: "newest",
+  const [filters, setFilters] = useState<ProductListFilters>({
+    category: categoryQuery,
+    segment: segmentQuery,
+    audience: audienceQuery,
+    brand: brandQuery,
+    collection: collectionQuery,
+    isSale: saleQuery === "true",
+    minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
+    maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
+    sortBy: sortByQuery,
   });
   const [totalItems, setTotalItems] = useState(0);
 
@@ -40,6 +66,30 @@ export default function ProductListPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, searchQuery]);
+
+  useEffect(() => {
+    setFilters({
+      category: categoryQuery,
+      segment: segmentQuery,
+      audience: audienceQuery,
+      brand: brandQuery,
+      collection: collectionQuery,
+      isSale: saleQuery === "true",
+      minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
+      maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
+      sortBy: sortByQuery,
+    });
+  }, [
+    categoryQuery,
+    segmentQuery,
+    audienceQuery,
+    brandQuery,
+    collectionQuery,
+    saleQuery,
+    minPriceQuery,
+    maxPriceQuery,
+    sortByQuery,
+  ]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -52,6 +102,26 @@ export default function ProductListPage() {
         
         if (filters.category) {
           params.append("category", filters.category);
+        }
+
+        if (filters.segment) {
+          params.append("segment", filters.segment);
+        }
+
+        if (filters.audience) {
+          params.append("audience", filters.audience);
+        }
+
+        if (filters.brand) {
+          params.append("brand", filters.brand);
+        }
+
+        if (filters.collection) {
+          params.append("collection", filters.collection);
+        }
+
+        if (filters.isSale) {
+          params.append("isSale", "true");
         }
         
         if (searchQuery) {
@@ -145,11 +215,36 @@ export default function ProductListPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleFilterChange = (filterValues: {
+    category: string;
+    minPrice: number;
+    maxPrice: number;
+    sortBy: string;
+  }) => {
+    setFilters((current) => ({ ...current, ...filterValues }));
+  };
+
+  const getPageTitle = () => {
+    if (searchQuery) return `Hasil Pencarian: "${searchQuery}"`;
+    if (filters.brand) return `Brand ${filters.brand}`;
+    if (filters.audience === "MEN") return "Koleksi Pria";
+    if (filters.audience === "WOMEN") return "Koleksi Wanita";
+    if (filters.audience === "KIDS") return "Koleksi Anak-Anak";
+    if (filters.collection === "new-arrivals") return "New Arrivals";
+    if (filters.collection === "exclusive") return "Eksklusif";
+    if (filters.collection === "coming-soon") return "Coming Soon";
+    if (filters.collection === "sale" || filters.isSale) return "Sale";
+    if (filters.segment === "APPAREL") return "Pakaian";
+    if (filters.segment === "ACCESSORIES") return "Aksesoris";
+    if (filters.segment === "SHOES") return "Sepatu";
+    return "Daftar Produk";
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="container mx-auto px-6">
         <h1 className="text-4xl font-bold mb-4 text-center text-gray-900">
-          {searchQuery ? `Hasil Pencarian: "${searchQuery}"` : "Daftar Produk"}
+          {getPageTitle()}
         </h1>
         {searchQuery && (
           <p className="text-center text-gray-600 mb-8">
@@ -160,7 +255,7 @@ export default function ProductListPage() {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar Filters */}
           <aside className="lg:col-span-1">
-            <ProductFilters onFilterChange={setFilters} />
+            <ProductFilters onFilterChange={handleFilterChange} />
           </aside>
 
           {/* Products Grid */}

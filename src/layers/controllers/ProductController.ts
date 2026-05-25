@@ -19,11 +19,23 @@ export class ProductController {
 
   async getAll(request: NextRequest) {
     const { searchParams } = new URL(request.url);
+    const getBooleanParam = (key: string) => {
+      const value = searchParams.get(key);
+      return value === null ? undefined : value === "true";
+    };
 
     const filterData = {
       search: searchParams.get("search") || undefined,
       categoryId: searchParams.get("categoryId") || undefined,
       categorySlug: searchParams.get("category") || undefined,
+      segment: searchParams.get("segment") || undefined,
+      audience: searchParams.get("audience") || undefined,
+      brand: searchParams.get("brand") || undefined,
+      collection: searchParams.get("collection") || undefined,
+      isNewArrival: getBooleanParam("isNewArrival"),
+      isExclusive: getBooleanParam("isExclusive"),
+      isComingSoon: getBooleanParam("isComingSoon"),
+      isSale: getBooleanParam("isSale") ?? getBooleanParam("sale"),
       minPrice: searchParams.get("minPrice")
         ? Number(searchParams.get("minPrice"))
         : undefined,
