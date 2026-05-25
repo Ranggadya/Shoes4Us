@@ -16,7 +16,7 @@ const slides = [
   },
   {
     id: 2,
-    image: "/sport2.png",
+    image: "/Sport2.png",
     title: "Sepatu Olahraga Premium",
     subtitle: "Performa maksimal untuk aktivitas Anda",
     cta: "Lihat Koleksi",
