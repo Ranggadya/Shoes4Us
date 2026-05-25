@@ -24,6 +24,10 @@ export default function FeaturedProducts() {
     async function fetchFeaturedProducts() {
       try {
         const response = await fetch("/api/products?limit=8");
+        if (!response.ok) {
+          throw new Error(`Gagal memuat produk pilihan (${response.status})`);
+        }
+
         const data = await response.json();
         
         if (data.success && data.data?.items) {

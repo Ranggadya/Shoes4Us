@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { getUserFromSession } from "@/lib/auth";
 import { ProductController } from "@/layers/controllers/ProductController";
+import { handleError } from "@/exceptions/handlerError";
 
 const productController = new ProductController();
 const PRODUCT_AUDIENCES = ["UNISEX", "MEN", "WOMEN", "KIDS"] as const;
@@ -140,5 +141,9 @@ export async function POST(req: Request) {
 } 
 
 export async function GET(req: NextRequest) {
-  return productController.getAll(req);
+  try {
+    return await productController.getAll(req);
+  } catch (error) {
+    return handleError(error);
+  }
 }
