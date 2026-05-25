@@ -15,9 +15,10 @@ type Product = {
 
 export default function ProductCard({ product }: { product: Product }) {
   const imageSrc =
-    product.imageUrl && product.imageUrl.startsWith("http")
+    product.imageUrl &&
+    (product.imageUrl.startsWith("http") || product.imageUrl.startsWith("/"))
       ? product.imageUrl 
-      : "/placeholder.png"; 
+      : "/sepatu1.jpeg"; 
 
   return (
     <div className="border rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition duration-200">
