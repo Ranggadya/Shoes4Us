@@ -4,6 +4,10 @@ import { z } from 'zod';
 const productAudienceSchema = z.enum(["UNISEX", "MEN", "WOMEN", "KIDS"]);
 const productSegmentSchema = z.enum(["SHOES", "APPAREL", "ACCESSORIES"]);
 const productCollectionSchema = z.enum(["new-arrivals", "exclusive", "coming-soon", "sale"]);
+const productSizeStockSchema = z.object({
+  size: z.string().trim().min(1).max(10),
+  stock: z.number().int().min(0),
+});
 
 // Create Product
 export const createProductSchema = z.object({
@@ -25,6 +29,7 @@ export const createProductSchema = z.object({
   isExclusive: z.boolean().optional(),
   isComingSoon: z.boolean().optional(),
   isSale: z.boolean().optional(),
+  sizes: z.array(productSizeStockSchema).optional(),
 });
 
 export const updateProductSchema = z.object({
@@ -43,6 +48,7 @@ export const updateProductSchema = z.object({
   isComingSoon: z.boolean().optional(),
   isSale: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  sizes: z.array(productSizeStockSchema).optional(),
 });
 
 export const productFilterSchema = z

@@ -119,6 +119,7 @@ model Product {
 
   // 🔹 Relasi
   category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sizes      ProductSize[]
   cartItems  CartItem[]
   orderItems OrderItem[]
   wishlist   Wishlist[] // ✅ Tambahkan back relation ke Wishlist
@@ -136,6 +137,21 @@ model Product {
   @@index([isComingSoon, createdAt])
   @@index([isSale, createdAt])
   @@map("products")
+}
+
+model ProductSize {
+  id        String   @id @default(uuid())
+  productId String
+  size      String
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, size])
+  @@index([productId])
+  @@map("product_sizes")
 }
 
 model Cart {

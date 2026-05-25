@@ -29,6 +29,24 @@ const parseSegment = (value: FormDataEntryValue | null): ProductSegment => {
     : ProductSegment.SHOES;
 };
 
+const parseSizeStocks = (value: FormDataEntryValue | null) => {
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value) as Array<{ size?: unknown; stock?: unknown }>;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => ({
+        size: String(item.size ?? "").trim(),
+        stock: Math.max(0, Number(item.stock) || 0),
+      }))
+      .filter((item) => item.size.length > 0);
+  } catch {
+    return [];
+  }
+};
+
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const resolvedParams = await context.params;
@@ -66,6 +84,10 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
     const isExclusive = parseBooleanField(formData, "isExclusive");
     const isComingSoon = parseBooleanField(formData, "isComingSoon");
     const isSale = parseBooleanField(formData, "isSale");
+    const sizes = parseSizeStocks(formData.get("sizes"));
+    const totalStock = sizes.length > 0
+      ? sizes.reduce((sum, item) => sum + item.stock, 0)
+      : stock;
 
     if (!name || !price || !category) {
       return NextResponse.json(
@@ -93,25 +115,41 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-    const updatedProduct = await prisma.product.update({
-      where: { id },
-      data: {
-        name,
-        slug,
-        price,
-        stock,
-        description,
-        imageUrl,
-        categoryId,
-        brand: brand || null,
-        segment,
-        audience,
-        isNewArrival,
-        isExclusive,
-        isComingSoon,
-        isSale,
-      },
-      include: { category: true },
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      await tx.productSize.deleteMany({ where: { productId: id } });
+      if (sizes.length > 0) {
+        await tx.productSize.createMany({
+          data: sizes.map((item) => ({
+            productId: id,
+            size: item.size,
+            stock: item.stock,
+          })),
+        });
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: {
+          name,
+          slug,
+          price,
+          stock: totalStock,
+          description,
+          imageUrl,
+          categoryId,
+          brand: brand || null,
+          segment,
+          audience,
+          isNewArrival,
+          isExclusive,
+          isComingSoon,
+          isSale,
+        },
+        include: {
+          category: true,
+          sizes: { orderBy: { size: "asc" } },
+        },
+      });
     });
 
     return NextResponse.json({ success: true, data: updatedProduct });

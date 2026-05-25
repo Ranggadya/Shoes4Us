@@ -39,6 +39,11 @@ const PRODUCT_SEGMENTS = [
   { value: "ACCESSORIES", label: "Aksesoris" },
 ];
 
+const DEFAULT_SIZE_STOCKS = ["38", "39", "40", "41", "42", "43", "44", "45"].map((size) => ({
+  size,
+  stock: 0,
+}));
+
 export default function AddProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,6 +62,7 @@ export default function AddProductPage() {
   const [isExclusive, setIsExclusive] = useState(false);
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isSale, setIsSale] = useState(false);
+  const [sizeStocks, setSizeStocks] = useState(DEFAULT_SIZE_STOCKS);
 
   // UI state
   const [imagePreviewError, setImagePreviewError] = useState(false);
@@ -78,6 +84,23 @@ export default function AddProductPage() {
     const newStock = Math.max(0, currentStock + delta);
     setStock(newStock.toString());
   };
+
+  const handleSizeStockChange = (size: string, value: string) => {
+    const nextStock = Math.max(0, Number(value) || 0);
+    setSizeStocks((current) =>
+      current.map((item) =>
+        item.size === size ? { ...item, stock: nextStock } : item
+      )
+    );
+    setStock(
+      sizeStocks
+        .map((item) => (item.size === size ? nextStock : item.stock))
+        .reduce((sum, value) => sum + value, 0)
+        .toString()
+    );
+  };
+
+  const totalSizeStock = sizeStocks.reduce((sum, item) => sum + item.stock, 0);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -94,7 +117,7 @@ export default function AddProductPage() {
       formData.append("name", name.trim());
       formData.append("category", category);
       formData.append("price", price);
-      formData.append("stock", stock || "0");
+      formData.append("stock", String(totalSizeStock || Number(stock) || 0));
       formData.append("description", description || "");
       formData.append("brand", brand.trim());
       formData.append("audience", audience);
@@ -103,6 +126,7 @@ export default function AddProductPage() {
       formData.append("isExclusive", String(isExclusive));
       formData.append("isComingSoon", String(isComingSoon));
       formData.append("isSale", String(isSale));
+      formData.append("sizes", JSON.stringify(sizeStocks));
       if (imageUrl) {
         formData.append("imageUrl", imageUrl);
       }
@@ -413,13 +437,13 @@ export default function AddProductPage() {
               {/* Stock */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Stok Tersedia
+                  Total Stok
                 </label>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => handleStockChange(-1)}
-                    disabled={loading || parseInt(stock) <= 0}
+                    disabled
                     className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     <Minus className="w-5 h-5" />
@@ -436,21 +460,47 @@ export default function AddProductPage() {
                     onFocus={() => setCurrentStep(2)}
                     min="0"
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-semibold disabled:bg-gray-100"
-                    disabled={loading}
+                    disabled
                   />
                   <button
                     type="button"
                     onClick={() => handleStockChange(1)}
-                    disabled={loading}
+                    disabled
                     className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Gunakan tombol +/- atau ketik langsung
+                  Total dihitung otomatis dari stok per ukuran
                 </p>
               </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Stok Per Ukuran
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {sizeStocks.map((item) => (
+                  <label key={item.size} className="rounded-lg border border-gray-200 p-3">
+                    <span className="block text-xs font-semibold text-gray-500 mb-1">
+                      EU {item.size}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.stock}
+                      onChange={(e) => handleSizeStockChange(item.size, e.target.value)}
+                      disabled={loading}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Total stok dari ukuran: {totalSizeStock} unit
+              </p>
             </div>
 
             {/* Price Preview */}

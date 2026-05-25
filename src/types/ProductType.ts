@@ -2,6 +2,11 @@ export type ProductAudience = "UNISEX" | "MEN" | "WOMEN" | "KIDS";
 export type ProductSegment = "SHOES" | "APPAREL" | "ACCESSORIES";
 export type ProductCollection = "new-arrivals" | "exclusive" | "coming-soon" | "sale";
 
+export interface ProductSizeStockInput {
+  size: string;
+  stock: number;
+}
+
 export interface ProductCreateInput {
   name: string;
   slug: string;
@@ -17,6 +22,7 @@ export interface ProductCreateInput {
   isExclusive?: boolean;
   isComingSoon?: boolean;
   isSale?: boolean;
+  sizes?: ProductSizeStockInput[];
 }
 
 export interface ProductUpdateInput {
@@ -35,6 +41,7 @@ export interface ProductUpdateInput {
   isComingSoon?: boolean;
   isSale?: boolean;
   isActive?: boolean;
+  sizes?: ProductSizeStockInput[];
 }
 
 export interface ProductFilterInput {

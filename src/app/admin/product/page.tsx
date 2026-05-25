@@ -42,6 +42,7 @@ interface Product {
   isExclusive?: boolean;
   isComingSoon?: boolean;
   isSale?: boolean;
+  sizes?: Array<{ id: string; size: string; stock: number }>;
 }
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc" | "name-asc" | "stock-asc";
@@ -73,6 +74,11 @@ const PRODUCT_SEGMENTS = [
   { value: "ACCESSORIES", label: "Aksesoris" },
 ];
 
+const DEFAULT_SIZE_STOCKS = ["38", "39", "40", "41", "42", "43", "44", "45"].map((size) => ({
+  size,
+  stock: 0,
+}));
+
 export default function AdminProductPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -93,6 +99,7 @@ export default function AdminProductPage() {
   const [isExclusive, setIsExclusive] = useState(false);
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isSale, setIsSale] = useState(false);
+  const [sizeStocks, setSizeStocks] = useState(DEFAULT_SIZE_STOCKS);
   const [editId, setEditId] = useState<string | null>(null);
 
   // UI states
@@ -221,6 +228,15 @@ export default function AdminProductPage() {
       setIsExclusive(product.isExclusive ?? false);
       setIsComingSoon(product.isComingSoon ?? false);
       setIsSale(product.isSale ?? false);
+      setSizeStocks(
+        DEFAULT_SIZE_STOCKS.map((defaultItem) => {
+          const existing = product.sizes?.find((item) => item.size === defaultItem.size);
+          return {
+            size: defaultItem.size,
+            stock: existing?.stock ?? 0,
+          };
+        })
+      );
     } else {
       resetForm();
     }
@@ -247,7 +263,25 @@ export default function AdminProductPage() {
     setIsExclusive(false);
     setIsComingSoon(false);
     setIsSale(false);
+    setSizeStocks(DEFAULT_SIZE_STOCKS);
   };
+
+  const handleSizeStockChange = (size: string, value: string) => {
+    const nextStock = Math.max(0, Number(value) || 0);
+    setSizeStocks((current) =>
+      current.map((item) =>
+        item.size === size ? { ...item, stock: nextStock } : item
+      )
+    );
+    setStock(
+      sizeStocks
+        .map((item) => (item.size === size ? nextStock : item.stock))
+        .reduce((sum, value) => sum + value, 0)
+        .toString()
+    );
+  };
+
+  const totalSizeStock = sizeStocks.reduce((sum, item) => sum + item.stock, 0);
 
   const handleSave = async () => {
     if (!name.trim() || !category || !price) {
@@ -265,7 +299,7 @@ export default function AdminProductPage() {
       formData.append("name", name);
       formData.append("category", category);
       formData.append("price", price);
-      formData.append("stock", stock || "0");
+      formData.append("stock", String(totalSizeStock || Number(stock) || 0));
       formData.append("description", description);
       formData.append("imageUrl", imageUrl);
       formData.append("brand", brand.trim());
@@ -275,6 +309,7 @@ export default function AdminProductPage() {
       formData.append("isExclusive", String(isExclusive));
       formData.append("isComingSoon", String(isComingSoon));
       formData.append("isSale", String(isSale));
+      formData.append("sizes", JSON.stringify(sizeStocks));
 
       const response = await fetch(url, {
         method,
@@ -844,7 +879,7 @@ export default function AdminProductPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Stok <span className="text-xs text-gray-500">(opsional, default: 0)</span>
+                        Total Stok
                       </label>
                       <input
                         type="number"
@@ -852,10 +887,36 @@ export default function AdminProductPage() {
                         onChange={(e) => setStock(e.target.value)}
                         placeholder="50"
                         min="0"
-                        disabled={loading}
+                        disabled
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Stok Per Ukuran
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-lg border border-gray-200 p-3">
+                      {sizeStocks.map((item) => (
+                        <label key={item.size}>
+                          <span className="block text-xs font-semibold text-gray-500 mb-1">
+                            EU {item.size}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.stock}
+                            onChange={(e) => handleSizeStockChange(item.size, e.target.value)}
+                            disabled={loading}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Total stok dari ukuran: {totalSizeStock} unit
+                    </p>
                   </div>
 
                   {/* Description */}

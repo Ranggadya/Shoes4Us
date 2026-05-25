@@ -46,7 +46,7 @@ export class OrderService {
 
     // Validasi ketersediaan stok sebelum buat order
     for (const it of cart.items) {
-      const inStock = await this.productRepo.checkStockAvailability(it.productId, it.quantity);
+      const inStock = await this.productRepo.checkStockAvailability(it.productId, it.quantity, it.size);
       if (!inStock) {
         throw new AppError(`Stok produk "${it.product.name}" tidak mencukupi`, 400);
       }
@@ -74,7 +74,7 @@ export class OrderService {
     // Kurangi stok setelah order dibuat
     await Promise.all(
       order.items.map((item) =>
-        this.productRepo.adjustStock(item.productId, -item.quantity)
+        this.productRepo.adjustStock(item.productId, -item.quantity, item.size)
       )
     );
 
@@ -103,7 +103,7 @@ export class OrderService {
     if (newStatus === "CANCELLED") {
       await Promise.all(
         order.items.map((item) =>
-          this.productRepo.adjustStock(item.productId, item.quantity)
+          this.productRepo.adjustStock(item.productId, item.quantity, item.size)
         )
       );
     }

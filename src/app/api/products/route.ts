@@ -31,6 +31,24 @@ const parseSegment = (value: FormDataEntryValue | null): ProductSegment => {
     : ProductSegment.SHOES;
 };
 
+const parseSizeStocks = (value: FormDataEntryValue | null) => {
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value) as Array<{ size?: unknown; stock?: unknown }>;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => ({
+        size: String(item.size ?? "").trim(),
+        stock: Math.max(0, Number(item.stock) || 0),
+      }))
+      .filter((item) => item.size.length > 0);
+  } catch {
+    return [];
+  }
+};
+
 export async function POST(req: Request) {
   try {
     // Validasi admin
@@ -58,6 +76,10 @@ export async function POST(req: Request) {
     const isExclusive = parseBooleanField(formData, "isExclusive");
     const isComingSoon = parseBooleanField(formData, "isComingSoon");
     const isSale = parseBooleanField(formData, "isSale");
+    const sizes = parseSizeStocks(formData.get("sizes"));
+    const totalStock = sizes.length > 0
+      ? sizes.reduce((sum, item) => sum + item.stock, 0)
+      : stock;
 
     // 🧠 Validasi field
     if (!name || !price || !category) {
@@ -116,7 +138,7 @@ export async function POST(req: Request) {
         name,
         price,
         description,
-        stock,
+        stock: totalStock,
         imageUrl: finalImageUrl,
         slug: name.toLowerCase().replace(/\s+/g, "-"),
         categoryId,
@@ -127,6 +149,16 @@ export async function POST(req: Request) {
         isExclusive,
         isComingSoon,
         isSale,
+        ...(sizes.length > 0
+          ? {
+              sizes: {
+                create: sizes,
+              },
+            }
+          : {}),
+      },
+      include: {
+        sizes: { orderBy: { size: "asc" } },
       },
     });
 

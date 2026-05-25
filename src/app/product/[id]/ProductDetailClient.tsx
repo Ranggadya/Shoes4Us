@@ -34,6 +34,7 @@ type Product = {
   imageUrl: string | null;
   category: { id: string; name: string; slug: string } | string;
   stock: number;
+  sizes?: Array<{ id: string; size: string; stock: number }>;
 };
 
 type ProductResponse = {
@@ -153,6 +154,12 @@ export default function ProductDetailClient({
       return;
     }
 
+    const currentSizeStock = product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
+    if (currentSizeStock < quantity) {
+      toast.error("Stok ukuran yang dipilih tidak mencukupi");
+      return;
+    }
+
     try {
       await addItem({ productId: String(product.id), quantity, size });
       toast.success("Produk berhasil ditambahkan ke keranjang!");
@@ -174,6 +181,12 @@ export default function ProductDetailClient({
 
     if (!size) {
       toast.error("Pilih ukuran terlebih dahulu");
+      return;
+    }
+
+    const currentSizeStock = product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
+    if (currentSizeStock < quantity) {
+      toast.error("Stok ukuran yang dipilih tidak mencukupi");
       return;
     }
 
@@ -280,6 +293,17 @@ export default function ProductDetailClient({
   }
 
   const productImages = getProductImages(product.imageUrl);
+  const availableSizes =
+    product.sizes && product.sizes.length > 0
+      ? product.sizes
+      : AVAILABLE_SIZES.map((option) => ({
+          id: option,
+          size: option,
+          stock: product.stock,
+        }));
+  const selectedSizeStock =
+    availableSizes.find((option) => option.size === size)?.stock ?? product.stock;
+  const hasStock = product.stock > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -319,7 +343,7 @@ export default function ProductDetailClient({
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority
               />
-              {product.stock === 0 && (
+              {!hasStock && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                   <span className="bg-red-500 text-white px-6 py-3 rounded-lg text-lg font-bold">
                     STOK HABIS
@@ -407,18 +431,24 @@ export default function ProductDetailClient({
                 </button>
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {AVAILABLE_SIZES.map((option) => (
+                {availableSizes.map((option) => (
                   <button
-                    key={option}
-                    onClick={() => setSize(option)}
-                    disabled={product.stock === 0}
+                    key={option.id}
+                    onClick={() => {
+                      setSize(option.size);
+                      setQuantity(1);
+                    }}
+                    disabled={option.stock === 0}
                     className={`px-4 py-3 rounded-lg border-2 font-semibold transition ${
-                      size === option
+                      size === option.size
                         ? "bg-black text-white border-black"
                         : "border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
                     }`}
                   >
-                    {option}
+                    <span className="block">{option.size}</span>
+                    {option.stock === 0 && (
+                      <span className="block text-[10px] font-medium">Habis</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -433,7 +463,7 @@ export default function ProductDetailClient({
                 <button
                   className="px-4 py-3 hover:bg-gray-100 transition disabled:opacity-30"
                   onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                  disabled={product.stock === 0}
+                  disabled={!hasStock}
                 >
                   −
                 </button>
@@ -443,17 +473,21 @@ export default function ProductDetailClient({
                 <button
                   className="px-4 py-3 hover:bg-gray-100 transition disabled:opacity-30"
                   onClick={() =>
-                    setQuantity((prev) => Math.min(product.stock, prev + 1))
+                    setQuantity((prev) => Math.min(selectedSizeStock, prev + 1))
                   }
-                  disabled={product.stock === 0}
+                  disabled={!hasStock || selectedSizeStock <= quantity}
                 >
                   +
                 </button>
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 <Package className="w-4 h-4 inline mr-1" />
-                {product.stock > 0 ? (
-                  <span>Produk tersedia</span>
+                {hasStock ? (
+                  <span>
+                    {size && selectedSizeStock === 0
+                      ? "Ukuran ini habis"
+                      : "Produk tersedia"}
+                  </span>
                 ) : (
                   <span className="text-red-500 font-semibold">
                     Stok habis
@@ -466,14 +500,14 @@ export default function ProductDetailClient({
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
+                disabled={!hasStock || (size ? selectedSizeStock === 0 : false)}
                 className="flex-1 bg-black text-white py-4 rounded-lg font-bold hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
               >
                 Add to Cart
               </button>
               <button
                 onClick={handleBuyNow}
-                disabled={product.stock === 0}
+                disabled={!hasStock || (size ? selectedSizeStock === 0 : false)}
                 className="flex-1 bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
               >
                 Buy Now

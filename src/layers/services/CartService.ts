@@ -64,7 +64,7 @@ export class CartService {
     const priceSnap = Number(product.price);
     
     // Optional: Check stock before adding
-    const isAvailable = await this.productRepo.checkStockAvailability(productId, quantity);
+    const isAvailable = await this.productRepo.checkStockAvailability(productId, quantity, size);
     if (!isAvailable) {
       throw new AppError(`Stok produk "${product.name}" tidak mencukupi`, 400);
     }

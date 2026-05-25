@@ -1,9 +1,22 @@
 // src/layers/repositories/product.repository.ts
 import { prisma } from '@/lib/prisma';
-import { ProductCreateInput, ProductUpdateInput, ProductFilterInput } from '@/types/ProductType';
+import { ProductCreateInput, ProductUpdateInput, ProductFilterInput, ProductSizeStockInput } from '@/types/ProductType';
 import { Prisma, ProductAudience } from '@prisma/client';
 
 export class ProductRepository {
+  private normalizeSizes(sizes?: ProductSizeStockInput[]) {
+    return (sizes ?? [])
+      .map((item) => ({
+        size: item.size.trim(),
+        stock: Math.max(0, Number(item.stock) || 0),
+      }))
+      .filter((item) => item.size.length > 0);
+  }
+
+  private totalSizeStock(sizes?: ProductSizeStockInput[]) {
+    return this.normalizeSizes(sizes).reduce((sum, item) => sum + item.stock, 0);
+  }
+
   async findAll(filter?: ProductFilterInput & { page?: number; limit?: number }) {
     const where: Prisma.ProductWhereInput = { isActive: true };
 
@@ -124,6 +137,9 @@ export class ProductRepository {
           category: {
             select: { id: true, name: true, slug: true },
           },
+          sizes: {
+            orderBy: { size: 'asc' },
+          },
         },
         orderBy,
         skip,
@@ -148,6 +164,9 @@ export class ProductRepository {
         category: {
           select: { id: true, name: true, slug: true },
         },
+        sizes: {
+          orderBy: { size: 'asc' },
+        },
       },
     });
   }
@@ -159,30 +178,75 @@ export class ProductRepository {
         category: {
           select: { id: true, name: true, slug: true },
         },
+        sizes: {
+          orderBy: { size: 'asc' },
+        },
       },
     });
   }
 
   async create(data: ProductCreateInput) {
+    const { sizes, ...productData } = data;
+    const normalizedSizes = this.normalizeSizes(sizes);
+    const stock = normalizedSizes.length > 0 ? this.totalSizeStock(sizes) : productData.stock;
+
     return prisma.product.create({
-      data,
+      data: {
+        ...productData,
+        stock,
+        ...(normalizedSizes.length > 0
+          ? {
+              sizes: {
+                create: normalizedSizes,
+              },
+            }
+          : {}),
+      },
       include: {
         category: {
           select: { id: true, name: true, slug: true },
+        },
+        sizes: {
+          orderBy: { size: 'asc' },
         },
       },
     });
   }
 
   async update(id: string, data: ProductUpdateInput) {
-    return prisma.product.update({
-      where: { id },
-      data,
-      include: {
-        category: {
-          select: { id: true, name: true, slug: true },
+    const { sizes, ...productData } = data;
+    const normalizedSizes = this.normalizeSizes(sizes);
+    const stock = sizes !== undefined ? this.totalSizeStock(sizes) : productData.stock;
+
+    return prisma.$transaction(async (tx) => {
+      if (sizes !== undefined) {
+        await tx.productSize.deleteMany({ where: { productId: id } });
+        if (normalizedSizes.length > 0) {
+          await tx.productSize.createMany({
+            data: normalizedSizes.map((item) => ({
+              productId: id,
+              size: item.size,
+              stock: item.stock,
+            })),
+          });
+        }
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: {
+          ...productData,
+          ...(stock !== undefined ? { stock } : {}),
         },
-      },
+        include: {
+          category: {
+            select: { id: true, name: true, slug: true },
+          },
+          sizes: {
+            orderBy: { size: 'asc' },
+          },
+        },
+      });
     });
   }
 
@@ -199,23 +263,58 @@ export class ProductRepository {
     });
   }
 
-  async checkStockAvailability(productId: string, quantity: number): Promise<boolean> {
+  async checkStockAvailability(productId: string, quantity: number, size?: string | null): Promise<boolean> {
     const product = await prisma.product.findUnique({
       where: { id: productId, isActive: true },
-      select: { stock: true },
+      select: {
+        stock: true,
+        sizes: size
+          ? {
+              where: { size },
+              select: { stock: true },
+            }
+          : {
+              select: { stock: true },
+            },
+      },
     });
-    return product ? product.stock >= quantity : false;
+
+    if (!product) return false;
+    if (size && product.sizes.length > 0) {
+      return product.sizes[0].stock >= quantity;
+    }
+
+    return product.stock >= quantity;
   }
 
-  async adjustStock(productId: string, quantity: number) {
+  async adjustStock(productId: string, quantity: number, size?: string | null) {
     try {
-      const updated = await prisma.product.update({
-        where: { id: productId },
-        data: {
-          stock: {
-            increment: quantity, // gunakan negatif untuk mengurangi stock
+      const updated = await prisma.$transaction(async (tx) => {
+        if (size) {
+          const productSize = await tx.productSize.findUnique({
+            where: { productId_size: { productId, size } },
+          });
+
+          if (productSize) {
+            await tx.productSize.update({
+              where: { id: productSize.id },
+              data: {
+                stock: {
+                  increment: quantity,
+                },
+              },
+            });
+          }
+        }
+
+        return tx.product.update({
+          where: { id: productId },
+          data: {
+            stock: {
+              increment: quantity,
+            },
           },
-        },
+        });
       });
       return updated;
     } catch (_err) {
@@ -223,7 +322,7 @@ export class ProductRepository {
     }
   }
 
-  async reduceStock(productId: string, quantity: number) {
-    return this.adjustStock(productId, -quantity);
+  async reduceStock(productId: string, quantity: number, size?: string | null) {
+    return this.adjustStock(productId, -quantity, size);
   }
 }
