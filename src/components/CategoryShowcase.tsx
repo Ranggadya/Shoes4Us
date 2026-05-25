@@ -16,7 +16,7 @@ const categories = [
     id: 2,
     name: "Sport",
     description: "Performa maksimal untuk olahraga",
-    image: "/sport.png",
+    image: "/Sport.png",
     link: "/product?category=sport",
   },
   {
