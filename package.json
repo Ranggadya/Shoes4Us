@@ -7,6 +7,10 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prisma:local": "node scripts/prisma-local.mjs",
+    "db:migrate:local": "node scripts/prisma-local.mjs migrate dev",
+    "db:deploy:local": "node scripts/prisma-local.mjs migrate deploy",
+    "db:studio:local": "node scripts/prisma-local.mjs studio",
     "prebuild": "prisma generate",
     "build": "next build",
     "start": "next start",

@@ -217,6 +217,8 @@ model OrderItem {
   price     Float
   size      String?
 
+  @@index([orderId])
+  @@index([productId])
   @@map("order_items")
 }
 

@@ -1,5 +1,4 @@
 import { ReviewRepository } from "../repositories/ReviewRepository";
-import { NotFoundError } from "@/exceptions/NotFoundError";
 
 export class ReviewService {
   private reviewRepository: ReviewRepository;
@@ -18,6 +17,17 @@ export class ReviewService {
       success: true,
       data: {
         reviews,
+        summary
+      }
+    };
+  }
+
+  async getReviewSummaryByProduct(productId: string) {
+    const summary = await this.reviewRepository.getSummary(productId);
+
+    return {
+      success: true,
+      data: {
         summary
       }
     };

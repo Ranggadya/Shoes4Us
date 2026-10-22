@@ -130,21 +130,42 @@ export class ProductRepository {
       }
     }
 
+    const productQuery = filter?.includeDetails
+      ? prisma.product.findMany({
+          where,
+          include: {
+            category: {
+              select: { id: true, name: true, slug: true },
+            },
+            sizes: {
+              orderBy: { size: 'asc' },
+            },
+          },
+          orderBy,
+          skip,
+          take: limit,
+        })
+      : prisma.product.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            price: true,
+            stock: true,
+            imageUrl: true,
+            category: {
+              select: { name: true },
+            },
+          },
+          orderBy,
+          skip,
+          take: limit,
+        });
+
     const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: {
-          category: {
-            select: { id: true, name: true, slug: true },
-          },
-          sizes: {
-            orderBy: { size: 'asc' },
-          },
-        },
-        orderBy,
-        skip,
-        take: limit,
-      }),
+      productQuery,
       prisma.product.count({ where }),
     ]);
 
@@ -317,7 +338,7 @@ export class ProductRepository {
         });
       });
       return updated;
-    } catch (_err) {
+    } catch {
       return null;
     }
   }

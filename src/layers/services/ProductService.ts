@@ -14,7 +14,7 @@ interface PaginationMeta {
 }
 
 interface PaginatedProducts {
-  products: Product[];
+  products: unknown[];
   meta: PaginationMeta;
 }
 

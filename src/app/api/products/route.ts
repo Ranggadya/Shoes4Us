@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       const fileName = `${uuidv4()}-${image.name}`;
       const { error: uploadError } = await supabase.storage
         .from("products")
-        .upload(fileName, image, { upsert: false });
+        .upload(fileName, image, { cacheControl: "31536000", upsert: false });
 
       if (uploadError) throw uploadError;
 
@@ -174,7 +174,20 @@ export async function POST(req: Request) {
 
 export async function GET(req: NextRequest) {
   try {
-    return await productController.getAll(req);
+    const response = await productController.getAll(req);
+    const includeDetails = req.nextUrl.searchParams.get("includeDetails") === "true";
+
+    if (includeDetails) {
+      response.headers.set("Cache-Control", "private, no-store");
+    } else {
+      // Cache product list di CDN untuk mengurangi request langsung ke database.
+      response.headers.set(
+        "Cache-Control",
+        "public, s-maxage=60, stale-while-revalidate=300"
+      );
+    }
+
+    return response;
   } catch (error) {
     return handleError(error);
   }

@@ -9,6 +9,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 
 type CartProduct = {
@@ -58,8 +59,9 @@ const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { token, user, isLoading: authLoading } = useAuth();
+  const pathname = usePathname();
   const [cart, setCart] = useState<CartSummary | null>(emptyCart);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const headers = useMemo(
@@ -94,8 +96,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (!authLoading && user) loadCart();
-  }, [authLoading, user, loadCart]);
+    const shouldLoadCart =
+      pathname === "/cart" || pathname === "/payment" || pathname === "/checkout";
+
+    if (authLoading) return;
+    if (!user) {
+      setCart(emptyCart);
+      setIsLoading(false);
+      return;
+    }
+    if (shouldLoadCart) {
+      void loadCart();
+      return;
+    }
+
+    setIsLoading(false);
+  }, [authLoading, user, pathname, loadCart]);
 
   const ensureAuth = useCallback(() => {
     if (!token || !user) throw new Error("Silakan login untuk mengakses keranjang.");

@@ -135,8 +135,9 @@ export default function AdminProductPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/products?limit=100", {
+      const response = await fetch("/api/products?limit=100&includeDetails=true", {
         credentials: "include",
+        cache: "no-store",
       });
       if (!response.ok) throw new Error("Gagal memuat produk");
       const data = await response.json();

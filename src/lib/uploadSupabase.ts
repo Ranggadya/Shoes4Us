@@ -8,7 +8,7 @@ export async function uploadProductImage(file: File): Promise<string> {
   const { error } = await supabase.storage
     .from(process.env.SUPABASE_PUBLIC_BUCKET!)
     .upload(filePath, file, {
-      cacheControl: "3600",
+      cacheControl: "31536000",
       upsert: false,
     });
 

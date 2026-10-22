@@ -96,8 +96,9 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/products?pageSize=50", {
+      const response = await fetch("/api/products?pageSize=50&includeDetails=true", {
         credentials: "include",
+        cache: "no-store",
       });
 
       if (!response.ok) {

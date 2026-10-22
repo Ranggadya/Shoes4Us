@@ -55,7 +55,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/wishlist", {
+      const res = await fetch("/api/wishlist?fields=ids", {
         headers,
         cache: "no-store",
       });

@@ -7,9 +7,37 @@ export class WishlistController {
   static async getMyWishlist(req: NextRequest) {
     const userId = req.headers.get("x-user-id");
     if (!userId) throw new UnauthorizedError();
+    const fields = req.nextUrl.searchParams.get("fields");
+
+    if (fields === "ids") {
+      const items = await prisma.wishlist.findMany({
+        where: { userId },
+        select: { productId: true },
+      });
+
+      return createSuccessResponse({ items });
+    }
+
     const items = await prisma.wishlist.findMany({
       where: { userId },
-      include: { product: true }
+      select: {
+        id: true,
+        productId: true,
+        createdAt: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            imageUrl: true,
+            stock: true,
+            slug: true,
+            category: {
+              select: { id: true, name: true, slug: true },
+            },
+          },
+        },
+      },
     });
     return createSuccessResponse({ items });
   }

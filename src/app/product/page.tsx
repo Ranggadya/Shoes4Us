@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import ProductListSkeleton from "@/components/skeletons/ProductListSkeleton";
@@ -32,6 +32,17 @@ type ProductListFilters = {
 
 const PRODUCTS_PER_PAGE = 20;
 
+const areFiltersEqual = (a: ProductListFilters, b: ProductListFilters) =>
+  a.category === b.category &&
+  a.segment === b.segment &&
+  a.audience === b.audience &&
+  a.brand === b.brand &&
+  a.collection === b.collection &&
+  a.isSale === b.isSale &&
+  a.minPrice === b.minPrice &&
+  a.maxPrice === b.maxPrice &&
+  a.sortBy === b.sortBy;
+
 export default function ProductListPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get("search") || "";
@@ -45,11 +56,7 @@ export default function ProductListPage() {
   const maxPriceQuery = searchParams?.get("maxPrice");
   const sortByQuery = searchParams?.get("sortBy") || "newest";
   
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<ProductListFilters>({
+  const routeFilters = useMemo<ProductListFilters>(() => ({
     category: categoryQuery,
     segment: segmentQuery,
     audience: audienceQuery,
@@ -59,27 +66,7 @@ export default function ProductListPage() {
     minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
     maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
     sortBy: sortByQuery,
-  });
-  const [totalItems, setTotalItems] = useState(0);
-
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, searchQuery]);
-
-  useEffect(() => {
-    setFilters({
-      category: categoryQuery,
-      segment: segmentQuery,
-      audience: audienceQuery,
-      brand: brandQuery,
-      collection: collectionQuery,
-      isSale: saleQuery === "true",
-      minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
-      maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
-      sortBy: sortByQuery,
-    });
-  }, [
+  }), [
     categoryQuery,
     segmentQuery,
     audienceQuery,
@@ -91,7 +78,27 @@ export default function ProductListPage() {
     sortByQuery,
   ]);
 
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<ProductListFilters>(routeFilters);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Reset page to 1 when filters change
   useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, searchQuery]);
+
+  useEffect(() => {
+    setFilters((current) =>
+      areFiltersEqual(current, routeFilters) ? current : routeFilters
+    );
+  }, [routeFilters]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
@@ -142,6 +149,7 @@ export default function ProductListPage() {
 
         const productsRes = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
+          signal: controller.signal,
         });
 
         if (!productsRes.ok) {
@@ -155,6 +163,7 @@ export default function ProductListPage() {
         setFilteredProducts(items);
         setTotalItems(meta?.total || items.length);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(
           err instanceof Error ? err.message : "Terjadi kesalahan pada server"
         );
@@ -164,6 +173,8 @@ export default function ProductListPage() {
     };
 
     fetchProducts();
+
+    return () => controller.abort();
   }, [filters, searchQuery, currentPage]);
 
   // Calculate pagination

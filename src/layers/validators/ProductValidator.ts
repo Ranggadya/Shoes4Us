@@ -78,6 +78,7 @@ export const productFilterSchema = z
         "name-desc",
       ])
       .optional(),
+    includeDetails: z.boolean().optional(),
     page: z.number().int().positive().optional(),
     limit: z.number().int().positive().max(100).optional(),
   })

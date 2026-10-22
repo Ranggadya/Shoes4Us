@@ -14,12 +14,17 @@ export class ReviewRepository {
   }
 
   async getSummary(productId: string) {
-    const reviews = await prisma.review.findMany({
+    const groupedRatings = await prisma.review.groupBy({
+      by: ['rating'],
       where: { productId },
-      select: { rating: true }
+      _count: { rating: true }
     });
 
-    const total = reviews.length;
+    const total = groupedRatings.reduce(
+      (sum, item) => sum + item._count.rating,
+      0
+    );
+
     if (total === 0) {
       return {
         total: 0,
@@ -28,16 +33,19 @@ export class ReviewRepository {
       };
     }
 
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const sum = groupedRatings.reduce(
+      (acc, item) => acc + item.rating * item._count.rating,
+      0
+    );
     const averageRating = Number((sum / total).toFixed(1));
 
-    const distribution = {
-      5: reviews.filter(r => r.rating === 5).length,
-      4: reviews.filter(r => r.rating === 4).length,
-      3: reviews.filter(r => r.rating === 3).length,
-      2: reviews.filter(r => r.rating === 2).length,
-      1: reviews.filter(r => r.rating === 1).length,
-    };
+    const distribution = groupedRatings.reduce(
+      (acc, item) => ({
+        ...acc,
+        [item.rating]: item._count.rating,
+      }),
+      { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    );
 
     return { total, averageRating, distribution };
   }

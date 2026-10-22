@@ -59,4 +59,5 @@ export interface ProductFilterInput {
   minPrice?: number;
   maxPrice?: number;
   sortBy?: string;
+  includeDetails?: boolean;
 }

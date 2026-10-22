@@ -6,10 +6,17 @@ const categoryRepo = new CategoryRepository();
 export async function GET() {
   try {
     const categories = await categoryRepo.findAll();
-    return NextResponse.json({
-      success: true,
-      data: { categories },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { categories },
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+        },
+      }
+    );
   } catch (error) {
     console.error("❌ Error fetching categories:", error);
     return NextResponse.json(

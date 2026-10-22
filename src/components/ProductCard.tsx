@@ -28,7 +28,10 @@ export default function ProductCard({ product }: { product: Product }) {
           alt={product.name}
           fill
           className="object-cover"
-          sizes="(min-width: 768px) 33vw, 100vw"
+          // ✅ Sizes sesuai grid: 4 kolom di lg, 2 di sm, 1 di mobile
+          sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 100vw"
+          // ✅ Lazy load untuk produk yang tidak terlihat saat pertama render
+          loading="lazy"
         />
 
         {/* Wishlist Button */}

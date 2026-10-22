@@ -21,7 +21,11 @@ export class ReviewController {
       );
     }
 
-    const result = await this.reviewService.getReviewsByProduct(productId);
+    const summaryOnly = searchParams.get("summaryOnly") === "true";
+    const result = summaryOnly
+      ? await this.reviewService.getReviewSummaryByProduct(productId)
+      : await this.reviewService.getReviewsByProduct(productId);
+
     return successResponse(result.data);
   }
 

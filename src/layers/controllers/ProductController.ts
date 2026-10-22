@@ -43,11 +43,12 @@ export class ProductController {
         ? Number(searchParams.get("maxPrice"))
         : undefined,
       sortBy: searchParams.get("sortBy") || undefined,
+      includeDetails: searchParams.get("includeDetails") === "true",
       page: searchParams.get("page")
         ? Number(searchParams.get("page"))
         : 1,
-      limit: searchParams.get("limit")
-        ? Number(searchParams.get("limit"))
+      limit: searchParams.get("limit") || searchParams.get("pageSize")
+        ? Number(searchParams.get("limit") || searchParams.get("pageSize"))
         : 20,
     };
 

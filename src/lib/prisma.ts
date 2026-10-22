@@ -1,14 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client/index";
 
 declare global {
-  // Gunakan singleton supaya tidak membuat koneksi baru di setiap hot reload
   var prisma: PrismaClient | undefined;
 }
+
+const databaseUrl =
+  process.env.NODE_ENV !== "production" && process.env.DATABASE_URL_LOCAL
+    ? process.env.DATABASE_URL_LOCAL
+    : process.env.DATABASE_URL;
 
 export const prisma =
   global.prisma ||
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error"] : ["error"],
+    // Hanya log error; logging "query" di development sangat memperlambat response
+    log: ["error"],
+    ...(databaseUrl
+      ? {
+          datasources: {
+            db: {
+              url: databaseUrl,
+            },
+          },
+        }
+      : {}),
   });
 
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;

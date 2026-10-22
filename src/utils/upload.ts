@@ -4,10 +4,10 @@ export async function uploadProductImage(file: File) {
   try {
     const fileName = `${Date.now()}-${file.name}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("products") // bucket di Supabase
       .upload(fileName, file, {
-        cacheControl: "3600",
+        cacheControl: "31536000",
         upsert: false,
       });
 

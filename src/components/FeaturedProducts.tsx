@@ -1,65 +1,57 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import ProductCard from "./ProductCard";
-import ProductListSkeleton from "./skeletons/ProductListSkeleton";
 import { ArrowRight } from "lucide-react";
 
-type Product = {
+type FeaturedProduct = {
   id: string;
   name: string;
   slug: string;
   price: number;
-  imageUrl: string;
-  category?: { name: string };
-  description: string;
+  imageUrl: string | null;
+  description: string | null;
+  category: { name: string } | null;
 };
 
-export default function FeaturedProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+// ✅ Cache query selama 60 detik di Vercel Edge — otomatis revalidate di background
+const getFeaturedProducts = unstable_cache(
+  async (): Promise<FeaturedProduct[]> => {
+    try {
+      const products = await prisma.product.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
+          imageUrl: true,
+          description: true,
+          category: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+      });
 
-  useEffect(() => {
-    async function fetchFeaturedProducts() {
-      try {
-        const response = await fetch("/api/products?limit=8");
-        if (!response.ok) {
-          throw new Error(`Gagal memuat produk pilihan (${response.status})`);
-        }
-
-        const data = await response.json();
-        
-        if (data.success && data.data?.items) {
-          setProducts(data.data.items);
-        }
-      } catch (error) {
-        console.error("Error fetching featured products:", error);
-      } finally {
-        setLoading(false);
-      }
+      // Konversi Decimal ke number agar bisa di-serialize oleh Next.js cache.
+      return products.map((p) => ({
+        ...p,
+        price: Number(p.price),
+      }));
+    } catch {
+      return [];
     }
-
-    fetchFeaturedProducts();
-  }, []);
-
-  if (loading) {
-    return (
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Produk Pilihan
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Koleksi terbaik untuk Anda
-            </p>
-          </div>
-          <ProductListSkeleton count={8} />
-        </div>
-      </section>
-    );
+  },
+  ["featured-products"], // cache key
+  {
+    revalidate: 60,       // revalidate setiap 60 detik di Vercel
+    tags: ["products"],   // bisa di-invalidate manual via revalidateTag("products")
   }
+);
+
+export default async function FeaturedProducts() {
+  // ✅ Data langsung ada saat render — tidak ada loading state / skeleton
+  const products = await getFeaturedProducts();
 
   return (
     <section className="py-16 bg-white">

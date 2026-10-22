@@ -1,5 +1,4 @@
-"use client";
-
+// ✅ Server Component — tidak ada hooks/state, tidak perlu "use client"
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
@@ -63,7 +62,9 @@ export default function CategoryShowcase() {
                   src={category.image}
                   alt={category.name}
                   fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  loading="lazy"
                 />
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />

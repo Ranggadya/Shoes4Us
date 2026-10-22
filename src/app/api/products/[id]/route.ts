@@ -51,7 +51,12 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
   try {
     const resolvedParams = await context.params;
     const id = resolvedParams.id;
-    return await productController.getById(id);
+    const response = await productController.getById(id);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300"
+    );
+    return response;
   } catch (error) {
     return handleError(error);
   }
