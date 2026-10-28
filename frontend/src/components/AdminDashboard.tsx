@@ -277,7 +277,7 @@ export default function AdminDashboard() {
 
     try {
       setLoading(true);
-      await api.patch(`/orders/${orderId}`, { status: newStatus });
+      await api.patch(`/orders/${orderId}/status`, { status: newStatus });
 
       toast.success(`Status pesanan #${orderId} berhasil diubah!`);
       await fetchOrders();

@@ -87,7 +87,7 @@ Pastikan server Go Anda berjalan di port **8080**.
 |---|---|---|---|
 | `GET` | `/api/cart` | Mengambil isi keranjang belanja user | Ya |
 | `POST` | `/api/cart` | Menambahkan item ke keranjang (`productId`, `quantity`, `size`) | Ya |
-| `PUT` | `/api/cart/:itemId` | Update quantity item di keranjang | Ya |
+| `PATCH` | `/api/cart/:itemId` | Update quantity item di keranjang | Ya |
 | `DELETE` | `/api/cart/:itemId` | Hapus satu item dari keranjang | Ya |
 | `DELETE` | `/api/cart` | Kosongkan seluruh keranjang | Ya |
 
@@ -98,13 +98,21 @@ Pastikan server Go Anda berjalan di port **8080**.
 | `POST` | `/api/wishlist` | Toggle / Tambah produk ke wishlist (`productId`) | Ya |
 | `DELETE` | `/api/wishlist/:productId` | Hapus produk dari wishlist | Ya |
 
-### 6. Orders (`/api/orders`)
+### 6. Orders & Payment (`/api/orders`, `/api/payment`)
 | Method | Endpoint | Deskripsi | Auth Required |
 |---|---|---|---|
-| `GET` | `/api/orders` | Riwayat pesanan user (atau semua pesanan jika admin) | Ya |
+| `GET` | `/api/orders` | Riwayat pesanan user (atau semua pesanan jika `scope=all` untuk admin) | Ya |
 | `GET` | `/api/orders/:id` | Detail pesanan tertentu | Ya |
 | `POST` | `/api/orders` | Checkout & membuat pesanan baru dari cart | Ya |
-| `PATCH` | `/api/orders/:id/status` | Update status pesanan (`PAID`, `SHIPPED`, dll.) | Ya (`ADMIN`) |
+| `PATCH` | `/api/orders/:id` | Membatalkan pesanan (`{ status: "CANCELLED" }`) | Ya |
+| `PATCH` | `/api/orders/:id/status` | Update status pesanan (`PAID`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`) | Ya (`ADMIN`) |
+| `POST` | `/api/payment` | Konfirmasi pembayaran pesanan (`{ orderId }`) | Ya |
+
+### 7. Users (`/api/users`)
+| Method | Endpoint | Deskripsi | Auth Required |
+|---|---|---|---|
+| `PATCH` | `/api/users/:id` | Update profil user (`name`, `email`) | Ya |
+| `PATCH` | `/api/users/:id/password` | Ubah password user (`currentPassword`, `newPassword`) | Ya |
 
 ### 7. Reviews (`/api/reviews`)
 | Method | Endpoint | Deskripsi | Auth Required |

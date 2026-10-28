@@ -54,9 +54,31 @@ export class OrderController {
 
   async cancelOrder(req: NextRequest, params: { orderId: string }) {
     const userId = req.headers.get("x-user-id");
+    const role = req.headers.get("x-user-role");
     if (!userId) throw new UnauthorizedError();
 
-    const result = await this.orderService.updateStatus(params.orderId, "CANCELLED");
+    let requestedStatus: OrderStatus = "CANCELLED";
+    if (role === "ADMIN") {
+      const body = await req.json().catch(() => null);
+      if (body?.status) {
+        requestedStatus = body.status as OrderStatus;
+      }
+    }
+
+    const result = await this.orderService.updateStatus(params.orderId, requestedStatus);
+    return createSuccessResponse(result);
+  }
+
+  async updateOrderStatus(req: NextRequest, params: { orderId: string }) {
+    const userId = req.headers.get("x-user-id");
+    const role = req.headers.get("x-user-role");
+    if (!userId || role !== "ADMIN") throw new UnauthorizedError();
+
+    const body = await req.json();
+    const result = await this.orderService.updateStatus(
+      params.orderId,
+      body.status as OrderStatus
+    );
     return createSuccessResponse(result);
   }
 }

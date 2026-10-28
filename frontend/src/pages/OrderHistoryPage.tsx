@@ -171,7 +171,9 @@ export default function UserOrdersPage() {
     () => ({
       total: orders.length,
       pending: orders.filter((o) => o.status === "PENDING").length,
-      processing: orders.filter((o) => o.status === "PROCESSING").length,
+      processing: orders.filter(
+        (o) => o.status === "PROCESSING" || o.status === "PAID"
+      ).length,
       shipped: orders.filter((o) => o.status === "SHIPPED").length,
       completed: orders.filter((o) => o.status === "DELIVERED").length,
       cancelled: orders.filter((o) => o.status === "CANCELLED").length,
@@ -322,6 +324,7 @@ export default function UserOrdersPage() {
                 >
                   <option value="ALL">Semua Status</option>
                   <option value="PENDING">Menunggu Pembayaran</option>
+                  <option value="PAID">Sudah Dibayar</option>
                   <option value="PROCESSING">Sedang Diproses</option>
                   <option value="SHIPPED">Sedang Dikirim</option>
                   <option value="DELIVERED">Selesai</option>
