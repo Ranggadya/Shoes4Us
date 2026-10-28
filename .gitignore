@@ -40,3 +40,7 @@ yarn-error.log*
 
 # Backups
 *.bak
+
+skills-lock.json
+.superpowers/
+
