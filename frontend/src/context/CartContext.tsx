@@ -93,25 +93,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    const pathname = location.pathname;
-    const shouldLoadCart =
-      pathname === "/cart" ||
-      pathname === "/payment" ||
-      pathname === "/checkout";
-
     if (authLoading) return;
-    if (!user) {
+    if (!user || !token || user.role === "ADMIN") {
       setCart(emptyCart);
       setIsLoading(false);
       return;
     }
-    if (shouldLoadCart) {
-      void loadCart();
-      return;
-    }
 
-    setIsLoading(false);
-  }, [authLoading, user, location.pathname, loadCart]);
+    void loadCart();
+  }, [authLoading, user, token, loadCart]);
+
+  useEffect(() => {
+    const pathname = location.pathname;
+    const shouldRefreshCart =
+      pathname === "/cart" ||
+      pathname === "/payment" ||
+      pathname === "/checkout";
+
+    if (authLoading || !user || !token || user.role === "ADMIN") return;
+    if (shouldRefreshCart) {
+      void loadCart(true);
+    }
+  }, [authLoading, user, token, location.pathname, loadCart]);
 
   const ensureAuth = useCallback(() => {
     if (!token || !user) {

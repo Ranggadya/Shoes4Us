@@ -11,8 +11,11 @@ import {
   Heart,
   Menu,
   X,
+  ClipboardList,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { megaMenuSections } from "@/constants/navigation";
 import GlobalSearch from "./GlobalSearch";
 
@@ -22,6 +25,8 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
+  const { cart } = useCart();
+  const totalCartItems = cart?.totals.totalItems ?? 0;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,10 +99,15 @@ export default function Navbar() {
             {!isAdmin && (
               <Link
                 to="/cart"
-                className="flex items-center space-x-1 hover:text-blue-600 transition"
+                className="relative flex items-center space-x-1 hover:text-blue-600 transition"
               >
                 <ShoppingCart size={18} />
                 <span>Keranjang</span>
+                {totalCartItems > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-black rounded-full">
+                    {totalCartItems}
+                  </span>
+                )}
               </Link>
             )}
 
@@ -143,6 +153,26 @@ export default function Navbar() {
                         <UserCircle size={18} />
                         <span>Profile</span>
                       </Link>
+                      {!isAdmin && (
+                        <>
+                          <Link
+                            to="/order"
+                            className="flex items-center px-4 py-2 hover:bg-gray-100 space-x-2"
+                            onClick={() => setIsOpen(false)}
+                          >
+                            <ClipboardList size={18} />
+                            <span>Pesanan Saya</span>
+                          </Link>
+                          <Link
+                            to="/status-pesanan"
+                            className="flex items-center px-4 py-2 hover:bg-gray-100 space-x-2"
+                            onClick={() => setIsOpen(false)}
+                          >
+                            <Truck size={18} />
+                            <span>Status Pesanan</span>
+                          </Link>
+                        </>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full text-left px-4 py-2 hover:bg-gray-100 space-x-2"
@@ -319,21 +349,30 @@ export default function Navbar() {
 
                   <Link
                     to="/cart"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
+                    className="flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
                     onClick={closeMobileMenu}
                   >
-                    <ShoppingCart size={20} />
-                    <span className="font-medium">Keranjang</span>
+                    <div className="flex items-center gap-3">
+                      <ShoppingCart size={20} />
+                      <span className="font-medium">Keranjang</span>
+                    </div>
+                    {totalCartItems > 0 && (
+                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold text-white bg-black rounded-full">
+                        {totalCartItems}
+                      </span>
+                    )}
                   </Link>
 
-                  <Link
-                    to="/wishlist"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
-                    onClick={closeMobileMenu}
-                  >
-                    <Heart size={20} />
-                    <span className="font-medium">Wishlist</span>
-                  </Link>
+                  {user && (
+                    <Link
+                      to="/wishlist"
+                      className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
+                      onClick={closeMobileMenu}
+                    >
+                      <Heart size={20} />
+                      <span className="font-medium">Wishlist</span>
+                    </Link>
+                  )}
                 </>
               )}
 
@@ -365,6 +404,27 @@ export default function Navbar() {
                     <UserCircle size={20} />
                     <span className="font-medium">Profile</span>
                   </Link>
+
+                  {!isAdmin && (
+                    <>
+                      <Link
+                        to="/order"
+                        className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
+                        onClick={closeMobileMenu}
+                      >
+                        <ClipboardList size={20} />
+                        <span className="font-medium">Pesanan Saya</span>
+                      </Link>
+                      <Link
+                        to="/status-pesanan"
+                        className="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
+                        onClick={closeMobileMenu}
+                      >
+                        <Truck size={20} />
+                        <span className="font-medium">Status Pesanan</span>
+                      </Link>
+                    </>
+                  )}
 
                   <button
                     onClick={handleLogout}

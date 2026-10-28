@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Heart, ShoppingCart, Trash2, PackageX } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { api, ApiError } from "@/services/api";
 import { formatCurrency } from "@/utils/format";
@@ -24,6 +25,7 @@ interface WishlistItem {
 
 export default function WishlistPage() {
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
   const { toggleProduct } = useWishlist();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,8 +51,14 @@ export default function WishlistPage() {
   }, [navigate]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      navigate("/login");
+      return;
+    }
     void fetchWishlist();
-  }, [fetchWishlist]);
+  }, [authLoading, user, navigate, fetchWishlist]);
 
   const handleRemove = async (item: WishlistItem) => {
     setRemovingId(item.id);
