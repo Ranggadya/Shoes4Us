@@ -66,8 +66,17 @@ export default function ProductDetailPage() {
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
+  const [submittingAction, setSubmittingAction] = useState<"cart" | "buy" | null>(null);
+  const [togglingWishlist, setTogglingWishlist] = useState(false);
 
   useEffect(() => {
+    setSize("");
+    setQuantity(1);
+    setSelectedImageIndex(0);
+    setActiveTab("description");
+    setAverageRating(0);
+    setTotalReviews(0);
+
     const fetchProduct = async () => {
       setLoading(true);
       setError(null);
@@ -112,7 +121,7 @@ export default function ProductDetailPage() {
 
 
   const handleAddToCart = async () => {
-    if (!product) return;
+    if (!product || submittingAction) return;
 
     if (!user) {
       toast.error("Silakan login terlebih dahulu");
@@ -131,6 +140,7 @@ export default function ProductDetailPage() {
       return;
     }
 
+    setSubmittingAction("cart");
     try {
       await addItem({ productId: String(product.id), quantity, size });
       toast.success("Produk berhasil ditambahkan ke keranjang!");
@@ -138,11 +148,13 @@ export default function ProductDetailPage() {
       toast.error(
         err instanceof Error ? err.message : "Gagal menambahkan produk"
       );
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
   const handleBuyNow = async () => {
-    if (!product) return;
+    if (!product || submittingAction) return;
 
     if (!user) {
       toast.error("Silakan login terlebih dahulu");
@@ -161,6 +173,7 @@ export default function ProductDetailPage() {
       return;
     }
 
+    setSubmittingAction("buy");
     try {
       await addItem({ productId: String(product.id), quantity, size });
       navigate("/cart");
@@ -168,16 +181,20 @@ export default function ProductDetailPage() {
       toast.error(
         err instanceof Error ? err.message : "Gagal menambahkan produk"
       );
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
   const handleWishlist = async () => {
+    if (togglingWishlist) return;
     if (!user) {
       toast.error("Silakan login terlebih dahulu");
       navigate("/login");
       return;
     }
 
+    setTogglingWishlist(true);
     try {
       // ✅ Gunakan toggleProduct dari WishlistContext — tidak ada fetch duplikat
       // State wishlist otomatis terupdate di semua komponen (optimistic update)
@@ -190,6 +207,8 @@ export default function ProductDetailPage() {
     } catch (error) {
       console.error("Error toggling wishlist:", error);
       toast.error("Terjadi kesalahan");
+    } finally {
+      setTogglingWishlist(false);
     }
   };
 
@@ -211,7 +230,18 @@ export default function ProductDetailPage() {
   const handleReviewSuccess = () => {
     setReviewRefresh((prev) => prev + 1);
     setActiveTab("reviews");
-    toast.success("Review berhasil disubmit!");
+    void api
+      .get<{
+        success?: boolean;
+        data?: { summary?: { averageRating: number; total: number } };
+      }>(`/reviews?productId=${encodeURIComponent(productId)}&summaryOnly=true`)
+      .then((reviewData) => {
+        if (reviewData?.data?.summary) {
+          setAverageRating(reviewData.data.summary.averageRating);
+          setTotalReviews(reviewData.data.summary.total);
+        }
+      })
+      .catch(() => {});
   };
 
   if (loading) {
@@ -447,17 +477,25 @@ export default function ProductDetailPage() {
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleAddToCart}
-                disabled={!hasStock || (size ? selectedSizeStock === 0 : false)}
+                disabled={
+                  !hasStock ||
+                  (size ? selectedSizeStock === 0 : false) ||
+                  submittingAction !== null
+                }
                 className="flex-1 bg-black text-white py-4 rounded-lg font-bold hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
               >
-                Add to Cart
+                {submittingAction === "cart" ? "Adding..." : "Add to Cart"}
               </button>
               <button
                 onClick={handleBuyNow}
-                disabled={!hasStock || (size ? selectedSizeStock === 0 : false)}
+                disabled={
+                  !hasStock ||
+                  (size ? selectedSizeStock === 0 : false) ||
+                  submittingAction !== null
+                }
                 className="flex-1 bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
               >
-                Buy Now
+                {submittingAction === "buy" ? "Processing..." : "Buy Now"}
               </button>
             </div>
 
@@ -465,7 +503,8 @@ export default function ProductDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleWishlist}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 font-semibold transition ${
+                disabled={togglingWishlist}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 font-semibold transition disabled:opacity-50 ${
                   isWishlisted
                     ? "bg-red-50 border-red-500 text-red-600"
                     : "border-gray-300 text-gray-700 hover:border-gray-400"

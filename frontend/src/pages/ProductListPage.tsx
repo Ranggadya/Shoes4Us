@@ -31,19 +31,8 @@ type ProductListFilters = {
 
 const PRODUCTS_PER_PAGE = 20;
 
-const areFiltersEqual = (a: ProductListFilters, b: ProductListFilters) =>
-  a.category === b.category &&
-  a.segment === b.segment &&
-  a.audience === b.audience &&
-  a.brand === b.brand &&
-  a.collection === b.collection &&
-  a.isSale === b.isSale &&
-  a.minPrice === b.minPrice &&
-  a.maxPrice === b.maxPrice &&
-  a.sortBy === b.sortBy;
-
 export default function ProductListPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams?.get("search") || "";
   const categoryQuery = searchParams?.get("category") || "";
   const segmentQuery = searchParams?.get("segment") || "";
@@ -55,7 +44,7 @@ export default function ProductListPage() {
   const maxPriceQuery = searchParams?.get("maxPrice");
   const sortByQuery = searchParams?.get("sortBy") || "newest";
   
-  const routeFilters = useMemo<ProductListFilters>(() => ({
+  const filters = useMemo<ProductListFilters>(() => ({
     category: categoryQuery,
     segment: segmentQuery,
     audience: audienceQuery,
@@ -81,19 +70,12 @@ export default function ProductListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<ProductListFilters>(routeFilters);
   const [totalItems, setTotalItems] = useState(0);
 
   // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, searchQuery]);
-
-  useEffect(() => {
-    setFilters((current) =>
-      areFiltersEqual(current, routeFilters) ? current : routeFilters
-    );
-  }, [routeFilters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -221,13 +203,50 @@ export default function ProductListPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleFilterChange = (filterValues: {
-    category: string;
-    minPrice: number;
-    maxPrice: number;
-    sortBy: string;
-  }) => {
-    setFilters((current) => ({ ...current, ...filterValues }));
+  const handleFilterChange = (
+    filterValues: {
+      category: string;
+      minPrice: number;
+      maxPrice: number;
+      sortBy: string;
+    },
+    options?: { isReset?: boolean }
+  ) => {
+    if (options?.isReset) {
+      const nextParams = new URLSearchParams();
+      if (searchQuery) {
+        nextParams.set("search", searchQuery);
+      }
+      setSearchParams(nextParams);
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (filterValues.category) {
+      nextParams.set("category", filterValues.category);
+    } else {
+      nextParams.delete("category");
+    }
+
+    if (filterValues.minPrice > 0) {
+      nextParams.set("minPrice", String(filterValues.minPrice));
+    } else {
+      nextParams.delete("minPrice");
+    }
+
+    if (filterValues.maxPrice < 5000000) {
+      nextParams.set("maxPrice", String(filterValues.maxPrice));
+    } else {
+      nextParams.delete("maxPrice");
+    }
+
+    if (filterValues.sortBy && filterValues.sortBy !== "newest") {
+      nextParams.set("sortBy", filterValues.sortBy);
+    } else {
+      nextParams.delete("sortBy");
+    }
+
+    setSearchParams(nextParams);
   };
 
   const getPageTitle = () => {

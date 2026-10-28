@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Filter, X, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
 import { api } from "@/services/api";
 import { Category } from "@/types";
 
@@ -12,7 +13,7 @@ type FilterValues = {
 
 type FilterProps = {
   initialFilters?: Partial<FilterValues>;
-  onFilterChange: (filters: FilterValues) => void;
+  onFilterChange: (filters: FilterValues, options?: { isReset?: boolean }) => void;
 };
 
 const sortOptions = [
@@ -81,6 +82,11 @@ export default function ProductFilters({ initialFilters, onFilterChange }: Filte
   ]);
 
   const applyFilters = () => {
+    if (minPrice > maxPrice) {
+      toast.error("Harga minimum tidak boleh lebih besar dari harga maksimum");
+      return;
+    }
+
     const categorySlug =
       selectedCategory === "Semua"
         ? ""
@@ -101,12 +107,16 @@ export default function ProductFilters({ initialFilters, onFilterChange }: Filte
     setMinPrice(0);
     setMaxPrice(5000000);
     setSortBy("newest");
-    onFilterChange({
-      category: "",
-      minPrice: 0,
-      maxPrice: 5000000,
-      sortBy: "newest",
-    });
+    onFilterChange(
+      {
+        category: "",
+        minPrice: 0,
+        maxPrice: 5000000,
+        sortBy: "newest",
+      },
+      { isReset: true }
+    );
+    setIsOpen(false);
   };
 
   const activeFiltersCount =
