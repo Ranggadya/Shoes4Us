@@ -16,37 +16,15 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
+import {
+  CATALOG_CATEGORIES,
+  PRODUCT_AUDIENCES,
+  PRODUCT_SEGMENTS,
+  createDefaultSizeStocks,
+} from "@/constants/product";
+import type { ProductAudience, ProductSegment } from "@/types";
 
-const CATALOG_CATEGORIES = [
-  { value: "Sneakers", label: "Sneakers", icon: "S", description: "Sneakers dan lifestyle" },
-  { value: "Sport", label: "Sport", icon: "P", description: "Sepatu olahraga & atletik" },
-  { value: "Running", label: "Running", icon: "R", description: "Sepatu lari dan marathon" },
-  { value: "Casual", label: "Casual", icon: "C", description: "Sepatu kasual sehari-hari" },
-  { value: "Formal", label: "Formal", icon: "F", description: "Sepatu formal & kerja" },
-  { value: "Basketball", label: "Basketball", icon: "B", description: "Sepatu basket performa tinggi" },
-  { value: "Football", label: "Football", icon: "O", description: "Sepatu sepak bola & futsal" },
-  { value: "Training", label: "Training", icon: "T", description: "Sepatu gym & training" },
-  { value: "Lifestyle", label: "Lifestyle", icon: "L", description: "Koleksi fashion & streetwear" },
-  { value: "Other", label: "Other", icon: "+", description: "Kategori lainnya" },
-];
-
-const PRODUCT_AUDIENCES = [
-  { value: "UNISEX", label: "Unisex" },
-  { value: "MEN", label: "Pria" },
-  { value: "WOMEN", label: "Wanita" },
-  { value: "KIDS", label: "Anak-Anak" },
-];
-
-const PRODUCT_SEGMENTS = [
-  { value: "SHOES", label: "Sepatu" },
-  { value: "APPAREL", label: "Pakaian" },
-  { value: "ACCESSORIES", label: "Aksesoris" },
-];
-
-const DEFAULT_SIZE_STOCKS = ["38", "39", "40", "41", "42", "43", "44", "45"].map((size) => ({
-  size,
-  stock: 0,
-}));
+const DEFAULT_SIZE_STOCKS = createDefaultSizeStocks();
 
 export default function AdminAddProductPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -61,8 +39,8 @@ export default function AdminAddProductPage() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [brand, setBrand] = useState("");
-  const [audience, setAudience] = useState("UNISEX");
-  const [segment, setSegment] = useState("SHOES");
+  const [audience, setAudience] = useState<ProductAudience>("UNISEX");
+  const [segment, setSegment] = useState<ProductSegment>("SHOES");
   const [isNewArrival, setIsNewArrival] = useState(true);
   const [isExclusive, setIsExclusive] = useState(false);
   const [isComingSoon, setIsComingSoon] = useState(false);
@@ -341,7 +319,7 @@ export default function AdminAddProductPage() {
                 </label>
                 <select
                   value={audience}
-                  onChange={(e) => setAudience(e.target.value)}
+                  onChange={(e) => setAudience(e.target.value as ProductAudience)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                   disabled={loading}
                 >
@@ -359,7 +337,7 @@ export default function AdminAddProductPage() {
                 </label>
                 <select
                   value={segment}
-                  onChange={(e) => setSegment(e.target.value)}
+                  onChange={(e) => setSegment(e.target.value as ProductSegment)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                   disabled={loading}
                 >

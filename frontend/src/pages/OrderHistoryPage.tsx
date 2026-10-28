@@ -22,35 +22,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
-type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-
-type OrderItem = {
-  id: string;
-  product: {
-    id: string;
-    name: string;
-    imageUrl?: string;
-  };
-  quantity: number;
-  price: number;
-  size?: string;
-};
-
-type Order = {
-  id: string;
-  orderNumber: string;
-  status: OrderStatus;
-  totalAmount: number;
-  items: OrderItem[];
-  createdAt: string;
-  updatedAt: string;
-  shippingAddress?: string;
-  shippingCity?: string;
-  shippingPostalCode?: string;
-  shippingPhone?: string;
-  paymentMethod?: string;
-};
+import type { Order, OrderStatus } from "@/types";
 
 type OrdersResponse = {
   success: boolean;

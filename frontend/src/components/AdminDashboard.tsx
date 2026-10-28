@@ -3,7 +3,8 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
-import { getCategoryName } from "@/types";
+import { getCategoryName } from "@/utils/format";
+import type { Order, OrderStatus, Product } from "@/types";
 import {
   Search,
   Filter,
@@ -16,40 +17,6 @@ import {
   TrendingUp,
   RefreshCw
 } from "lucide-react";
-
-interface Product {
-  id: string;
-  name: string;
-  category: { id: string; name: string; slug: string } | string;
-  price: number;
-  stock: number | null;
-}
-
-interface Order {
-  id: string;
-  userId: string;
-  user: {
-    name: string;
-    email: string;
-  };
-  status: string;
-  orderNumber: string;
-  totalAmount: number;
-  items: Array<{
-    id: number;
-    product: {
-      name: string;
-    };
-    quantity: number;
-    price: number;
-  }>;
-  createdAt: string;
-  shippingAddress?: string;
-  shippingCity?: string;
-  shippingPostalCode?: string;
-  shippingPhone?: string;
-  paymentMethod?: string;
-}
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -66,7 +33,7 @@ export default function AdminDashboard() {
 
   // State filter & search untuk orders
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<"ALL" | OrderStatus>("ALL");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -526,7 +493,7 @@ export default function AdminDashboard() {
                   <label className="block text-sm font-semibold text-gray-900 mb-1">Status</label>
                   <select
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
+                    onChange={(e) => setFilterStatus(e.target.value as "ALL" | OrderStatus)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium"
                   >
                     <option value="ALL">Semua Status</option>
@@ -679,8 +646,8 @@ export default function AdminDashboard() {
                             </td>
                             <td className="p-3">
                               <div className="text-sm">
-                                <div className="font-semibold text-gray-900">{order.user.name}</div>
-                                <div className="text-xs text-gray-700">{order.user.email}</div>
+                                <div className="font-semibold text-gray-900">{order.user?.name || "-"}</div>
+                                <div className="text-xs text-gray-700">{order.user?.email || "-"}</div>
                               </div>
                             </td>
                             <td className="p-3">
@@ -792,8 +759,8 @@ export default function AdminDashboard() {
                         {/* Customer */}
                         <div className="border-t pt-3">
                           <p className="text-xs text-gray-600 mb-1">Pelanggan</p>
-                          <p className="font-semibold text-gray-900">{order.user.name}</p>
-                          <p className="text-sm text-gray-700">{order.user.email}</p>
+                          <p className="font-semibold text-gray-900">{order.user?.name || "-"}</p>
+                          <p className="text-sm text-gray-700">{order.user?.email || "-"}</p>
                         </div>
 
                         {/* Products */}
@@ -876,8 +843,8 @@ export default function AdminDashboard() {
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-2">Informasi Pelanggan</h3>
                       <div className="bg-gray-50 p-4 rounded-lg space-y-1">
-                        <p><span className="font-medium">Nama:</span> {selectedOrder.user.name}</p>
-                        <p><span className="font-medium">Email:</span> {selectedOrder.user.email}</p>
+                        <p><span className="font-medium">Nama:</span> {selectedOrder.user?.name || "-"}</p>
+                        <p><span className="font-medium">Email:</span> {selectedOrder.user?.email || "-"}</p>
                         {selectedOrder.shippingPhone && (
                           <p><span className="font-medium">Telepon:</span> {selectedOrder.shippingPhone}</p>
                         )}

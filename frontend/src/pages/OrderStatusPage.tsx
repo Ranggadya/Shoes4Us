@@ -3,25 +3,7 @@ import OrderTracking from "@/components/OrderTracking";
 import { useAuth } from "@/context/AuthContext";
 import EmptyOrders from "@/components/empty-states/EmptyOrders";
 import { api } from "@/services/api";
-
-type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-
-type OrderItem = {
-  id: string;
-  product: {
-    id: string;
-    name: string;
-  };
-};
-
-type Order = {
-  id: string;
-  orderNumber: string;
-  status: OrderStatus;
-  items: OrderItem[];
-  createdAt: string;
-  updatedAt: string;
-};
+import type { Order, OrderStatus } from "@/types";
 
 type OrdersResponse = {
   success: boolean;

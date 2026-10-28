@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { api } from "@/services/api";
 
 export default function ResetPasswordPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: paramToken } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const token = paramToken || searchParams.get("token") || "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,6 +15,11 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!token) {
+      toast.error("Token reset password tidak ditemukan atau tidak valid");
+      return;
+    }
 
     if (!password || !confirmPassword) {
       toast.error("Semua field wajib diisi");
@@ -35,6 +42,7 @@ export default function ResetPasswordPage() {
       const data = await api.post<{ message?: string }>("/auth/reset-password", {
         token,
         password,
+        newPassword: password,
       });
 
       toast.success(data.message || "Password berhasil direset!");

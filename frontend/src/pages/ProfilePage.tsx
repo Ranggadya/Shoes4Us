@@ -21,32 +21,20 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { api } from "@/services/api";
+import {
+  emptyShippingAddress,
+  loadSavedShippingAddress,
+  saveShippingAddress,
+  type SavedShippingAddress,
+} from "@/utils/shipping-address";
 
 type ProfileTab = "account" | "profile" | "address";
-
-type AddressForm = {
-  label: string;
-  recipient: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-};
 
 type AccountPreferences = {
   defaultSize: string;
   favoriteBrand: string;
   emailOffers: boolean;
   orderSms: boolean;
-};
-
-const emptyAddress: AddressForm = {
-  label: "Rumah",
-  recipient: "",
-  phone: "",
-  address: "",
-  city: "",
-  postalCode: "",
 };
 
 const defaultPreferences: AccountPreferences = {
@@ -80,15 +68,11 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordFields, setShowPasswordFields] = useState(false);
-  const [address, setAddress] = useState<AddressForm>(emptyAddress);
+  const [address, setAddress] =
+    useState<SavedShippingAddress>(emptyShippingAddress);
   const [preferences, setPreferences] =
     useState<AccountPreferences>(defaultPreferences);
   const [savingAddress, setSavingAddress] = useState(false);
-
-  const storageKey = useMemo(
-    () => (user ? `shoes4us-address-${user.id}` : "shoes4us-address"),
-    [user]
-  );
 
   const preferencesKey = useMemo(
     () => (user ? `shoes4us-preferences-${user.id}` : "shoes4us-preferences"),
@@ -99,21 +83,7 @@ export default function ProfilePage() {
     if (!user) return;
     setName(user.name);
     setEmail(user.email);
-
-    const savedAddress = window.localStorage.getItem(storageKey);
-    if (savedAddress) {
-      try {
-        setAddress({ ...emptyAddress, ...JSON.parse(savedAddress) });
-      } catch (e) {
-        console.error("Failed to parse saved address", e);
-        setAddress({ ...emptyAddress, recipient: user.name });
-      }
-    } else {
-      setAddress((current) => ({
-        ...current,
-        recipient: user.name,
-      }));
-    }
+    setAddress(loadSavedShippingAddress(user.id, user.name));
 
     const savedPreferences = window.localStorage.getItem(preferencesKey);
     if (savedPreferences) {
@@ -127,7 +97,7 @@ export default function ProfilePage() {
         setPreferences(defaultPreferences);
       }
     }
-  }, [preferencesKey, storageKey, user]);
+  }, [preferencesKey, user]);
 
   const resetProfileForm = () => {
     if (!user) return;
@@ -238,7 +208,7 @@ export default function ProfilePage() {
     }
 
     setSavingAddress(true);
-    window.localStorage.setItem(storageKey, JSON.stringify(address));
+    saveShippingAddress(user?.id, address);
     setTimeout(() => {
       setSavingAddress(false);
       toast.success("Alamat berhasil disimpan");

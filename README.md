@@ -17,11 +17,12 @@ Shoes4Us E-Commerce Platform/
 │   ├── public/               # Asset statis, logo, dan gambar produk
 │   ├── src/
 │   │   ├── components/       # UI components & layouts (Navbar, Footer, Modal, Card, dll.)
+│   │   ├── constants/        # Konstanta statis navigasi & katalog produk
 │   │   ├── context/          # State management (Auth, Cart, Wishlist)
 │   │   ├── pages/            # Halaman aplikasi (Home, Product, Cart, Payment, Admin, dll.)
 │   │   ├── services/         # REST API client & helpers
 │   │   ├── types/            # TypeScript interfaces & types
-│   │   ├── utils/            # Formatters & password strength helpers
+│   │   ├── utils/            # Formatters, shipping address & password strength helpers
 │   │   ├── App.tsx           # React Router v7 routes
 │   │   └── main.tsx          # Vite root entry
 │   ├── package.json

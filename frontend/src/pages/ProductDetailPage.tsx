@@ -3,9 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, getCategoryName } from "@/utils/format";
 import { api } from "@/services/api";
-import { getCategoryName } from "@/types";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
@@ -120,69 +119,52 @@ export default function ProductDetailPage() {
   }, [productId]);
 
 
-  const handleAddToCart = async () => {
-    if (!product || submittingAction) return;
+  const submitCartSelection = async (action: "cart" | "buy"): Promise<boolean> => {
+    if (!product || submittingAction) return false;
 
     if (!user) {
       toast.error("Silakan login terlebih dahulu");
       navigate("/login");
-      return;
+      return false;
     }
 
     if (!size) {
       toast.error("Pilih ukuran terlebih dahulu");
-      return;
+      return false;
     }
 
-    const currentSizeStock = product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
+    const currentSizeStock =
+      product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
     if (currentSizeStock < quantity) {
       toast.error("Stok ukuran yang dipilih tidak mencukupi");
-      return;
+      return false;
     }
 
-    setSubmittingAction("cart");
+    setSubmittingAction(action);
     try {
       await addItem({ productId: String(product.id), quantity, size });
-      toast.success("Produk berhasil ditambahkan ke keranjang!");
+      return true;
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Gagal menambahkan produk"
       );
+      return false;
     } finally {
       setSubmittingAction(null);
     }
   };
 
+  const handleAddToCart = async () => {
+    const added = await submitCartSelection("cart");
+    if (added) {
+      toast.success("Produk berhasil ditambahkan ke keranjang!");
+    }
+  };
+
   const handleBuyNow = async () => {
-    if (!product || submittingAction) return;
-
-    if (!user) {
-      toast.error("Silakan login terlebih dahulu");
-      navigate("/login");
-      return;
-    }
-
-    if (!size) {
-      toast.error("Pilih ukuran terlebih dahulu");
-      return;
-    }
-
-    const currentSizeStock = product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
-    if (currentSizeStock < quantity) {
-      toast.error("Stok ukuran yang dipilih tidak mencukupi");
-      return;
-    }
-
-    setSubmittingAction("buy");
-    try {
-      await addItem({ productId: String(product.id), quantity, size });
+    const added = await submitCartSelection("buy");
+    if (added) {
       navigate("/cart");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Gagal menambahkan produk"
-      );
-    } finally {
-      setSubmittingAction(null);
     }
   };
 

@@ -60,15 +60,6 @@ export interface Product {
   updatedAt?: string;
 }
 
-export function getCategoryName(
-  category: Category | string | null | undefined,
-  fallback = "Uncategorized"
-): string {
-  if (!category) return fallback;
-  if (typeof category === "string") return category;
-  return category.name || fallback;
-}
-
 export interface CartItem {
   id: string;
   productId: string;
@@ -94,12 +85,13 @@ export type OrderStatus =
   | "CANCELLED";
 
 export interface OrderItem {
-  id?: string | number;
+  id: string | number;
   productId?: string;
   quantity: number;
   price: number;
+  size?: string;
   product: {
-    id: string;
+    id?: string;
     name: string;
     imageUrl?: string | null;
     price?: number;

@@ -21,7 +21,7 @@ const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
-const AdminPage = lazy(() => import("@/pages/AdminPage"));
+const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
 const AdminProductPage = lazy(() => import("@/pages/AdminProductPage"));
 const AdminAddProductPage = lazy(() => import("@/pages/AdminAddProductPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
@@ -81,9 +81,10 @@ export default function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/admin/dashboard" element={<AdminPage />} />
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/product" element={<AdminProductPage />} />
                     <Route path="/admin/product/add" element={<AdminAddProductPage />} />
                     <Route path="*" element={<NotFoundPage />} />

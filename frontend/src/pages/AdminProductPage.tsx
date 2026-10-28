@@ -14,41 +14,19 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
-import { getCategoryName, type Product, type ProductAudience, type ProductSegment } from "@/types";
+import { getCategoryName } from "@/utils/format";
+import {
+  PRODUCT_AUDIENCES,
+  PRODUCT_CATEGORIES,
+  PRODUCT_SEGMENTS,
+  createDefaultSizeStocks,
+} from "@/constants/product";
+import type { Product, ProductAudience, ProductSegment } from "@/types";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc" | "name-asc" | "stock-asc";
 
-const CATEGORIES = [
-  "Running",
-  "Sneakers",
-  "Casual",
-  "Formal",
-  "Sport",
-  "Sports",
-  "Basketball",
-  "Football",
-  "Training",
-  "Lifestyle",
-  "Other",
-];
-
-const PRODUCT_AUDIENCES: Array<{ value: ProductAudience; label: string }> = [
-  { value: "UNISEX", label: "Unisex" },
-  { value: "MEN", label: "Pria" },
-  { value: "WOMEN", label: "Wanita" },
-  { value: "KIDS", label: "Anak-Anak" },
-];
-
-const PRODUCT_SEGMENTS: Array<{ value: ProductSegment; label: string }> = [
-  { value: "SHOES", label: "Sepatu" },
-  { value: "APPAREL", label: "Pakaian" },
-  { value: "ACCESSORIES", label: "Aksesoris" },
-];
-
-const DEFAULT_SIZE_STOCKS = ["38", "39", "40", "41", "42", "43", "44", "45"].map((size) => ({
-  size,
-  stock: 0,
-}));
+const CATEGORIES = PRODUCT_CATEGORIES;
+const DEFAULT_SIZE_STOCKS = createDefaultSizeStocks();
 
 export default function AdminProductPage() {
   const { user, isLoading } = useAuth();

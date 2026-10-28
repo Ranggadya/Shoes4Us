@@ -71,7 +71,7 @@ Pastikan server Go Anda berjalan di port **8080**.
 ### 2. Products (`/api/products`)
 | Method | Endpoint | Deskripsi | Auth Required |
 |---|---|---|---|
-| `GET` | `/api/products` | Filter & paginasi produk (`search`, `category`, `sort`, `page`, `limit`) | Tidak |
+| `GET` | `/api/products` | Filter & paginasi produk (`search`, `category`, `sortBy`, `page`, `limit`) | Tidak |
 | `GET` | `/api/products/:id` | Detail produk berdasarkan UUID atau slug | Tidak |
 | `POST` | `/api/products` | Tambah produk baru | Ya (`ADMIN`) |
 | `PUT` | `/api/products/:id` | Update data produk & stok ukuran | Ya (`ADMIN`) |

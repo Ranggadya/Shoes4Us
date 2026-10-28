@@ -5,8 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { api, ApiError } from "@/services/api";
-import { formatCurrency } from "@/utils/format";
-import { getCategoryName } from "@/types";
+import { formatCurrency, getCategoryName } from "@/utils/format";
 
 interface WishlistItem {
   id: string;

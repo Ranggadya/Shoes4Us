@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/utils/format";
+import {
+  loadSavedShippingAddress,
+  saveShippingAddress,
+} from "@/utils/shipping-address";
 import { api } from "@/services/api";
 
 const DELIVERY_FEE = 15000;
@@ -26,27 +30,12 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (!user) return;
-    const saved = window.localStorage.getItem(`shoes4us-address-${user.id}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as {
-          recipient?: string;
-          address?: string;
-          city?: string;
-          postalCode?: string;
-          phone?: string;
-        };
-        setName((prev) => prev || parsed.recipient || user.name || "");
-        setAddress((prev) => prev || parsed.address || "");
-        setCity((prev) => prev || parsed.city || "");
-        setPostalCode((prev) => prev || parsed.postalCode || "");
-        setPhone((prev) => prev || parsed.phone || "");
-        return;
-      } catch {
-        // Fallback to user.name if saved address JSON is invalid
-      }
-    }
-    setName((prev) => prev || user.name || "");
+    const saved = loadSavedShippingAddress(user.id, user.name || "");
+    setName((prev) => prev || saved.recipient || user.name || "");
+    setAddress((prev) => prev || saved.address || "");
+    setCity((prev) => prev || saved.city || "");
+    setPostalCode((prev) => prev || saved.postalCode || "");
+    setPhone((prev) => prev || saved.phone || "");
   }, [user]);
 
   const subtotal = cart?.totals.subtotal ?? 0;
@@ -103,6 +92,15 @@ export default function PaymentPage() {
           });
           orderIdToPay = orderData.order.id;
           setCreatedOrderId(orderIdToPay);
+          if (user) {
+            saveShippingAddress(user.id, {
+              recipient: name,
+              address,
+              city,
+              postalCode,
+              phone,
+            });
+          }
         } catch (err) {
           const errMsg =
             err instanceof Error ? err.message : "Gagal membuat pesanan.";

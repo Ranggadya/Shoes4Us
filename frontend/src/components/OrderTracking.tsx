@@ -1,7 +1,6 @@
 import React from "react";
 import { CheckCircle, Circle, Truck, Package, Home, XCircle } from "lucide-react";
-
-type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+import type { OrderStatus } from "@/types";
 
 interface OrderTrackingProps {
   orderId: string | number;
@@ -17,8 +16,8 @@ const steps: Array<{
   icon: React.ComponentType<{ size?: number }>;
 }> = [
   { status: "PENDING", label: "Diterima", icon: Circle },
-  { status: "PROCESSING", label: "Diproses", icon: Package },
   { status: "PAID", label: "Dibayar", icon: CheckCircle },
+  { status: "PROCESSING", label: "Diproses", icon: Package },
   { status: "SHIPPED", label: "Dikirim", icon: Truck },
   { status: "DELIVERED", label: "Selesai", icon: Home },
 ];

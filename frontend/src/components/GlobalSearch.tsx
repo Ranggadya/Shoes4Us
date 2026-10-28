@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Search, X, Loader2 } from "lucide-react";
 import { api } from "@/services/api";
-import { formatCurrency } from "@/utils/format";
-import { getCategoryName, Product } from "@/types";
+import { formatCurrency, getCategoryName } from "@/utils/format";
+import type { Product } from "@/types";
 
 export default function GlobalSearch() {
   const [searchQuery, setSearchQuery] = useState("");
