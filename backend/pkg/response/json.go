@@ -49,7 +49,7 @@ func WriteCreated(w http.ResponseWriter, message string, data any) {
 func WriteError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	code := "INTERNAL_ERROR"
-	msg := "Terjadi kesalahan internal server"
+	msg := "Terjadi kesalahan pada server"
 
 	var appErr *domain.AppError
 	if errors.As(err, &appErr) && appErr != nil {
@@ -62,8 +62,6 @@ func WriteError(w http.ResponseWriter, err error) {
 		if appErr.Message != "" {
 			msg = appErr.Message
 		}
-	} else if err != nil && err.Error() != "" {
-		msg = err.Error()
 	}
 
 	WriteJSON(w, status, Envelope{

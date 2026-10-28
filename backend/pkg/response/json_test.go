@@ -41,12 +41,12 @@ func TestWriteError_FallbackInternalError(t *testing.T) {
 	}
 	var body map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if body["success"] != false {
-		t.Fatalf("expected success=false, got %#v", body)
+	if body["success"] != false || body["message"] != "Terjadi kesalahan pada server" {
+		t.Fatalf("expected success=false and generic message, got %#v", body)
 	}
 	errObj, ok := body["error"].(map[string]any)
-	if !ok || errObj["code"] != "INTERNAL_ERROR" {
-		t.Fatalf("expected error.code INTERNAL_ERROR, got %#v", body["error"])
+	if !ok || errObj["code"] != "INTERNAL_ERROR" || errObj["message"] != "Terjadi kesalahan pada server" {
+		t.Fatalf("expected error.code INTERNAL_ERROR and generic message, got %#v", body["error"])
 	}
 }
 
