@@ -42,3 +42,4 @@ export const createDefaultSizeStocks = (): ProductSizeStock[] =>
     size,
     stock: 0,
   }));
+
