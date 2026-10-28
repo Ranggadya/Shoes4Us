@@ -19,6 +19,8 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/AdminPage";
+import AdminProductPage from "@/pages/AdminProductPage";
+import AdminAddProductPage from "@/pages/AdminAddProductPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 export default function App() {
@@ -69,6 +71,8 @@ export default function App() {
                 <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/admin/dashboard" element={<AdminPage />} />
+                <Route path="/admin/product" element={<AdminProductPage />} />
+                <Route path="/admin/product/add" element={<AdminAddProductPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </MainLayout>
