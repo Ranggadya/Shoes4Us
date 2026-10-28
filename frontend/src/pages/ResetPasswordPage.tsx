@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import { api } from "@/services/api";
 
 export default function ResetPasswordPage() {
   const { token } = useParams<{ token: string }>();
@@ -31,20 +32,10 @@ export default function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          password,
-        }),
+      const data = await api.post<{ message?: string }>("/auth/reset-password", {
+        token,
+        password,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Gagal reset password");
-      }
 
       toast.success(data.message || "Password berhasil direset!");
 

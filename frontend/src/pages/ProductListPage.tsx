@@ -6,6 +6,7 @@ import ProductFilters from "@/components/ProductFilters";
 import EmptySearchResults from "@/components/empty-states/EmptySearchResults";
 import EmptyCategory from "@/components/empty-states/EmptyCategory";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { api } from "@/services/api";
 
 type Product = {
   id: string;
@@ -145,17 +146,13 @@ export default function ProductListPage() {
           params.append("sortBy", filters.sortBy);
         }
 
-        const productsRes = await fetch(`/api/products?${params.toString()}`, {
-          credentials: "include",
+        const productJson = await api.get<{
+          data?: { items?: Product[] };
+          meta?: { total?: number };
+        }>(`/products?${params.toString()}`, {
           signal: controller.signal,
         });
-
-        if (!productsRes.ok) {
-          throw new Error("Gagal memuat daftar produk");
-        }
-
-        const productJson = await productsRes.json();
-        const items = productJson.data.items;
+        const items = productJson.data?.items || [];
         const meta = productJson.meta;
 
         setFilteredProducts(items);
@@ -264,7 +261,10 @@ export default function ProductListPage() {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar Filters */}
           <aside className="lg:col-span-1">
-            <ProductFilters onFilterChange={handleFilterChange} />
+            <ProductFilters
+              initialFilters={filters}
+              onFilterChange={handleFilterChange}
+            />
           </aside>
 
           {/* Products Grid */}

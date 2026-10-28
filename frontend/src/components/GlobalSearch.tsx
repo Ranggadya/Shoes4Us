@@ -1,15 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Search, X, Loader2 } from "lucide-react";
-
-type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  category: { name: string } | string;
-  imageUrl: string | null;
-};
+import { api } from "@/services/api";
+import { formatCurrency } from "@/utils/format";
+import { getCategoryName, Product } from "@/types";
 
 export default function GlobalSearch() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,27 +31,36 @@ export default function GlobalSearch() {
       return;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/products?limit=5&search=${encodeURIComponent(searchQuery.trim())}`);
-        const data = await response.json();
-        
-        if (data.success && data.data?.items) {
-          setSuggestions(data.data.items);
-          setShowSuggestions(true);
-        } else if (Array.isArray(data.data)) {
+        const data = await api.get<{
+          success?: boolean;
+          data?: Product[] | { items?: Product[] };
+        }>(`/products?limit=5&search=${encodeURIComponent(searchQuery.trim())}`, {
+          signal: controller.signal,
+        });
+
+        if (Array.isArray(data.data)) {
           setSuggestions(data.data.slice(0, 5));
+          setShowSuggestions(true);
+        } else if (data.data?.items) {
+          setSuggestions(data.data.items);
           setShowSuggestions(true);
         }
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("Error fetching suggestions:", error);
       } finally {
         setLoading(false);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [searchQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -72,14 +75,6 @@ export default function GlobalSearch() {
     setSearchQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price);
   };
 
   return (
@@ -140,10 +135,10 @@ export default function GlobalSearch() {
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                    {typeof product.category === 'string' ? product.category : product.category?.name}
+                    {getCategoryName(product.category)}
                   </span>
                   <span className="text-sm font-semibold text-blue-600">
-                    {formatPrice(product.price)}
+                    {formatCurrency(product.price)}
                   </span>
                 </div>
               </div>
@@ -157,7 +152,7 @@ export default function GlobalSearch() {
             }}
             className="w-full px-4 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
           >
-            Lihat Semua Hasil untuk "{searchQuery}"
+            Lihat Semua Hasil untuk &quot;{searchQuery}&quot;
           </button>
         </div>
       )}
@@ -165,7 +160,7 @@ export default function GlobalSearch() {
       {showSuggestions && !loading && searchQuery.trim().length >= 2 && suggestions.length === 0 && (
         <div className="absolute top-full mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 text-center">
           <p className="text-gray-500 text-sm">
-            Tidak ada hasil untuk "{searchQuery}"
+            Tidak ada hasil untuk &quot;{searchQuery}&quot;
           </p>
         </div>
       )}

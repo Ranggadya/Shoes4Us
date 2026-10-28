@@ -5,9 +5,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { api } from "@/services/api";
 
 type WishlistContextValue = {
   isLoading: boolean;
@@ -35,15 +37,9 @@ const WishlistContext = createContext<WishlistContextValue | undefined>(
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const { user, token, isLoading: authLoading } = useAuth();
   const [productIds, setProductIds] = useState<Set<string>>(new Set());
+  const productIdsRef = useRef<Set<string>>(productIds);
+  productIdsRef.current = productIds;
   const [isLoading, setIsLoading] = useState(false);
-
-  const headers = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }),
-    [token]
-  );
 
   const refresh = useCallback(async () => {
     if (!user || !token) {
@@ -53,24 +49,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/wishlist?fields=ids", {
-        headers,
-      });
-
-      if (!res.ok) {
-        setProductIds(new Set());
-        return;
-      }
-
-      const data = (await res.json()) as WishlistResponse;
-      setProductIds(new Set(data.data.items.map((item) => item.productId)));
+      const data = await api.get<WishlistResponse>("/wishlist?fields=ids");
+      setProductIds(
+        new Set((data.data?.items ?? []).map((item) => item.productId))
+      );
     } catch (e) {
       console.error("Failed to fetch wishlist ids", e);
       setProductIds(new Set());
     } finally {
       setIsLoading(false);
     }
-  }, [headers, token, user]);
+  }, [token, user]);
 
   useEffect(() => {
     if (!authLoading) void refresh();
@@ -87,7 +76,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         throw new Error("Silakan login terlebih dahulu");
       }
 
-      const wasWishlisted = productIds.has(productId);
+      const wasWishlisted = productIdsRef.current.has(productId);
       setProductIds((current) => {
         const next = new Set(current);
         if (wasWishlisted) next.delete(productId);
@@ -96,22 +85,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       });
 
       try {
-        const res = await fetch(
-          wasWishlisted ? `/api/wishlist/${productId}` : "/api/wishlist",
-          {
-            method: wasWishlisted ? "DELETE" : "POST",
-            headers,
-            body: wasWishlisted ? undefined : JSON.stringify({ productId }),
-          }
-        );
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            body?.message ?? body?.error?.message ?? "Gagal mengubah wishlist"
-          );
+        if (wasWishlisted) {
+          await api.delete(`/wishlist/${productId}`);
+        } else {
+          await api.post("/wishlist", { productId });
         }
-
         return wasWishlisted ? "removed" : "added";
       } catch (error) {
         setProductIds((current) => {
@@ -123,7 +101,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [headers, productIds, token, user]
+    [token, user]
   );
 
   const value = useMemo<WishlistContextValue>(

@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/utils/format";
+import { api } from "@/services/api";
 
 const DELIVERY_FEE = 15000;
 
 export default function PaymentPage() {
   const navigate = useNavigate();
-  const { user, token, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { cart, isLoading: cartLoading, error, refresh } = useCart();
 
   const [name, setName] = useState("");
@@ -65,55 +66,30 @@ export default function PaymentPage() {
       let orderIdToPay = createdOrderId;
 
       if (!orderIdToPay) {
-        const orderRes = await fetch("/api/orders", {
-          method: "POST",
-          credentials: "include",
-          headers: { 
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
+        try {
+          const { data: orderData } = await api.post<{
+            data: { order: { id: string } };
+          }>("/orders", {
             shippingAddress: address,
             shippingCity: city,
             shippingPostalCode: postalCode,
             shippingPhone: phone,
             paymentMethod: method,
-          }),
-        });
-
-        if (!orderRes.ok) {
-          const body = await orderRes.json().catch(() => ({}));
-          const errMsg = body?.error?.message ?? body?.message ?? "Gagal membuat pesanan.";
-          
+          });
+          orderIdToPay = orderData.order.id;
+          setCreatedOrderId(orderIdToPay);
+        } catch (err) {
+          const errMsg =
+            err instanceof Error ? err.message : "Gagal membuat pesanan.";
           if (errMsg.toLowerCase().includes("kosong")) {
-            await refresh(); // Sinkronisasi state frontend jika DB kosong
+            await refresh();
           }
-          
-          throw new Error(errMsg);
+          throw err;
         }
-
-        const { data: orderData } = await orderRes.json();
-        orderIdToPay = orderData.order.id as string;
-        setCreatedOrderId(orderIdToPay);
       }
 
-      const payRes = await fetch("/api/payment", {
-        method: "POST",
-        credentials: "include",
-        headers: { 
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ orderId: orderIdToPay }),
-      });
+      await api.post("/payment", { orderId: orderIdToPay });
 
-      if (!payRes.ok) {
-        const body = await payRes.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? body?.message ?? "Gagal memproses pembayaran.");
-      }
-
-      // Dummy payment always succeeds in creating a transaction, 
-      // redirect user to status page to see their PENDING order
       await refresh();
       navigate("/status-pesanan");
     } catch (err) {

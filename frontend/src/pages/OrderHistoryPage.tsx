@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/utils/format";
+import { api } from "@/services/api";
 import { 
   Package, 
   Search, 
@@ -101,7 +102,7 @@ const getStatusConfig = (status: OrderStatus) => {
       border: "border-red-200",
     },
   };
-  return configs[status];
+  return configs[status] ?? configs.PENDING;
 };
 
 export default function UserOrdersPage() {
@@ -115,86 +116,78 @@ export default function UserOrdersPage() {
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/orders", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? "Gagal memuat pesanan.");
-      }
-
-      const data = (await response.json()) as OrdersResponse;
-      setOrders(data.data.orders);
+      const data = await api.get<OrdersResponse>("/orders");
+      setOrders(data.data?.orders || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat pesanan.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchOrders();
+      void fetchOrders();
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, fetchOrders]);
 
   // Filter orders
-  const filteredOrders = orders.filter((order) => {
-    // Filter by status
-    if (filterStatus !== "ALL" && order.status !== filterStatus) {
-      return false;
-    }
+  const filteredOrders = useMemo(
+    () =>
+      orders
+        .filter((order) => {
+          if (filterStatus !== "ALL" && order.status !== filterStatus) {
+            return false;
+          }
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchesId =
-        order.id.toLowerCase().includes(query) ||
-        order.orderNumber.toLowerCase().includes(query);
-      const matchesProduct = order.items.some(item => 
-        item.product.name.toLowerCase().includes(query)
-      );
-      if (!matchesId && !matchesProduct) {
-        return false;
-      }
-    }
+          if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            const matchesId =
+              order.id.toLowerCase().includes(query) ||
+              order.orderNumber.toLowerCase().includes(query);
+            const matchesProduct = order.items.some((item) =>
+              item.product.name.toLowerCase().includes(query)
+            );
+            if (!matchesId && !matchesProduct) {
+              return false;
+            }
+          }
 
-    return true;
-  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          return true;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
+    [orders, filterStatus, searchQuery]
+  );
 
   // Calculate statistics
-  const stats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === "PENDING").length,
-    processing: orders.filter(o => o.status === "PROCESSING").length,
-    shipped: orders.filter(o => o.status === "SHIPPED").length,
-    completed: orders.filter(o => o.status === "DELIVERED").length,
-    cancelled: orders.filter(o => o.status === "CANCELLED").length,
-    totalSpent: orders
-      .filter(o => o.status !== "CANCELLED")
-      .reduce((sum, o) => sum + o.totalAmount, 0),
-  };
+  const stats = useMemo(
+    () => ({
+      total: orders.length,
+      pending: orders.filter((o) => o.status === "PENDING").length,
+      processing: orders.filter((o) => o.status === "PROCESSING").length,
+      shipped: orders.filter((o) => o.status === "SHIPPED").length,
+      completed: orders.filter((o) => o.status === "DELIVERED").length,
+      cancelled: orders.filter((o) => o.status === "CANCELLED").length,
+      totalSpent: orders
+        .filter((o) => o.status !== "CANCELLED")
+        .reduce((sum, o) => sum + o.totalAmount, 0),
+    }),
+    [orders]
+  );
 
   // Cancel order
   const handleCancelOrder = async (orderId: string) => {
     if (!confirm("Apakah Anda yakin ingin membatalkan pesanan ini?")) return;
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CANCELLED" }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? "Gagal membatalkan pesanan.");
-      }
+      await api.patch(`/orders/${orderId}`, { status: "CANCELLED" });
 
       toast.success("Pesanan berhasil dibatalkan");
       await fetchOrders();
@@ -497,13 +490,15 @@ export default function UserOrdersPage() {
                           <Download className="w-4 h-4" />
                           <span>Invoice</span>
                         </button>
-                        <Link
-                          to={`/product/${order.items[0].product.id}`}
-                          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                          <span>Beli Lagi</span>
-                        </Link>
+                        {order.items[0]?.product?.id && (
+                          <Link
+                            to={`/product/${order.items[0].product.id}`}
+                            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            <span>Beli Lagi</span>
+                          </Link>
+                        )}
                       </>
                     )}
 

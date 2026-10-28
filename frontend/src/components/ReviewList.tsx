@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import StarRating from "./StarRating";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Check, User } from "lucide-react";
+import { api } from "@/services/api";
 
 interface Review {
   id: string;
@@ -40,17 +41,15 @@ export default function ReviewList({ productId, refreshTrigger }: ReviewListProp
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchReviews();
-  }, [productId, refreshTrigger]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/reviews?productId=${productId}`);
-      const data = await res.json();
+      const data = await api.get<{
+        success?: boolean;
+        data?: { reviews?: Review[]; summary?: ReviewSummary };
+      }>(`/reviews?productId=${encodeURIComponent(productId)}`);
 
-      if (data.success && data.data) {
+      if (data.data) {
         setReviews(data.data.reviews || []);
         setSummary(data.data.summary || null);
       }
@@ -59,7 +58,11 @@ export default function ReviewList({ productId, refreshTrigger }: ReviewListProp
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [productId]);
+
+  useEffect(() => {
+    void fetchReviews();
+  }, [fetchReviews, refreshTrigger]);
 
   if (isLoading) {
     return (

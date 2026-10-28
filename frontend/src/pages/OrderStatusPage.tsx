@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import OrderTracking from "@/components/OrderTracking";
 import { useAuth } from "@/context/AuthContext";
 import EmptyOrders from "@/components/empty-states/EmptyOrders";
+import { api } from "@/services/api";
 
 type OrderStatus = "PENDING" | "PROCESSING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
@@ -44,19 +45,8 @@ export default function OrderStatusPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/orders", {
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body?.error?.message ?? "Gagal memuat pesanan.");
-        }
-        const data: OrdersResponse = await response.json();
-        setOrders(data.data.orders);
+        const data = await api.get<OrdersResponse>("/orders");
+        setOrders(data.data?.orders || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
       } finally {

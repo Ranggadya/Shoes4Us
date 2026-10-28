@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import StarRating from "./StarRating";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { api } from "@/services/api";
 
 interface ReviewFormProps {
   productId: string;
@@ -37,23 +38,12 @@ export default function ReviewForm({ productId, onSuccess }: ReviewFormProps) {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          productId,
-          rating,
-          title: title || undefined,
-          comment,
-        }),
+      await api.post("/reviews", {
+        productId,
+        rating,
+        title: title || undefined,
+        comment,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "Gagal menambahkan review");
-      }
 
       toast.success("Review berhasil ditambahkan!");
       setRating(0);

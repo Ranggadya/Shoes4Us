@@ -1,4 +1,4 @@
-export type UserRole = "CUSTOMER" | "ADMIN";
+export type UserRole = "CUSTOMER" | "ADMIN" | "USER";
 
 export interface UserPayload {
   userId: string;
@@ -40,13 +40,13 @@ export interface Category {
 export interface Product {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   description?: string | null;
   price: number;
   stock: number;
   imageUrl?: string | null;
-  categoryId: string;
-  category?: Category | null;
+  categoryId?: string;
+  category?: Category | string | null;
   brand?: string | null;
   segment?: ProductSegment;
   audience?: ProductAudience;
@@ -58,6 +58,15 @@ export interface Product {
   sizes?: ProductSizeStock[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export function getCategoryName(
+  category: Category | string | null | undefined,
+  fallback = "Uncategorized"
+): string {
+  if (!category) return fallback;
+  if (typeof category === "string") return category;
+  return category.name || fallback;
 }
 
 export interface CartItem {
@@ -76,18 +85,24 @@ export interface CartItem {
   };
 }
 
-export type OrderStatus = "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+export type OrderStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "PAID"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED";
 
 export interface OrderItem {
-  id?: string;
-  productId: string;
+  id?: string | number;
+  productId?: string;
   quantity: number;
   price: number;
-  product?: {
+  product: {
     id: string;
     name: string;
     imageUrl?: string | null;
-    price: number;
+    price?: number;
   };
 }
 
@@ -95,11 +110,12 @@ export interface Order {
   id: string;
   orderNumber: string;
   userId: string;
-  shippingAddress: string;
+  shippingAddress?: string;
   shippingCity?: string;
   shippingPostalCode?: string;
   shippingPhone?: string;
   paymentMethod?: string;
+  paymentUrl?: string | null;
   totalAmount: number;
   status: OrderStatus;
   snapToken?: string | null;
@@ -110,7 +126,7 @@ export interface Order {
     email: string;
   };
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface WishlistItem {

@@ -20,6 +20,7 @@ import {
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import { api } from "@/services/api";
 
 type ProfileTab = "account" | "profile" | "address";
 
@@ -66,7 +67,7 @@ const tabs: Array<{
 ];
 
 export default function ProfilePage() {
-  const { user, token, isLoading, refresh } = useAuth();
+  const { user, isLoading, refresh } = useAuth();
   const [activeTab, setActiveTab] = useState<ProfileTab>("account");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -101,7 +102,12 @@ export default function ProfilePage() {
 
     const savedAddress = window.localStorage.getItem(storageKey);
     if (savedAddress) {
-      setAddress({ ...emptyAddress, ...JSON.parse(savedAddress) });
+      try {
+        setAddress({ ...emptyAddress, ...JSON.parse(savedAddress) });
+      } catch (e) {
+        console.error("Failed to parse saved address", e);
+        setAddress({ ...emptyAddress, recipient: user.name });
+      }
     } else {
       setAddress((current) => ({
         ...current,
@@ -111,17 +117,17 @@ export default function ProfilePage() {
 
     const savedPreferences = window.localStorage.getItem(preferencesKey);
     if (savedPreferences) {
-      setPreferences({
-        ...defaultPreferences,
-        ...JSON.parse(savedPreferences),
-      });
+      try {
+        setPreferences({
+          ...defaultPreferences,
+          ...JSON.parse(savedPreferences),
+        });
+      } catch (e) {
+        console.error("Failed to parse saved preferences", e);
+        setPreferences(defaultPreferences);
+      }
     }
   }, [preferencesKey, storageKey, user]);
-
-  const authHeaders = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 
   const resetProfileForm = () => {
     if (!user) return;
@@ -149,17 +155,10 @@ export default function ProfilePage() {
 
     setSavingProfile(true);
     try {
-      const response = await fetch(`/api/users/${user.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: authHeaders,
-        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+      await api.patch(`/users/${user.id}`, {
+        name: name.trim(),
+        email: email.trim(),
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.message ?? "Gagal memperbarui akun");
-      }
 
       toast.success("Data akun berhasil diperbarui");
       setIsEditingProfile(false);
@@ -203,20 +202,10 @@ export default function ProfilePage() {
 
     setSavingPassword(true);
     try {
-      const response = await fetch(`/api/users/${user.id}/password`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: authHeaders,
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+      await api.patch(`/users/${user.id}/password`, {
+        currentPassword,
+        newPassword,
       });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.message ?? "Gagal memperbarui password");
-      }
 
       setCurrentPassword("");
       setNewPassword("");

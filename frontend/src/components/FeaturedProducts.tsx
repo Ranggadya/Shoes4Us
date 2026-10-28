@@ -3,6 +3,12 @@ import { Link } from "react-router-dom";
 import ProductCard from "./ProductCard";
 import { ArrowRight } from "lucide-react";
 import { Product } from "@/types";
+import { api } from "@/services/api";
+
+type FeaturedProductsResponse = {
+  success?: boolean;
+  data?: Product[] | { items?: Product[]; products?: Product[] };
+};
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -11,19 +17,18 @@ export default function FeaturedProducts() {
   useEffect(() => {
     async function fetchFeatured() {
       try {
-        const res = await fetch("/api/products?limit=8");
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json.data) ? json.data : (json.data?.products || []);
-          setProducts(items);
-        }
+        const json = await api.get<FeaturedProductsResponse>("/products?limit=8");
+        const items = Array.isArray(json.data)
+          ? json.data
+          : json.data?.items || json.data?.products || [];
+        setProducts(items);
       } catch (err) {
         console.error("Failed to load featured products:", err);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchFeatured();
+    void fetchFeatured();
   }, []);
 
   return (

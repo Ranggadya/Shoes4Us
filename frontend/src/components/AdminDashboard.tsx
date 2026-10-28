@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/services/api";
+import { getCategoryName } from "@/types";
 import {
   Search,
   Filter,
@@ -77,154 +79,172 @@ export default function AdminDashboard() {
     }
   }, [user, authLoading, navigate]);
 
-  // Fetch products
-  useEffect(() => {
-    if (user?.role === "ADMIN" && activeTab === "produk") {
-      fetchProducts();
-    }
-  }, [user, activeTab]);
-
-  // Fetch orders
-  useEffect(() => {
-    if (user?.role === "ADMIN" && activeTab === "status") {
-      fetchOrders();
-    }
-  }, [user, activeTab]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/products?pageSize=50&includeDetails=true", {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memuat produk");
-      }
-
-      const data = await response.json();
+      const data = await api.get<{ data?: { items?: Product[] } }>(
+        "/products?pageSize=50&includeDetails=true",
+        { cache: "no-store" }
+      );
       setProducts(data.data?.items || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat produk");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/orders?scope=all", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memuat pesanan");
-      }
-
-      const data = await response.json();
+      const data = await api.get<{ data?: { orders?: Order[] } }>(
+        "/orders?scope=all"
+      );
       setOrders(data.data?.orders || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat pesanan");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch products
+  useEffect(() => {
+    if (user?.role === "ADMIN" && activeTab === "produk") {
+      void fetchProducts();
+    }
+  }, [user, activeTab, fetchProducts]);
+
+  // Fetch orders
+  useEffect(() => {
+    if (user?.role === "ADMIN" && activeTab === "status") {
+      void fetchOrders();
+    }
+  }, [user, activeTab, fetchOrders]);
 
   // Filter & sort orders
-  const filteredAndSortedOrders = orders
-    .filter((order) => {
-      // Filter by status
-      if (filterStatus !== "ALL" && order.status !== filterStatus) {
-        return false;
-      }
+  const filteredAndSortedOrders = useMemo(
+    () =>
+      orders
+        .filter((order) => {
+          if (filterStatus !== "ALL" && order.status !== filterStatus) {
+            return false;
+          }
 
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesId = order.orderNumber.includes(query);
-        const matchesCustomer = order.user.name.toLowerCase().includes(query) ||
-          order.user.email.toLowerCase().includes(query);
-        const matchesProduct = order.items.some(item =>
-          item.product.name.toLowerCase().includes(query)
-        );
-        if (!matchesId && !matchesCustomer && !matchesProduct) {
-          return false;
-        }
-      }
+          if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            const matchesId = order.orderNumber.toLowerCase().includes(query);
+            const matchesCustomer =
+              (order.user?.name || "").toLowerCase().includes(query) ||
+              (order.user?.email || "").toLowerCase().includes(query);
+            const matchesProduct = order.items.some((item) =>
+              item.product.name.toLowerCase().includes(query)
+            );
+            if (!matchesId && !matchesCustomer && !matchesProduct) {
+              return false;
+            }
+          }
 
-      // Filter by date range
-      const orderDate = new Date(order.createdAt);
-      if (filterDateFrom && new Date(filterDateFrom) > orderDate) {
-        return false;
-      }
-      if (filterDateTo) {
-        const endDate = new Date(filterDateTo);
-        endDate.setHours(23, 59, 59, 999);
-        if (endDate < orderDate) {
-          return false;
-        }
-      }
+          const orderDate = new Date(order.createdAt);
+          if (filterDateFrom && new Date(filterDateFrom) > orderDate) {
+            return false;
+          }
+          if (filterDateTo) {
+            const endDate = new Date(filterDateTo);
+            endDate.setHours(23, 59, 59, 999);
+            if (endDate < orderDate) {
+              return false;
+            }
+          }
 
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case "oldest":
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case "amount-high":
-          return b.totalAmount - a.totalAmount;
-        case "amount-low":
-          return a.totalAmount - b.totalAmount;
-        default:
-          return 0;
-      }
-    });
+          return true;
+        })
+        .sort((a, b) => {
+          switch (sortBy) {
+            case "newest":
+              return (
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+              );
+            case "oldest":
+              return (
+                new Date(a.createdAt).getTime() -
+                new Date(b.createdAt).getTime()
+              );
+            case "amount-high":
+              return b.totalAmount - a.totalAmount;
+            case "amount-low":
+              return a.totalAmount - b.totalAmount;
+            default:
+              return 0;
+          }
+        }),
+    [orders, filterStatus, searchQuery, filterDateFrom, filterDateTo, sortBy]
+  );
 
   // Calculate statistics
-  const stats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === "PENDING").length,
-    processing: orders.filter(o => o.status === "PROCESSING").length,
-    shipped: orders.filter(o => o.status === "SHIPPED").length,
-    completed: orders.filter(o => o.status === "COMPLETED").length,
-    cancelled: orders.filter(o => o.status === "CANCELLED").length,
-    totalRevenue: orders
-      .filter(o => o.status !== "CANCELLED")
-      .reduce((sum, o) => sum + o.totalAmount, 0),
-    averageOrderValue: orders.length > 0
-      ? orders.reduce((sum, o) => sum + o.totalAmount, 0) / orders.length
-      : 0,
-  };
+  const stats = useMemo(
+    () => ({
+      total: orders.length,
+      pending: orders.filter((o) => o.status === "PENDING").length,
+      processing: orders.filter(
+        (o) => o.status === "PROCESSING" || o.status === "PAID"
+      ).length,
+      shipped: orders.filter((o) => o.status === "SHIPPED").length,
+      completed: orders.filter((o) => o.status === "DELIVERED").length,
+      cancelled: orders.filter((o) => o.status === "CANCELLED").length,
+      totalRevenue: orders
+        .filter((o) => o.status !== "CANCELLED")
+        .reduce((sum, o) => sum + o.totalAmount, 0),
+      averageOrderValue:
+        orders.length > 0
+          ? orders.reduce((sum, o) => sum + o.totalAmount, 0) / orders.length
+          : 0,
+    }),
+    [orders]
+  );
 
-  // Export to CSV
+  // Export to CSV (sanitized against CSV Formula Injection & quote escaping)
   const exportToCSV = () => {
-    const headers = ["ID", "Tanggal", "Pelanggan", "Email", "Produk", "Total", "Status"];
-    const rows = filteredAndSortedOrders.map(order => [
+    const escapeCsvCell = (value: unknown): string => {
+      const str = String(value ?? "");
+      const neutralized = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+      return `"${neutralized.replace(/"/g, '""')}"`;
+    };
+
+    const headers = [
+      "ID",
+      "Tanggal",
+      "Pelanggan",
+      "Email",
+      "Produk",
+      "Total",
+      "Status",
+    ];
+    const rows = filteredAndSortedOrders.map((order) => [
       order.orderNumber,
       new Date(order.createdAt).toLocaleDateString("id-ID"),
-      order.user.name,
-      order.user.email,
-      order.items.map(i => `${i.product.name} (${i.quantity}x)`).join("; "),
+      order.user?.name || "-",
+      order.user?.email || "-",
+      order.items.map((i) => `${i.product.name} (${i.quantity}x)`).join("; "),
       order.totalAmount,
-      order.status
+      order.status,
     ]);
 
     const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+      headers.map(escapeCsvCell).join(","),
+      ...rows.map((row) => row.map(escapeCsvCell).join(",")),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = objectUrl;
+    link.download = `orders_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
+    URL.revokeObjectURL(objectUrl);
 
     toast.success("Data berhasil diekspor!");
   };
@@ -239,25 +259,25 @@ export default function AdminDashboard() {
   };
 
   // Ganti status pesanan
-  const handleStatusChange = async (orderId: string, newStatus: string, currentStatus: string) => {
+  const handleStatusChange = async (
+    orderId: string,
+    newStatus: string,
+    currentStatus: string
+  ) => {
     if (newStatus === currentStatus) {
-      return; // No change
+      return;
     }
 
-    if (!confirm(`Ubah status pesanan #${orderId} dari "${currentStatus}" menjadi "${newStatus}"?`)) return;
+    if (
+      !confirm(
+        `Ubah status pesanan #${orderId} dari "${currentStatus}" menjadi "${newStatus}"?`
+      )
+    )
+      return;
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || "Gagal mengubah status");
-      }
+      setLoading(true);
+      await api.patch(`/orders/${orderId}`, { status: newStatus });
 
       toast.success(`Status pesanan #${orderId} berhasil diubah!`);
       await fetchOrders();
@@ -384,7 +404,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-3">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                              {typeof p.category === 'string' ? p.category : p.category.name}
+                              {getCategoryName(p.category)}
                             </span>
                           </td>
                           <td className="p-3">
@@ -511,9 +531,10 @@ export default function AdminDashboard() {
                   >
                     <option value="ALL">Semua Status</option>
                     <option value="PENDING">Pending</option>
+                    <option value="PAID">Paid</option>
                     <option value="PROCESSING">Processing</option>
                     <option value="SHIPPED">Shipped</option>
-                    <option value="COMPLETED">Completed</option>
+                    <option value="DELIVERED">Delivered</option>
                     <option value="CANCELLED">Cancelled</option>
                   </select>
                 </div>
@@ -689,7 +710,7 @@ export default function AdminDashboard() {
                               </div>
                             </td>
                             <td className="p-3">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "COMPLETED" ? "bg-green-100 text-green-800" :
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "DELIVERED" || order.status === "PAID" ? "bg-green-100 text-green-800" :
                                   order.status === "SHIPPED" ? "bg-blue-100 text-blue-800" :
                                     order.status === "PROCESSING" ? "bg-yellow-100 text-yellow-800" :
                                       order.status === "CANCELLED" ? "bg-red-100 text-red-800" :
@@ -714,9 +735,10 @@ export default function AdminDashboard() {
                                   className="text-xs border border-gray-300 rounded px-2 py-1 cursor-pointer bg-white hover:border-gray-400 disabled:opacity-50"
                                 >
                                   <option value="PENDING">Pending</option>
+                                  <option value="PAID">Paid</option>
                                   <option value="PROCESSING">Processing</option>
                                   <option value="SHIPPED">Shipped</option>
-                                  <option value="COMPLETED">Completed</option>
+                                  <option value="DELIVERED">Delivered</option>
                                   <option value="CANCELLED">Cancelled</option>
                                 </select>
                               </div>
@@ -736,7 +758,7 @@ export default function AdminDashboard() {
                       <div className="bg-gray-800 px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="font-mono text-sm font-bold text-white">#{order.orderNumber}</span>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "COMPLETED" ? "bg-green-400 text-green-900" :
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${order.status === "DELIVERED" || order.status === "PAID" ? "bg-green-400 text-green-900" :
                               order.status === "SHIPPED" ? "bg-blue-400 text-blue-900" :
                                 order.status === "PROCESSING" ? "bg-yellow-400 text-yellow-900" :
                                   order.status === "CANCELLED" ? "bg-red-400 text-red-900" :
@@ -821,9 +843,10 @@ export default function AdminDashboard() {
                             className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium bg-white hover:border-gray-400 disabled:opacity-50"
                           >
                             <option value="PENDING">Pending</option>
+                            <option value="PAID">Paid</option>
                             <option value="PROCESSING">Processing</option>
                             <option value="SHIPPED">Shipped</option>
-                            <option value="COMPLETED">Completed</option>
+                            <option value="DELIVERED">Delivered</option>
                             <option value="CANCELLED">Cancelled</option>
                           </select>
                         </div>
@@ -934,9 +957,10 @@ export default function AdminDashboard() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="PENDING">Pending</option>
+                          <option value="PAID">Paid</option>
                           <option value="PROCESSING">Processing</option>
                           <option value="SHIPPED">Shipped</option>
-                          <option value="COMPLETED">Completed</option>
+                          <option value="DELIVERED">Delivered</option>
                           <option value="CANCELLED">Cancelled</option>
                         </select>
                       </div>

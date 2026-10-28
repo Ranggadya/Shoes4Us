@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { Filter, X, ChevronDown } from "lucide-react";
+import { api } from "@/services/api";
+import { Category } from "@/types";
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
+type FilterValues = {
+  category: string;
+  minPrice: number;
+  maxPrice: number;
+  sortBy: string;
 };
 
 type FilterProps = {
-  onFilterChange: (filters: {
-    category: string;
-    minPrice: number;
-    maxPrice: number;
-    sortBy: string;
-  }) => void;
+  initialFilters?: Partial<FilterValues>;
+  onFilterChange: (filters: FilterValues) => void;
 };
 
 const sortOptions = [
@@ -24,36 +23,69 @@ const sortOptions = [
   { value: "name-desc", label: "Nama: Z-A" },
 ];
 
-export default function ProductFilters({ onFilterChange }: FilterProps) {
+export default function ProductFilters({ initialFilters, onFilterChange }: FilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000000);
-  const [sortBy, setSortBy] = useState("newest");
+  const [minPrice, setMinPrice] = useState(initialFilters?.minPrice ?? 0);
+  const [maxPrice, setMaxPrice] = useState(initialFilters?.maxPrice ?? 5000000);
+  const [sortBy, setSortBy] = useState(initialFilters?.sortBy ?? "newest");
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/categories");
-        const json = await res.json();
-        if (json.success && json.data?.categories) {
-          setCategories(json.data.categories);
-        } else if (Array.isArray(json.data)) {
+        const json = await api.get<{
+          success?: boolean;
+          data?: Category[] | { categories?: Category[] };
+        }>("/categories");
+        if (Array.isArray(json.data)) {
           setCategories(json.data);
+        } else if (json.data?.categories) {
+          setCategories(json.data.categories);
         }
       } catch (error) {
         console.error("Gagal mengambil kategori:", error);
       }
     };
-    fetchCategories();
+    void fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (!initialFilters) return;
+    if (typeof initialFilters.minPrice === "number") {
+      setMinPrice(initialFilters.minPrice);
+    }
+    if (typeof initialFilters.maxPrice === "number") {
+      setMaxPrice(initialFilters.maxPrice);
+    }
+    if (initialFilters.sortBy) {
+      setSortBy(initialFilters.sortBy);
+    }
+    if (!initialFilters.category) {
+      setSelectedCategory("Semua");
+    } else {
+      const matched = categories.find(
+        (c) =>
+          c.slug.toLowerCase() === initialFilters.category?.toLowerCase() ||
+          c.name.toLowerCase() === initialFilters.category?.toLowerCase()
+      );
+      setSelectedCategory(matched ? matched.name : initialFilters.category);
+    }
+  }, [
+    initialFilters?.category,
+    initialFilters?.minPrice,
+    initialFilters?.maxPrice,
+    initialFilters?.sortBy,
+    categories,
+    initialFilters,
+  ]);
 
   const applyFilters = () => {
     const categorySlug =
       selectedCategory === "Semua"
         ? ""
-        : categories.find((c) => c.name === selectedCategory)?.slug || "";
+        : categories.find((c) => c.name === selectedCategory)?.slug ||
+          selectedCategory;
 
     onFilterChange({
       category: categorySlug,

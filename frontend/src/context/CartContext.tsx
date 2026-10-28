@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { api } from "@/services/api";
 
 type CartProduct = {
   id: string;
@@ -40,7 +41,11 @@ type CartContextValue = {
   cart: CartSummary | null;
   isLoading: boolean;
   error: string | null;
-  addItem: (payload: { productId: string; quantity: number; size?: string | null }) => Promise<void>;
+  addItem: (payload: {
+    productId: string;
+    quantity: number;
+    size?: string | null;
+  }) => Promise<void>;
   updateItemQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -62,41 +67,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const headers = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }),
-    [token]
-  );
-
   const loadCart = useCallback(
     async (silent = false) => {
       if (!user || !token) {
         setCart(emptyCart);
+        setIsLoading(false);
         return;
       }
 
       if (!silent) setIsLoading(true);
+      setError(null);
       try {
-        const res = await fetch("/api/cart", { headers });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-        setCart(data.data);
+        const data = await api.get<{ data: CartSummary }>("/cart");
+        setCart(data.data ?? emptyCart);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Gagal memuat keranjang");
+        setError(
+          err instanceof Error ? err.message : "Gagal memuat keranjang"
+        );
         setCart(emptyCart);
       } finally {
         setIsLoading(false);
       }
     },
-    [user, token, headers]
+    [user, token]
   );
 
   useEffect(() => {
     const pathname = location.pathname;
     const shouldLoadCart =
-      pathname === "/cart" || pathname === "/payment" || pathname === "/checkout";
+      pathname === "/cart" ||
+      pathname === "/payment" ||
+      pathname === "/checkout";
 
     if (authLoading) return;
     if (!user) {
@@ -113,63 +114,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [authLoading, user, location.pathname, loadCart]);
 
   const ensureAuth = useCallback(() => {
-    if (!token || !user) throw new Error("Silakan login untuk mengakses keranjang.");
+    if (!token || !user) {
+      throw new Error("Silakan login untuk mengakses keranjang.");
+    }
   }, [token, user]);
 
   const addItem = useCallback(
-    async (payload: { productId: string; quantity: number; size?: string | null }) => {
+    async (payload: {
+      productId: string;
+      quantity: number;
+      size?: string | null;
+    }) => {
       ensureAuth();
-      const res = await fetch("/api/cart", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      await api.post("/cart", payload);
       await loadCart(true);
     },
-    [ensureAuth, headers, loadCart]
+    [ensureAuth, loadCart]
   );
 
   const updateItemQuantity = useCallback(
     async (itemId: string, quantity: number) => {
       ensureAuth();
-      const res = await fetch(`/api/cart/${itemId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ quantity }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      await api.patch(`/cart/${itemId}`, { quantity });
       await loadCart(true);
     },
-    [ensureAuth, headers, loadCart]
+    [ensureAuth, loadCart]
   );
 
   const removeItem = useCallback(
     async (itemId: string) => {
       ensureAuth();
-      const res = await fetch(`/api/cart/${itemId}`, {
-        method: "DELETE",
-        headers,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      await api.delete(`/cart/${itemId}`);
       await loadCart(true);
     },
-    [ensureAuth, headers, loadCart]
+    [ensureAuth, loadCart]
   );
 
   const clearCart = useCallback(async () => {
     ensureAuth();
-    const res = await fetch("/api/cart", {
-      method: "DELETE",
-      headers,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    await api.delete("/cart");
     await loadCart(true);
-  }, [ensureAuth, headers, loadCart]);
+  }, [ensureAuth, loadCart]);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -182,7 +167,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearCart,
       refresh: loadCart,
     }),
-    [cart, isLoading, error, addItem, updateItemQuantity, removeItem, clearCart, loadCart]
+    [
+      cart,
+      isLoading,
+      error,
+      addItem,
+      updateItemQuantity,
+      removeItem,
+      clearCart,
+      loadCart,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

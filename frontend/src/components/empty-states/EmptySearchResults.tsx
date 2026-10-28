@@ -1,11 +1,21 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SearchX } from "lucide-react";
 
 interface EmptySearchResultsProps {
   query?: string;
+  onReset?: () => void;
 }
 
-export default function EmptySearchResults({ query }: EmptySearchResultsProps) {
+export default function EmptySearchResults({ query, onReset }: EmptySearchResultsProps) {
+  const navigate = useNavigate();
+
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+    }
+    navigate("/product");
+  };
+
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -19,7 +29,7 @@ export default function EmptySearchResults({ query }: EmptySearchResultsProps) {
       <p className="text-gray-600 text-center max-w-md mb-2">
         {query ? (
           <>
-            Tidak ada produk yang ditemukan untuk <strong>"{query}"</strong>
+            Tidak ada produk yang ditemukan untuk <strong>&quot;{query}&quot;</strong>
           </>
         ) : (
           "Tidak ada produk yang sesuai dengan kriteria pencarian Anda."
@@ -44,7 +54,7 @@ export default function EmptySearchResults({ query }: EmptySearchResultsProps) {
           Lihat Semua Produk
         </Link>
         <button
-          onClick={() => window.location.reload()}
+          onClick={handleReset}
           className="bg-white text-gray-900 px-6 py-2.5 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition font-medium"
         >
           Reset Filter
@@ -55,19 +65,19 @@ export default function EmptySearchResults({ query }: EmptySearchResultsProps) {
         <p className="text-sm text-gray-500 mb-3">Kategori Populer:</p>
         <div className="flex flex-wrap justify-center gap-2">
           <Link
-            to="/product?category=Running"
+            to="/product?category=running"
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition text-sm"
           >
             Running
           </Link>
           <Link
-            to="/product?category=Casual"
+            to="/product?category=casual"
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition text-sm"
           >
             Casual
           </Link>
           <Link
-            to="/product?category=Sneakers"
+            to="/product?category=sneakers"
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition text-sm"
           >
             Sneakers

@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Heart, ShoppingCart, Trash2, PackageX } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { api, ApiError } from "@/services/api";
+import { formatCurrency } from "@/utils/format";
+import { getCategoryName } from "@/types";
 
 interface WishlistItem {
   id: string;
@@ -13,7 +16,7 @@ interface WishlistItem {
     name: string;
     price: number;
     imageUrl: string | null;
-    category: { id: string; name: string; slug: string } | string;
+    category: { id: string; name: string; slug: string } | string | null;
     stock: number;
     slug: string;
   };
@@ -21,52 +24,42 @@ interface WishlistItem {
 
 export default function WishlistPage() {
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { toggleProduct } = useWishlist();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchWishlist();
-  }, []);
-
-  const fetchWishlist = async () => {
+  const fetchWishlist = useCallback(async () => {
     try {
-      const res = await fetch("/api/wishlist");
-
-      if (res.status === 401) {
+      const data = await api.get<{ data?: { items?: WishlistItem[] } }>(
+        "/wishlist"
+      );
+      setWishlistItems(data.data?.items || []);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
         toast.error("Silakan login terlebih dahulu");
         navigate("/login");
         return;
       }
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch wishlist");
-      }
-
-      const data = await res.json();
-      setWishlistItems(data.data?.items || []);
-    } catch (error) {
       console.error("Error fetching wishlist:", error);
       toast.error("Gagal memuat wishlist");
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    void fetchWishlist();
+  }, [fetchWishlist]);
 
   const handleRemove = async (item: WishlistItem) => {
     setRemovingId(item.id);
 
     try {
-      const res = await fetch(`/api/wishlist/${item.productId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to remove item");
-      }
-
-      setWishlistItems((prev) => prev.filter((current) => current.id !== item.id));
+      await toggleProduct(item.productId);
+      setWishlistItems((prev) =>
+        prev.filter((current) => current.id !== item.id)
+      );
       toast.success("Dihapus dari wishlist");
     } catch (error) {
       console.error("Error removing item:", error);
@@ -76,19 +69,13 @@ export default function WishlistPage() {
     }
   };
 
-  const handleAddToCart = async (item: WishlistItem) => {
+  const handleSelectSizeAndBuy = (item: WishlistItem) => {
     if (item.product.stock <= 0) {
       toast.error("Produk sedang habis");
       return;
     }
 
-    try {
-      await addItem({ productId: item.productId, quantity: 1 });
-      toast.success(`${item.product.name} ditambahkan ke keranjang`);
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      toast.error("Gagal menambahkan ke keranjang");
-    }
+    navigate(`/product/${item.product.id || item.product.slug}`);
   };
 
   if (loading) {
@@ -99,7 +86,7 @@ export default function WishlistPage() {
             <Heart className="w-8 h-8 text-red-500" />
             <h1 className="text-3xl font-bold text-gray-900">Wishlist Saya</h1>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
               <div
@@ -167,7 +154,8 @@ export default function WishlistPage() {
             </h1>
           </div>
           <p className="text-gray-600">
-            {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
+            {wishlistItems.length}{" "}
+            {wishlistItems.length === 1 ? "item" : "items"}
           </p>
         </div>
 
@@ -177,7 +165,10 @@ export default function WishlistPage() {
               key={item.id}
               className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow overflow-hidden group"
             >
-              <Link to={`/product/${item.product.id || item.product.slug}`} className="block">
+              <Link
+                to={`/product/${item.product.id || item.product.slug}`}
+                className="block"
+              >
                 <div className="aspect-square relative overflow-hidden bg-gray-100">
                   {item.product.imageUrl ? (
                     <img
@@ -190,7 +181,7 @@ export default function WishlistPage() {
                       <PackageX className="w-16 h-16 text-gray-300" />
                     </div>
                   )}
-                  
+
                   {item.product.stock <= 0 && (
                     <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
                       HABIS
@@ -208,7 +199,7 @@ export default function WishlistPage() {
                 <Link to={`/product/${item.product.id || item.product.slug}`}>
                   <div className="space-y-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">
-                      {typeof item.product.category === 'string' ? item.product.category : item.product.category?.name}
+                      {getCategoryName(item.product.category)}
                     </p>
                     <h3 className="font-semibold text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">
                       {item.product.name}
@@ -217,12 +208,12 @@ export default function WishlistPage() {
                 </Link>
 
                 <p className="text-2xl font-bold text-gray-900">
-                  Rp {item.product.price.toLocaleString("id-ID")}
+                  {formatCurrency(item.product.price)}
                 </p>
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleAddToCart(item)}
+                    onClick={() => handleSelectSizeAndBuy(item)}
                     disabled={item.product.stock <= 0}
                     className={`
                       flex-1 flex items-center justify-center gap-2
@@ -238,7 +229,7 @@ export default function WishlistPage() {
                   >
                     <ShoppingCart className="w-4 h-4" />
                     <span className="hidden sm:inline">
-                      {item.product.stock > 0 ? "Tambah" : "Habis"}
+                      {item.product.stock > 0 ? "Pilih Ukuran" : "Habis"}
                     </span>
                   </button>
 

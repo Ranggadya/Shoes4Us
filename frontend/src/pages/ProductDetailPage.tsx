@@ -4,6 +4,8 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/utils/format";
+import { api } from "@/services/api";
+import { getCategoryName } from "@/types";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
@@ -70,25 +72,26 @@ export default function ProductDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        // ✅ Fetch produk & review SECARA PARALEL — hemat ~300–500ms dibanding berurutan
-        const [productRes, reviewRes] = await Promise.all([
-          fetch(`/api/products/${productId}`, { credentials: "include" }),
-          fetch(`/api/reviews?productId=${productId}&summaryOnly=true`),
+        // ✅ Fetch produk & review SECARA PARALEL
+        const [productData, reviewData] = await Promise.all([
+          api.get<ProductResponse>(`/products/${productId}`),
+          api
+            .get<{
+              success?: boolean;
+              data?: { summary?: { averageRating: number; total: number } };
+            }>(`/reviews?productId=${encodeURIComponent(productId)}&summaryOnly=true`)
+            .catch(() => null),
         ]);
 
-        if (!productRes.ok) {
+        if (!productData?.data?.product) {
           throw new Error("Produk tidak ditemukan");
         }
 
-        const data = (await productRes.json()) as ProductResponse;
-        setProduct(data.data.product);
+        setProduct(productData.data.product);
 
-        if (reviewRes.ok) {
-          const reviewData = await reviewRes.json();
-          if (reviewData.success && reviewData.data.summary) {
-            setAverageRating(reviewData.data.summary.averageRating);
-            setTotalReviews(reviewData.data.summary.total);
-          }
+        if (reviewData?.data?.summary) {
+          setAverageRating(reviewData.data.summary.averageRating);
+          setTotalReviews(reviewData.data.summary.total);
         }
       } catch (err) {
         setError(
@@ -269,7 +272,7 @@ export default function ProductDetailPage() {
             </Link>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-500 hover:text-gray-700">
-              {typeof product.category === 'string' ? product.category : product.category.name}
+              {getCategoryName(product.category)}
             </span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-900 font-medium">{product.name}</span>
@@ -327,7 +330,7 @@ export default function ProductDetailPage() {
             {/* Category & Name */}
             <div>
               <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold uppercase tracking-wider rounded-full">
-                {typeof product.category === 'string' ? product.category : product.category.name}
+                {getCategoryName(product.category)}
               </span>
               <h1 className="text-4xl font-bold text-gray-900 mt-3">
                 {product.name}
@@ -572,7 +575,7 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="font-semibold">Category:</span>{" "}
-                    {typeof product.category === 'string' ? product.category : product.category.name}
+                    {getCategoryName(product.category)}
                   </div>
                   <div>
                     <span className="font-semibold">Available Sizes:</span> 38
