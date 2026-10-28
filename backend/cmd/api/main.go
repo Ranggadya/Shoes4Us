@@ -14,6 +14,9 @@ import (
 	"github.com/ranggadya/shoes4us/backend/internal/config"
 	"github.com/ranggadya/shoes4us/backend/internal/database"
 	"github.com/ranggadya/shoes4us/backend/internal/handler"
+	"github.com/ranggadya/shoes4us/backend/internal/repository"
+	"github.com/ranggadya/shoes4us/backend/internal/service"
+	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
 func main() {
@@ -41,10 +44,17 @@ func main() {
 		log.Println("warning: DATABASE_URL is empty; starting server without database connection")
 	}
 
+	jwtMgr := token.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiresHours)
+	userRepo := repository.NewUserRepository(pool)
+	authSvc := service.NewAuthService(userRepo, jwtMgr)
+	authHandler := handler.NewAuthHandler(authSvc)
+
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins: cfg.AllowedOrigins,
 		UploadDir:      cfg.UploadDir,
 		JWTSecret:      cfg.JWTSecret,
+		JWTManager:     jwtMgr,
+		AuthHandler:    authHandler,
 	})
 
 	srv := &http.Server{
