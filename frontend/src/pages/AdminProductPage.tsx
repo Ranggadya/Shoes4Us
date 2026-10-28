@@ -145,8 +145,19 @@ export default function AdminProductPage() {
 
     // Sorting
     switch (sortBy) {
+      case "newest":
+        filtered.sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
+        );
+        break;
       case "oldest":
-        filtered.reverse();
+        filtered.sort(
+          (a, b) =>
+            new Date(a.createdAt || 0).getTime() -
+            new Date(b.createdAt || 0).getTime()
+        );
         break;
       case "price-asc":
         filtered.sort((a, b) => a.price - b.price);
@@ -924,3 +935,4 @@ export default function AdminProductPage() {
     </div>
   );
 }
+

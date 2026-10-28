@@ -19,10 +19,15 @@ import { api } from "@/services/api";
 
 const CATALOG_CATEGORIES = [
   { value: "Sneakers", label: "Sneakers", icon: "S", description: "Sneakers dan lifestyle" },
-  { value: "Sport", label: "Sport", icon: "P", description: "Sepatu olahraga & basket" },
-  { value: "Running", label: "Running", icon: "R", description: "Sepatu lari dan training" },
+  { value: "Sport", label: "Sport", icon: "P", description: "Sepatu olahraga & atletik" },
+  { value: "Running", label: "Running", icon: "R", description: "Sepatu lari dan marathon" },
   { value: "Casual", label: "Casual", icon: "C", description: "Sepatu kasual sehari-hari" },
   { value: "Formal", label: "Formal", icon: "F", description: "Sepatu formal & kerja" },
+  { value: "Basketball", label: "Basketball", icon: "B", description: "Sepatu basket performa tinggi" },
+  { value: "Football", label: "Football", icon: "O", description: "Sepatu sepak bola & futsal" },
+  { value: "Training", label: "Training", icon: "T", description: "Sepatu gym & training" },
+  { value: "Lifestyle", label: "Lifestyle", icon: "L", description: "Koleksi fashion & streetwear" },
+  { value: "Other", label: "Other", icon: "+", description: "Kategori lainnya" },
 ];
 
 const PRODUCT_AUDIENCES = [
@@ -681,3 +686,4 @@ export default function AdminAddProductPage() {
     </div>
   );
 }
+

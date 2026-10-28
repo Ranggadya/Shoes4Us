@@ -1,4 +1,4 @@
-import { FormEvent, useState, useRef } from "react";
+import { FormEvent, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -23,6 +23,31 @@ export default function PaymentPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const saved = window.localStorage.getItem(`shoes4us-address-${user.id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as {
+          recipient?: string;
+          address?: string;
+          city?: string;
+          postalCode?: string;
+          phone?: string;
+        };
+        setName((prev) => prev || parsed.recipient || user.name || "");
+        setAddress((prev) => prev || parsed.address || "");
+        setCity((prev) => prev || parsed.city || "");
+        setPostalCode((prev) => prev || parsed.postalCode || "");
+        setPhone((prev) => prev || parsed.phone || "");
+        return;
+      } catch {
+        // Fallback to user.name if saved address JSON is invalid
+      }
+    }
+    setName((prev) => prev || user.name || "");
+  }, [user]);
 
   const subtotal = cart?.totals.subtotal ?? 0;
   const total = subtotal === 0 ? 0 : subtotal + DELIVERY_FEE;
@@ -150,7 +175,8 @@ export default function PaymentPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full border rounded-lg p-2"
+                disabled={Boolean(createdOrderId)}
+                className="w-full border rounded-lg p-2 disabled:bg-gray-100"
                 placeholder="Masukkan nama lengkap"
               />
             </div>
@@ -159,7 +185,8 @@ export default function PaymentPage() {
               <textarea
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full border rounded-lg p-2"
+                disabled={Boolean(createdOrderId)}
+                className="w-full border rounded-lg p-2 disabled:bg-gray-100"
                 rows={3}
                 placeholder="Masukkan alamat lengkap"
               ></textarea>
@@ -171,7 +198,8 @@ export default function PaymentPage() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full border rounded-lg p-2"
+                  disabled={Boolean(createdOrderId)}
+                  className="w-full border rounded-lg p-2 disabled:bg-gray-100"
                   placeholder="Contoh: Bandung"
                 />
               </div>
@@ -181,7 +209,8 @@ export default function PaymentPage() {
                   type="text"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  className="w-full border rounded-lg p-2"
+                  disabled={Boolean(createdOrderId)}
+                  className="w-full border rounded-lg p-2 disabled:bg-gray-100"
                   placeholder="40115"
                 />
               </div>
@@ -192,7 +221,8 @@ export default function PaymentPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border rounded-lg p-2"
+                disabled={Boolean(createdOrderId)}
+                className="w-full border rounded-lg p-2 disabled:bg-gray-100"
                 placeholder="08xxxxxxxxxx"
               />
             </div>
@@ -201,7 +231,8 @@ export default function PaymentPage() {
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                className="w-full border rounded-lg p-2"
+                disabled={Boolean(createdOrderId)}
+                className="w-full border rounded-lg p-2 disabled:bg-gray-100"
               >
                 <option>Kartu Kredit</option>
                 <option>QRIS</option>
