@@ -77,4 +77,3 @@ func (m *JWTManager) Verify(tokenStr string) (*UserClaims, error) {
 
 	return &claims.UserClaims, nil
 }
-

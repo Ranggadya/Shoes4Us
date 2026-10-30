@@ -316,4 +316,3 @@ func (r *PostgresUserRepository) DeleteResetTokensByUser(ctx context.Context, us
 	_, err := r.pool.Exec(ctx, query, userID)
 	return err
 }
-

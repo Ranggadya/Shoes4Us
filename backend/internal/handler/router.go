@@ -18,6 +18,7 @@ type RouterDependencies struct {
 	JWTSecret      string
 	JWTManager     *token.JWTManager
 	AuthHandler    *AuthHandler
+	UserHandler    *UserHandler
 }
 
 // NewRouter constructs the root Chi HTTP router with CORS, static uploads, and /api endpoints.
@@ -51,9 +52,23 @@ func NewRouter(deps RouterDependencies) http.Handler {
 			api.Route("/auth", func(auth chi.Router) {
 				auth.Post("/register", deps.AuthHandler.Register)
 				auth.Post("/login", deps.AuthHandler.Login)
+				auth.Post("/forgot-password", deps.AuthHandler.ForgotPassword)
+				auth.Post("/reset-password", deps.AuthHandler.ResetPassword)
 				if jwtMgr != nil {
 					auth.With(middleware.RequireAuth(jwtMgr)).Get("/me", deps.AuthHandler.Me)
 				}
+			})
+		}
+
+		if deps.UserHandler != nil && jwtMgr != nil {
+			api.Route("/users", func(users chi.Router) {
+				users.Use(middleware.RequireAuth(jwtMgr))
+				users.Get("/me", deps.UserHandler.GetMe)
+				users.Put("/me", deps.UserHandler.UpdateMe)
+				users.Patch("/{id}", deps.UserHandler.UpdateProfile)
+				users.Patch("/{id}/password", deps.UserHandler.UpdatePassword)
+				users.With(middleware.RequireAdmin).Get("/", deps.UserHandler.ListUsers)
+				users.With(middleware.RequireAdmin).Delete("/{id}", deps.UserHandler.DeleteUser)
 			})
 		}
 	})

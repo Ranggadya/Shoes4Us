@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
@@ -11,18 +12,41 @@ import (
 	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
+// resetTokenTTL is how long a password reset token stays valid (SPEC-backend.md §6.1: 1 hour).
+const resetTokenTTL = time.Hour
+
 // AuthService implements domain.AuthService.
 type AuthService struct {
-	userRepo domain.UserRepository
-	jwtMgr   *token.JWTManager
+	userRepo      domain.UserRepository
+	jwtMgr        *token.JWTManager
+	resetURLBase  string
+	logResetLinks bool
 }
 
+var _ domain.AuthService = (*AuthService)(nil)
+
 // NewAuthService constructs an AuthService with the given user repository and JWT manager.
+// Reset links are not logged unless WithDevResetLinkLogging(true) is set.
 func NewAuthService(userRepo domain.UserRepository, jwtMgr *token.JWTManager) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
-		jwtMgr:   jwtMgr,
+		userRepo:     userRepo,
+		jwtMgr:       jwtMgr,
+		resetURLBase: "http://localhost:3000",
 	}
+}
+
+// WithDevResetLinkLogging enables logging the raw reset link; enable only when SMTP is not configured.
+func (s *AuthService) WithDevResetLinkLogging(enabled bool) *AuthService {
+	s.logResetLinks = enabled
+	return s
+}
+
+// WithResetURLBase sets the frontend base URL used to build password reset links.
+func (s *AuthService) WithResetURLBase(frontendURL string) *AuthService {
+	if trimmed := strings.TrimRight(strings.TrimSpace(frontendURL), "/"); trimmed != "" {
+		s.resetURLBase = trimmed
+	}
+	return s
 }
 
 func (s *AuthService) Register(ctx context.Context, name, email, password string) (*domain.AuthResponse, error) {
@@ -136,6 +160,8 @@ func (s *AuthService) GetMe(ctx context.Context, userID string) (*domain.User, e
 	return user, nil
 }
 
+// ForgotPassword generates a single-use reset token for a registered email and stores its SHA-256 hash.
+// Returns nil when the email is not registered to prevent user enumeration.
 func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 	cleanEmail := strings.ToLower(strings.TrimSpace(email))
 	if cleanEmail == "" || !strings.Contains(cleanEmail, "@") {
@@ -155,11 +181,23 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 
 	rawToken := uuid.NewString()
 	tokenHash := hash.HashTokenSHA256(rawToken)
-	expiresAt := time.Now().UTC().Add(15 * time.Minute)
+	expiresAt := time.Now().UTC().Add(resetTokenTTL)
 
-	return s.userRepo.SaveResetToken(ctx, user.ID, tokenHash, expiresAt)
+	if err := s.userRepo.SaveResetToken(ctx, user.ID, tokenHash, expiresAt); err != nil {
+		return err
+	}
+
+	// SPEC-backend.md §6.1: the reset link may only be logged in development when SMTP is not configured.
+	// The raw token grants account takeover, so it is never logged once SMTP is configured.
+	if s.logResetLinks {
+		log.Printf("[auth][dev] SMTP not configured; password reset link for %s: %s/reset-password?token=%s", user.Email, s.resetURLBase, rawToken)
+	} else {
+		log.Printf("[auth] password reset requested for user %s (email delivery not yet implemented)", user.ID)
+	}
+	return nil
 }
 
+// ResetPassword hashes the raw reset token with SHA-256, verifies it, and updates the user's password.
 func (s *AuthService) ResetPassword(ctx context.Context, rawToken, newPassword string) error {
 	cleanToken := strings.TrimSpace(rawToken)
 	if cleanToken == "" {
@@ -187,4 +225,3 @@ func (s *AuthService) ResetPassword(ctx context.Context, rawToken, newPassword s
 	_ = s.userRepo.DeleteResetTokensByUser(ctx, userID)
 	return nil
 }
-

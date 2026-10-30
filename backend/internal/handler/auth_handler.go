@@ -32,6 +32,16 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	Password    string `json:"password"`
+	NewPassword string `json:"newPassword"`
+}
+
 // Register handles `POST /api/auth/register`.
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
@@ -87,6 +97,44 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
+// ForgotPassword handles `POST /api/auth/forgot-password`.
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req forgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, domain.NewBadRequest("Data request tidak valid"))
+		return
+	}
+
+	if err := h.authService.ForgotPassword(r.Context(), req.Email); err != nil {
+		response.WriteError(w, err)
+		return
+	}
+
+	response.WriteSuccess(w, http.StatusOK, "Jika email terdaftar, instruksi reset password telah dikirim", nil, nil)
+}
+
+// ResetPassword handles `POST /api/auth/reset-password`.
+// Supports both `newPassword` and `password` fields for compatibility with ResetPasswordPage.tsx.
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req resetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, domain.NewBadRequest("Data reset password tidak valid"))
+		return
+	}
+
+	newPassword := req.NewPassword
+	if newPassword == "" {
+		newPassword = req.Password
+	}
+
+	if err := h.authService.ResetPassword(r.Context(), req.Token, newPassword); err != nil {
+		response.WriteError(w, err)
+		return
+	}
+
+	response.WriteSuccess(w, http.StatusOK, "Password berhasil direset", nil, nil)
+}
+
 func setAuthCookie(w http.ResponseWriter, jwtToken string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
@@ -97,4 +145,3 @@ func setAuthCookie(w http.ResponseWriter, jwtToken string) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
-

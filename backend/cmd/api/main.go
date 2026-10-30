@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,8 +47,12 @@ func main() {
 
 	jwtMgr := token.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiresHours)
 	userRepo := repository.NewUserRepository(pool)
-	authSvc := service.NewAuthService(userRepo, jwtMgr)
+	authSvc := service.NewAuthService(userRepo, jwtMgr).
+		WithResetURLBase(cfg.FrontendURL).
+		WithDevResetLinkLogging(strings.TrimSpace(cfg.SMTPHost) == "")
+	userSvc := service.NewUserService(userRepo)
 	authHandler := handler.NewAuthHandler(authSvc)
+	userHandler := handler.NewUserHandler(userSvc)
 
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins: cfg.AllowedOrigins,
@@ -55,6 +60,7 @@ func main() {
 		JWTSecret:      cfg.JWTSecret,
 		JWTManager:     jwtMgr,
 		AuthHandler:    authHandler,
+		UserHandler:    userHandler,
 	})
 
 	srv := &http.Server{

@@ -3,6 +3,8 @@ package domain
 import (
 	"context"
 	"time"
+
+	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
 const (
@@ -51,3 +53,11 @@ type AuthService interface {
 	ResetPassword(ctx context.Context, rawToken, newPassword string) error
 }
 
+// UserService defines user profile, password update, and admin user management operations.
+type UserService interface {
+	GetProfile(ctx context.Context, userID string) (*User, error)
+	UpdateProfile(ctx context.Context, caller *token.UserClaims, targetUserID, name, email string) (*User, error)
+	UpdatePassword(ctx context.Context, caller *token.UserClaims, targetUserID, currentPassword, newPassword string) error
+	ListUsers(ctx context.Context) ([]User, error)
+	DeleteUser(ctx context.Context, caller *token.UserClaims, targetUserID string) error
+}

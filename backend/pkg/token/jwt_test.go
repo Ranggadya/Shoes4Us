@@ -41,4 +41,3 @@ func TestJWTManager_SignAndVerify(t *testing.T) {
 		t.Fatal("expected error when verifying malformed token, got nil")
 	}
 }
-

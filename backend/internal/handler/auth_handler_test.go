@@ -15,6 +15,7 @@ import (
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/internal/handler"
 	"github.com/ranggadya/shoes4us/backend/internal/service"
+	"github.com/ranggadya/shoes4us/backend/pkg/hash"
 	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
@@ -177,6 +178,18 @@ func (r *fakeUserRepo) DeleteResetTokensByUser(_ context.Context, userID string)
 	return nil
 }
 
+// storedResetTokens returns a locked snapshot of the stored reset tokens keyed by token hash.
+func (r *fakeUserRepo) storedResetTokens() map[string]resetTokenEntry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make(map[string]resetTokenEntry, len(r.resetTokens))
+	for k, v := range r.resetTokens {
+		out[k] = v
+	}
+	return out
+}
+
 func TestAuthHandler_RegisterLoginAndMe(t *testing.T) {
 	repo := newFakeUserRepo()
 	jwtMgr := token.NewJWTManager("test-secret-key", 24)
@@ -305,3 +318,133 @@ func TestAuthHandler_RegisterLoginAndMe(t *testing.T) {
 	}
 }
 
+func TestAuthHandler_ForgotAndResetPassword(t *testing.T) {
+	repo := newFakeUserRepo()
+	jwtMgr := token.NewJWTManager("test-secret-key", 24)
+	authSvc := service.NewAuthService(repo, jwtMgr)
+	authHandler := handler.NewAuthHandler(authSvc)
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		JWTManager:  jwtMgr,
+		AuthHandler: authHandler,
+	})
+
+	// 1. Register a user
+	regBody, _ := json.Marshal(map[string]string{
+		"name":     "Rangga Dya",
+		"email":    "rangga@shoes4us.com",
+		"password": "oldpassword123",
+	})
+	regReq := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(regBody))
+	regReq.Header.Set("Content-Type", "application/json")
+	regRec := httptest.NewRecorder()
+	router.ServeHTTP(regRec, regReq)
+	if regRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created on register, got %d", regRec.Code)
+	}
+
+	var regResp struct {
+		Data domain.AuthResponse `json:"data"`
+	}
+	_ = json.Unmarshal(regRec.Body.Bytes(), &regResp)
+	userID := regResp.Data.User.ID
+
+	// 2. Forgot password with unregistered email returns 200 OK (Review Focus #5 anti-enumeration)
+	unknownBody, _ := json.Marshal(map[string]string{
+		"email": "unregistered@shoes4us.com",
+	})
+	unknownReq := httptest.NewRequest(http.MethodPost, "/api/auth/forgot-password", bytes.NewReader(unknownBody))
+	unknownReq.Header.Set("Content-Type", "application/json")
+	unknownRec := httptest.NewRecorder()
+	router.ServeHTTP(unknownRec, unknownReq)
+	if unknownRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on forgot-password for unknown email (anti-enumeration), got %d: %s", unknownRec.Code, unknownRec.Body.String())
+	}
+	if got := repo.storedResetTokens(); len(got) != 0 {
+		t.Fatalf("expected no reset tokens stored for unknown email, got %d", len(got))
+	}
+
+	// 3. Forgot password with registered email returns 200 OK and stores a SHA-256 hashed token valid for 1 hour
+	forgotBody, _ := json.Marshal(map[string]string{
+		"email": "rangga@shoes4us.com",
+	})
+	forgotReq := httptest.NewRequest(http.MethodPost, "/api/auth/forgot-password", bytes.NewReader(forgotBody))
+	forgotReq.Header.Set("Content-Type", "application/json")
+	forgotRec := httptest.NewRecorder()
+	requestedAt := time.Now().UTC()
+	router.ServeHTTP(forgotRec, forgotReq)
+	if forgotRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on forgot-password for registered email, got %d: %s", forgotRec.Code, forgotRec.Body.String())
+	}
+	stored := repo.storedResetTokens()
+	if len(stored) != 1 {
+		t.Fatalf("expected 1 reset token stored for registered email, got %d", len(stored))
+	}
+	for storedHash, entry := range stored {
+		if len(storedHash) != 64 {
+			t.Fatalf("expected SHA-256 hex digest of length 64, got %q", storedHash)
+		}
+		ttl := entry.expiresAt.Sub(requestedAt)
+		if ttl < 59*time.Minute || ttl > 61*time.Minute {
+			t.Fatalf("expected reset token TTL of ~1h, got %s", ttl)
+		}
+	}
+
+	// 4. Reset password with dual fields ({ token, password, newPassword }) and raw token hashed with SHA-256
+	rawToken1 := "raw-reset-token-1"
+	_ = repo.SaveResetToken(context.Background(), userID, hash.HashTokenSHA256(rawToken1), time.Now().UTC().Add(15*time.Minute))
+
+	resetBody1, _ := json.Marshal(map[string]string{
+		"token":       rawToken1,
+		"password":    "newpassword123",
+		"newPassword": "newpassword123",
+	})
+	resetReq1 := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader(resetBody1))
+	resetReq1.Header.Set("Content-Type", "application/json")
+	resetRec1 := httptest.NewRecorder()
+	router.ServeHTTP(resetRec1, resetReq1)
+	if resetRec1.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on reset-password with dual fields, got %d: %s", resetRec1.Code, resetRec1.Body.String())
+	}
+
+	// Verify old password no longer works and new password works
+	oldLoginBody, _ := json.Marshal(map[string]string{
+		"email":    "rangga@shoes4us.com",
+		"password": "oldpassword123",
+	})
+	oldLoginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(oldLoginBody))
+	oldLoginReq.Header.Set("Content-Type", "application/json")
+	oldLoginRec := httptest.NewRecorder()
+	router.ServeHTTP(oldLoginRec, oldLoginReq)
+	if oldLoginRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized with old password after reset, got %d", oldLoginRec.Code)
+	}
+
+	newLoginBody, _ := json.Marshal(map[string]string{
+		"email":    "rangga@shoes4us.com",
+		"password": "newpassword123",
+	})
+	newLoginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(newLoginBody))
+	newLoginReq.Header.Set("Content-Type", "application/json")
+	newLoginRec := httptest.NewRecorder()
+	router.ServeHTTP(newLoginRec, newLoginReq)
+	if newLoginRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK with new password after reset, got %d: %s", newLoginRec.Code, newLoginRec.Body.String())
+	}
+
+	// 5. Reset password with only `password` field (fallback when `newPassword` is omitted)
+	rawToken2 := "raw-reset-token-2"
+	_ = repo.SaveResetToken(context.Background(), userID, hash.HashTokenSHA256(rawToken2), time.Now().UTC().Add(15*time.Minute))
+
+	resetBody2, _ := json.Marshal(map[string]string{
+		"token":    rawToken2,
+		"password": "anotherpassword456",
+	})
+	resetReq2 := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password", bytes.NewReader(resetBody2))
+	resetReq2.Header.Set("Content-Type", "application/json")
+	resetRec2 := httptest.NewRecorder()
+	router.ServeHTTP(resetRec2, resetReq2)
+	if resetRec2.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on reset-password with password field only, got %d: %s", resetRec2.Code, resetRec2.Body.String())
+	}
+}

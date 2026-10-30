@@ -64,4 +64,3 @@ func NewInternal(msg string) *AppError {
 		Message: msg,
 	}
 }
-

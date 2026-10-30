@@ -158,4 +158,3 @@ func TestAuthMiddleware_RequireAdmin(t *testing.T) {
 		}
 	})
 }
-

@@ -39,4 +39,3 @@ func TestHashTokenSHA256(t *testing.T) {
 		t.Fatalf("expected different SHA-256 hashes for different inputs")
 	}
 }
-

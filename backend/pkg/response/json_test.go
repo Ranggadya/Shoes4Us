@@ -72,4 +72,3 @@ func TestWriteSuccess_And_WriteCreated(t *testing.T) {
 		t.Fatalf("expected 201, got %d", recCreated.Code)
 	}
 }
-

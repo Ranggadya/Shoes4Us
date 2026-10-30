@@ -79,4 +79,3 @@ func TestRouter_CORSPreflightAndStaticUploads(t *testing.T) {
 		t.Fatalf("expected 'nike-air', got %q", upRec.Body.String())
 	}
 }
-

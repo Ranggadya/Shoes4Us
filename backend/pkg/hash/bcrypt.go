@@ -26,4 +26,3 @@ func HashTokenSHA256(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
-

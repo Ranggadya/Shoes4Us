@@ -73,4 +73,3 @@ func WriteError(w http.ResponseWriter, err error) {
 		},
 	})
 }
-
