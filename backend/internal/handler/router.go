@@ -19,6 +19,7 @@ type RouterDependencies struct {
 	JWTManager     *token.JWTManager
 	AuthHandler    *AuthHandler
 	UserHandler    *UserHandler
+	ProductHandler *ProductHandler
 }
 
 // NewRouter constructs the root Chi HTTP router with CORS, static uploads, and /api endpoints.
@@ -69,6 +70,15 @@ func NewRouter(deps RouterDependencies) http.Handler {
 				users.Patch("/{id}/password", deps.UserHandler.UpdatePassword)
 				users.With(middleware.RequireAdmin).Get("/", deps.UserHandler.ListUsers)
 				users.With(middleware.RequireAdmin).Delete("/{id}", deps.UserHandler.DeleteUser)
+			})
+		}
+
+		if deps.ProductHandler != nil {
+			api.Get("/categories", deps.ProductHandler.ListCategories)
+
+			api.Route("/products", func(products chi.Router) {
+				products.Get("/", deps.ProductHandler.ListProducts)
+				products.Get("/{id}", deps.ProductHandler.GetProduct)
 			})
 		}
 	})

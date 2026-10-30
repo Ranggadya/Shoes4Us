@@ -54,6 +54,11 @@ func main() {
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 
+	categoryRepo := repository.NewCategoryRepository(pool)
+	productRepo := repository.NewProductRepository(pool)
+	productSvc := service.NewProductService(categoryRepo, productRepo)
+	productHandler := handler.NewProductHandler(productSvc).WithUploadDir(cfg.UploadDir)
+
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins: cfg.AllowedOrigins,
 		UploadDir:      cfg.UploadDir,
@@ -61,6 +66,7 @@ func main() {
 		JWTManager:     jwtMgr,
 		AuthHandler:    authHandler,
 		UserHandler:    userHandler,
+		ProductHandler: productHandler,
 	})
 
 	srv := &http.Server{
