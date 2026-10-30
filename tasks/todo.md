@@ -139,14 +139,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan `CategoryRepository`, `ProductRepository`, `ProductService`, dan `ProductHandler` untuk melayani `GET /api/categories`, `GET /api/products` (beserta seluruh parameter filter, pencarian, pengurutan, dan paginasi), serta `GET /api/products/:id` (berdasarkan UUID atau `slug` lengkap dengan stok varian ukuran `sizes`).
 
 **Acceptance criteria:**
-- [ ] `GET /api/categories` mengembalikan daftar kategori aktif (`id`, `name`, `slug`).
-- [ ] `GET /api/products` mendukung filter `search`, `category`, `categoryId`, `segment`, `audience`, `brand`, `collection` (`new-arrivals`, `exclusive`, `coming-soon`, `sale`), `isNewArrival`, `isExclusive`, `isComingSoon`, `isSale`/`sale`, `minPrice`, `maxPrice`, `includeDetails`, `sortBy`, `page`, dan `limit`, serta mengembalikan `{ data: { items }, meta: { page, limit, total, totalPages } }`.
-- [ ] `GET /api/products/:id` mengembalikan `{ data: { product } }` lengkap dengan objek `category` dan array `sizes` (`product_sizes`).
+- [x] `GET /api/categories` mengembalikan daftar kategori aktif (`id`, `name`, `slug`).
+- [x] `GET /api/products` mendukung filter `search`, `category`, `categoryId`, `segment`, `audience`, `brand`, `collection` (`new-arrivals`, `exclusive`, `coming-soon`, `sale`), `isNewArrival`, `isExclusive`, `isComingSoon`, `isSale`/`sale`, `minPrice`, `maxPrice`, `includeDetails`, `sortBy`, `page`, dan `limit`, serta mengembalikan `{ data: { items }, meta: { page, limit, total, totalPages } }`.
+- [x] `GET /api/products/:id` mengembalikan `{ data: { product } }` lengkap dengan objek `category` dan array `sizes` (`product_sizes`).
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestProduct`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Buka beranda (`/`), katalog (`/product`), mega-menu Navbar, GlobalSearch, dan halaman detail produk (`/product/:id`).
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestProduct`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Buka beranda (`/`), katalog (`/product`), mega-menu Navbar, GlobalSearch, dan halaman detail produk (`/product/:id`).
 
 **Dependencies:** Task 2, Task 3
 
