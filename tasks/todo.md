@@ -11,15 +11,15 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Menginisialisasi modul Go di `backend/go.mod`, membuat pembaca konfigurasi `.env` (`internal/config`), serta membangun 3 paket utilitas inti: hashing password Bcrypt (`pkg/hash`), pembuatan & verifikasi JWT HS256 (`pkg/token`), dan penulis response JSON seragam (`pkg/response`) beserta definisi `domain.AppError`.
 
 **Acceptance criteria:**
-- [ ] `backend/go.mod` terinisialisasi dengan dependensi utama (`chi`, `cors`, `pgx/v5`, `jwt/v5`, `bcrypt`, `uuid`, `godotenv`).
-- [ ] `pkg/hash` dapat meng-hash password dan memverifikasi kecocokan hash Bcrypt.
-- [ ] `pkg/token` dapat menandatangani dan mem-parsing klaim JWT (`userId`, `email`, `name`, `role`).
-- [ ] `pkg/response` menghasilkan JSON envelope `{ "success": true/false, "message": "...", "data": ..., "error": ... }` sesuai kontrak frontend.
+- [x] `backend/go.mod` terinisialisasi dengan dependensi utama (`chi`, `cors`, `pgx/v5`, `jwt/v5`, `bcrypt`, `uuid`, `godotenv`).
+- [x] `pkg/hash` dapat meng-hash password dan memverifikasi kecocokan hash Bcrypt.
+- [x] `pkg/token` dapat menandatangani dan mem-parsing klaim JWT (`userId`, `email`, `name`, `role`).
+- [x] `pkg/response` menghasilkan JSON envelope `{ "success": true/false, "message": "...", "data": ..., "error": ... }` sesuai kontrak frontend.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./pkg/...`
-- [ ] Build succeeds: `cd backend && go vet ./...`
-- [ ] Manual check: Verifikasi output JSON dari unit test `pkg/response`.
+- [x] Tests pass: `cd backend && go test -v ./pkg/...`
+- [x] Build succeeds: `cd backend && go vet ./...`
+- [x] Manual check: Verifikasi output JSON dari unit test `pkg/response`.
 
 **Dependencies:** None
 
@@ -41,14 +41,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Membangun koneksi pool PostgreSQL menggunakan `pgxpool` (`internal/database/postgres.go`), menyiapkan middleware CORS & request logger (`internal/middleware/cors_middleware.go`), merangkai router utama (`internal/handler/router.go`), dan membuat entry point server di `cmd/api/main.go` dengan graceful shutdown serta endpoint `GET /api/health`.
 
 **Acceptance criteria:**
-- [ ] `internal/database/postgres.go` membuka koneksi `pgxpool.Pool` dengan konfigurasi timeout yang aman.
-- [ ] CORS mengizinkan origin frontend (`http://localhost:3000` dan `http://localhost:5173`), method `GET, POST, PUT, PATCH, DELETE, OPTIONS`, header `Authorization, Content-Type`, dan `AllowCredentials: true`.
-- [ ] `GET /api/health` mengembalikan `200 OK` dengan JSON `{"success": true, "data": {"status": "ok"}}`.
+- [x] `internal/database/postgres.go` membuka koneksi `pgxpool.Pool` dengan konfigurasi timeout yang aman.
+- [x] CORS mengizinkan origin frontend (`http://localhost:3000` dan `http://localhost:5173`), method `GET, POST, PUT, PATCH, DELETE, OPTIONS`, header `Authorization, Content-Type`, dan `AllowCredentials: true`.
+- [x] `GET /api/health` mengembalikan `200 OK` dengan JSON `{"success": true, "data": {"status": "ok"}}`.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/handler/...`
-- [ ] Build succeeds: `cd backend && go build -o bin/shoes4us-api.exe ./cmd/api`
-- [ ] Manual check: Jalankan server dan panggil `GET http://localhost:8080/api/health`.
+- [x] Tests pass: `cd backend && go test -v ./internal/handler/...`
+- [x] Build succeeds: `cd backend && go build -o bin/shoes4us-api.exe ./cmd/api`
+- [x] Manual check: Jalankan server dan panggil `GET http://localhost:8080/api/health`.
 
 **Dependencies:** Task 1
 
@@ -63,9 +63,9 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 ---
 
 ## Checkpoint 1: Foundation Ready
-- [ ] All unit tests in `pkg/` and `internal/` pass (`cd backend && go test -race ./...`).
-- [ ] Application binary builds cleanly without errors (`cd backend && go build ./cmd/api`).
-- [ ] `GET /api/health` responds with `200 OK` and valid CORS headers.
+- [x] All unit tests in `pkg/` and `internal/` pass (`cd backend && go test -race ./...`).
+- [x] Application binary builds cleanly without errors (`cd backend && go build ./cmd/api`).
+- [x] `GET /api/health` responds with `200 OK` and valid CORS headers.
 
 ---
 
@@ -76,14 +76,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan domain model `User`, `UserRepository`, `AuthService`, middleware autentikasi JWT (`RequireAuth` & `RequireAdmin`), serta `AuthHandler` untuk endpoint `POST /api/auth/register`, `POST /api/auth/login`, dan `GET /api/auth/me`.
 
 **Acceptance criteria:**
-- [ ] `POST /api/auth/register` memvalidasi email/password/name, menolak email duplikat (`409 Conflict`), menyimpan user baru dengan hash Bcrypt dan role `USER`, serta mengembalikan `{ user, token }` + cookie `token`.
-- [ ] `POST /api/auth/login` memverifikasi email & password Bcrypt, menolak akun non-aktif/salah kredensial (`401 Unauthorized`), dan mengembalikan `{ user, token }`.
-- [ ] Middleware `RequireAuth` membaca token dari header `Authorization: Bearer <token>` (atau fallback cookie `token`), dan `GET /api/auth/me` mengembalikan profil user yang sedang login.
+- [x] `POST /api/auth/register` memvalidasi email/password/name, menolak email duplikat (`409 Conflict`), menyimpan user baru dengan hash Bcrypt dan role `USER`, serta mengembalikan `{ user, token }` + cookie `token`.
+- [x] `POST /api/auth/login` memverifikasi email & password Bcrypt, menolak akun non-aktif/salah kredensial (`401 Unauthorized`), dan mengembalikan `{ user, token }`.
+- [x] Middleware `RequireAuth` membaca token dari header `Authorization: Bearer <token>` (atau fallback cookie `token`), dan `GET /api/auth/me` mengembalikan profil user yang sedang login.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestAuth`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Uji alur Register → Login → `/api/auth/me` dari halaman `/register` dan `/login` di frontend.
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestAuth`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Uji alur Register → Login → `/api/auth/me` dari halaman `/register` dan `/login` di frontend.
 
 **Dependencies:** Task 1, Task 2
 
@@ -103,14 +103,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Melengkapi modul identitas dengan fitur `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, serta endpoint profil pengguna `PATCH /api/users/:id` dan `PATCH /api/users/:id/password`.
 
 **Acceptance criteria:**
-- [ ] `POST /api/auth/forgot-password` menyimpan token unik dengan masa berlaku 1 jam di tabel `password_reset_tokens` dan mengirim email (atau mencatat URL reset di log jika SMTP belum diatur).
-- [ ] `POST /api/auth/reset-password` menerima `{ token, password, newPassword }`, memvalidasi token & kedaluwarsa, memperbarui hash password di `users`, dan menghapus token yang telah digunakan.
-- [ ] `PATCH /api/users/:id` dan `PATCH /api/users/:id/password` memverifikasi bahwa pemanggil adalah pemilik akun atau `ADMIN`, memvalidasi `currentPassword` saat ganti password, dan menyimpan perubahan ke tabel `users`.
+- [x] `POST /api/auth/forgot-password` menyimpan token unik dengan masa berlaku 1 jam di tabel `password_reset_tokens` dan mengirim email (atau mencatat URL reset di log jika SMTP belum diatur).
+- [x] `POST /api/auth/reset-password` menerima `{ token, password, newPassword }`, memvalidasi token & kedaluwarsa, memperbarui hash password di `users`, dan menghapus token yang telah digunakan.
+- [x] `PATCH /api/users/:id` dan `PATCH /api/users/:id/password` memverifikasi bahwa pemanggil adalah pemilik akun atau `ADMIN`, memvalidasi `currentPassword` saat ganti password, dan menyimpan perubahan ke tabel `users`.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run "TestUser|TestReset"`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Uji ubah nama/email dan ubah password dari `ProfilePage` (`/profile`) serta alur `/forgot-password` → `/reset-password`.
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run "TestUser|TestReset"`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Uji ubah nama/email dan ubah password dari `ProfilePage` (`/profile`) serta alur `/forgot-password` → `/reset-password`.
 
 **Dependencies:** Task 3
 
@@ -126,9 +126,9 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 ---
 
 ## Checkpoint 2: Auth & User Flow Verified
-- [ ] All tests pass (`cd backend && go test -race ./...`).
-- [ ] Application builds without errors.
-- [ ] User registration, login, session persistence (`/api/auth/me`), password reset, and profile updates work end-to-end with React frontend.
+- [x] All tests pass (`cd backend && go test -race ./...`).
+- [x] Application builds without errors.
+- [x] User registration, login, session persistence (`/api/auth/me`), password reset, and profile updates work end-to-end with React frontend.
 
 ---
 
