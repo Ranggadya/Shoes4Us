@@ -32,7 +32,7 @@ func NewPostgresPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, er
 		return nil, fmt.Errorf("database: failed to create connection pool: %w", err)
 	}
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	if err := pool.Ping(pingCtx); err != nil {
