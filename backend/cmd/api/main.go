@@ -71,6 +71,10 @@ func main() {
 	wishlistSvc := service.NewWishlistService(wishlistRepo)
 	wishlistHandler := handler.NewWishlistHandler(wishlistSvc)
 
+	orderRepo := repository.NewOrderRepository(pool)
+	orderSvc := service.NewOrderService(orderRepo, cartRepo, productRepo)
+	orderHandler := handler.NewOrderHandler(orderSvc)
+
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins:  cfg.AllowedOrigins,
 		UploadDir:       cfg.UploadDir,
@@ -82,6 +86,7 @@ func main() {
 		ReviewHandler:   reviewHandler,
 		CartHandler:     cartHandler,
 		WishlistHandler: wishlistHandler,
+		OrderHandler:    orderHandler,
 	})
 
 	srv := &http.Server{

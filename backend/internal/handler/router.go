@@ -23,6 +23,7 @@ type RouterDependencies struct {
 	ReviewHandler  *ReviewHandler
 	CartHandler    *CartHandler
 	WishlistHandler *WishlistHandler
+	OrderHandler    *OrderHandler
 }
 
 // NewRouter constructs the root Chi HTTP router with CORS, static uploads, and /api endpoints.
@@ -126,6 +127,16 @@ func NewRouter(deps RouterDependencies) http.Handler {
 				wl.Get("/", deps.WishlistHandler.GetWishlist)
 				wl.Post("/", deps.WishlistHandler.AddToWishlist)
 				wl.Delete("/{productId}", deps.WishlistHandler.RemoveFromWishlist)
+			})
+		}
+
+		if deps.OrderHandler != nil && jwtMgr != nil {
+			api.Route("/orders", func(orders chi.Router) {
+				orders.Use(middleware.RequireAuth(jwtMgr))
+				orders.Get("/", deps.OrderHandler.ListOrders)
+				orders.Post("/", deps.OrderHandler.CreateOrder)
+				orders.Get("/{orderId}", deps.OrderHandler.GetOrderDetail)
+				orders.Patch("/{orderId}", deps.OrderHandler.CancelOrder)
 			})
 		}
 	})
