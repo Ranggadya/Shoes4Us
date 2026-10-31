@@ -290,14 +290,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan `OrderRepository`, `OrderService`, dan `OrderHandler` untuk pembuatan order baru dari keranjang (`POST /api/orders`), pengambilan daftar pesanan pelanggan & seluruh pesanan Admin (`GET /api/orders`, `GET /api/orders/:id`), serta pembatalan pesanan oleh pelanggan (`PATCH /api/orders/:id`) dengan pengembalian stok otomatis.
 
 **Acceptance criteria:**
-- [ ] `POST /api/orders` menjalankan transaksi DB (`pgx.Tx`): memvalidasi keranjang tidak kosong, memvalidasi & mengurangi stok di `product_sizes` dan `products`, membuat record `orders` (`orderNumber` unik, status `PENDING`) dan `order_items`.
-- [ ] `GET /api/orders` mengembalikan riwayat pesanan milik user, atau seluruh pesanan beserta data `user: { name, email }` ketika dipanggil dengan `?scope=all` oleh `ADMIN`.
-- [ ] `PATCH /api/orders/:id` membatalkan pesanan berstatus `PENDING`/`PROCESSING` dan mengembalikan stok produk/ukuran secara atomik.
+- [x] `POST /api/orders` menjalankan transaksi DB (`pgx.Tx`): memvalidasi keranjang tidak kosong, memvalidasi & mengurangi stok di `product_sizes` dan `products`, membuat record `orders` (`orderNumber` unik, status `PENDING`) dan `order_items`.
+- [x] `GET /api/orders` mengembalikan riwayat pesanan milik user, atau seluruh pesanan beserta data `user: { name, email }` ketika dipanggil dengan `?scope=all` oleh `ADMIN`.
+- [x] `PATCH /api/orders/:id` membatalkan pesanan berstatus `PENDING`/`PROCESSING` dan mengembalikan stok produk/ukuran secara atomik.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestOrder`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Buat pesanan dari `/payment`, periksa riwayat di `/order`, dan uji pembatalan pesanan (pastikan stok produk kembali bertambah).
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestOrder`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Buat pesanan dari `/payment`, periksa riwayat di `/order`, dan uji pembatalan pesanan (pastikan stok produk kembali bertambah).
 
 **Dependencies:** Task 5, Task 8
 
