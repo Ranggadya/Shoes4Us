@@ -255,14 +255,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan `WishlistRepository`, `WishlistService`, dan `WishlistHandler` untuk melayani `GET /api/wishlist` (mode penuh & mode `?fields=ids`), `POST /api/wishlist`, dan `DELETE /api/wishlist/:productId`.
 
 **Acceptance criteria:**
-- [ ] `GET /api/wishlist?fields=ids` mengembalikan `{ data: { items: [ { productId } ] } }` untuk inisialisasi cepat `WishlistContext`.
-- [ ] `GET /api/wishlist` mengembalikan daftar item wishlist beserta objek `product` dan `category` untuk `WishlistPage`.
-- [ ] `POST /api/wishlist` dan `DELETE /api/wishlist/:productId` menambah dan menghapus produk dari wishlist secara idempoten.
+- [x] `GET /api/wishlist?fields=ids` mengembalikan `{ data: { items: [ { productId } ] } }` untuk inisialisasi cepat `WishlistContext`.
+- [x] `GET /api/wishlist` mengembalikan daftar item wishlist beserta objek `product` dan `category` untuk `WishlistPage`.
+- [x] `POST /api/wishlist` dan `DELETE /api/wishlist/:productId` menambah dan menghapus produk dari wishlist secara idempoten.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/handler/... -run TestWishlist`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Klik ikon hati (`WishlistButton`) pada kartu produk/detail produk dan buka halaman `/wishlist`.
+- [x] Tests pass: `cd backend && go test -v ./internal/handler/... -run TestWishlist`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Klik ikon hati (`WishlistButton`) pada kartu produk/detail produk dan buka halaman `/wishlist`.
 
 **Dependencies:** Task 3, Task 5
 
@@ -278,8 +278,8 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 ---
 
 ## Checkpoint 4: Cart & Wishlist Verified
-- [ ] All tests pass (`cd backend && go test -race ./...`).
-- [ ] Cart badge, cart item quantity updates, and wishlist toggling work seamlessly across pages.
+- [x] All tests pass (`cd backend && go test -race ./...`).
+- [x] Cart badge, cart item quantity updates, and wishlist toggling work seamlessly across pages.
 
 ---
 
