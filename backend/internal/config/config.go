@@ -26,7 +26,7 @@ type Config struct {
 
 // Load reads environment variables (loading .env if present) and returns Config with defaults.
 func Load() (*Config, error) {
-	_ = godotenv.Load()
+	_ = godotenv.Load(".env", "../.env")
 
 	expHours := 168
 	if rawExp := strings.TrimSpace(os.Getenv("JWT_EXPIRES_HOURS")); rawExp != "" {
