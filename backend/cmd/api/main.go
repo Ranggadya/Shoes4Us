@@ -73,7 +73,8 @@ func main() {
 
 	orderRepo := repository.NewOrderRepository(pool)
 	orderSvc := service.NewOrderService(orderRepo, cartRepo, productRepo)
-	orderHandler := handler.NewOrderHandler(orderSvc)
+	paymentSvc := service.NewPaymentService(orderRepo, cartRepo)
+	orderHandler := handler.NewOrderHandler(orderSvc).WithPaymentService(paymentSvc)
 
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins:  cfg.AllowedOrigins,

@@ -7,7 +7,11 @@
     "dev:fe": "npm --prefix frontend run dev",
     "build:fe": "npm --prefix frontend run build",
     "preview:fe": "npm --prefix frontend run preview",
-    "lint:fe": "npm --prefix frontend run lint"
+    "lint:fe": "npm --prefix frontend run lint",
+    "dev:be": "cd backend && go run ./cmd/api",
+    "build:be": "cd backend && go build -o bin/shoes4us-api.exe ./cmd/api",
+    "seed:be": "cd backend && go run ./cmd/seed",
+    "test:be": "cd backend && go test -v ./..."
   },
   "keywords": [
     "ecommerce",

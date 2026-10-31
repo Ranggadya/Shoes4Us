@@ -131,12 +131,15 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		}
 
 		if deps.OrderHandler != nil && jwtMgr != nil {
+			api.With(middleware.RequireAuth(jwtMgr)).Post("/payment", deps.OrderHandler.ProcessPayment)
+
 			api.Route("/orders", func(orders chi.Router) {
 				orders.Use(middleware.RequireAuth(jwtMgr))
 				orders.Get("/", deps.OrderHandler.ListOrders)
 				orders.Post("/", deps.OrderHandler.CreateOrder)
 				orders.Get("/{orderId}", deps.OrderHandler.GetOrderDetail)
 				orders.Patch("/{orderId}", deps.OrderHandler.CancelOrder)
+				orders.With(middleware.RequireAdmin).Patch("/{orderId}/status", deps.OrderHandler.UpdateOrderStatus)
 			})
 		}
 	})

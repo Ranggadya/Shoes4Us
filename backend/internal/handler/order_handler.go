@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,17 +10,25 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/internal/middleware"
+	"github.com/ranggadya/shoes4us/backend/internal/service"
 	"github.com/ranggadya/shoes4us/backend/pkg/response"
 )
 
 // OrderHandler manages HTTP endpoints for orders, checkout, and cancellation.
 type OrderHandler struct {
-	orderService domain.OrderService
+	orderService   domain.OrderService
+	paymentService service.PaymentService
 }
 
 // NewOrderHandler creates a new OrderHandler.
 func NewOrderHandler(orderService domain.OrderService) *OrderHandler {
 	return &OrderHandler{orderService: orderService}
+}
+
+// WithPaymentService injects a PaymentService instance into OrderHandler.
+func (h *OrderHandler) WithPaymentService(paymentService service.PaymentService) *OrderHandler {
+	h.paymentService = paymentService
+	return h
 }
 
 // CreateOrder handles POST /api/orders.
@@ -124,7 +133,7 @@ func (h *OrderHandler) GetOrderDetail(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
-// CancelOrder handles PATCH /api/orders/{orderId}.
+// CancelOrder handles customer-initiated PATCH /api/orders/{orderId}.
 func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok || claims == nil {
@@ -164,3 +173,70 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
+// UpdateOrderStatus handles admin status transitions PATCH /api/orders/{orderId}/status.
+func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok || claims == nil {
+		response.WriteError(w, domain.NewUnauthorized("Silakan login terlebih dahulu"))
+		return
+	}
+	if claims.Role != "ADMIN" {
+		response.WriteError(w, domain.NewForbidden("Akses ditolak: hanya ADMIN yang dapat mengubah status pesanan"))
+		return
+	}
+
+	orderID := strings.TrimSpace(chi.URLParam(r, "orderId"))
+	if orderID == "" {
+		response.WriteError(w, domain.NewBadRequest("Order ID wajib diisi"))
+		return
+	}
+
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, domain.NewBadRequest("Format request tidak valid"))
+		return
+	}
+
+	newStatus := domain.OrderStatus(strings.ToUpper(strings.TrimSpace(body.Status)))
+	order, err := h.orderService.UpdateOrderStatus(r.Context(), orderID, newStatus)
+	if err != nil {
+		response.WriteError(w, err)
+		return
+	}
+
+	response.WriteSuccess(w, http.StatusOK, fmt.Sprintf("Status pesanan berhasil diubah menjadi %s", newStatus), map[string]any{
+		"order": order,
+	}, nil)
+}
+
+// ProcessPayment handles POST /api/payment for confirming order payment and clearing the cart.
+func (h *OrderHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok || claims == nil {
+		response.WriteError(w, domain.NewUnauthorized("Silakan login untuk memproses pembayaran"))
+		return
+	}
+
+	var body struct {
+		OrderID string `json:"orderId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, domain.NewBadRequest("Format request tidak valid"))
+		return
+	}
+
+	if h.paymentService == nil {
+		response.WriteError(w, domain.NewInternal("Layanan pembayaran belum dikonfigurasi"))
+		return
+	}
+
+	res, err := h.paymentService.CreatePayment(r.Context(), claims.UserID, claims.Role, body.OrderID)
+	if err != nil {
+		response.WriteError(w, err)
+		return
+	}
+
+	response.WriteSuccess(w, http.StatusOK, "Pembayaran berhasil dikonfirmasi", res, nil)
+}

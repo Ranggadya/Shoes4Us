@@ -21,7 +21,7 @@ var _ domain.OrderService = (*orderService)(nil)
 var allowedTransitions = map[domain.OrderStatus][]domain.OrderStatus{
 	domain.StatusPending:    {domain.StatusProcessing, domain.StatusPaid, domain.StatusCancelled},
 	domain.StatusProcessing: {domain.StatusPaid, domain.StatusCancelled},
-	domain.StatusPaid:       {domain.StatusShipped},
+	domain.StatusPaid:       {domain.StatusProcessing, domain.StatusShipped, domain.StatusCancelled},
 	domain.StatusShipped:    {domain.StatusDelivered},
 	domain.StatusDelivered:  {},
 	domain.StatusCancelled:  {},

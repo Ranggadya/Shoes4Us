@@ -377,3 +377,175 @@ func ptrString(s string) *string {
 	return &s
 }
 
+
+// TestOrderService_AdminUpdateStatus_RestockGuard satisfies Review Focus #3 for Admin operations.
+func TestOrderService_AdminUpdateStatus_RestockGuard(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Transition from PAID to CANCELLED restocks inventory", func(t *testing.T) {
+		size42 := "42"
+		order := &domain.Order{
+			ID:          "ord-paid",
+			OrderNumber: "ORD-PAID-1",
+			UserID:      "user-1",
+			Status:      domain.StatusPaid,
+			Items: []domain.OrderItem{
+				{
+					ID:        "item-1",
+					ProductID: "prod-1",
+					Quantity:  2,
+					Size:      &size42,
+				},
+			},
+		}
+
+		repo := &mockOrderRepoForFocus{order: order}
+		svc := service.NewOrderService(repo, &mockCartRepoForOrder{}, &mockProductRepoForOrder{})
+
+		updated, err := svc.UpdateOrderStatus(ctx, "ord-paid", domain.StatusCancelled)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if updated.Status != domain.StatusCancelled {
+			t.Fatalf("expected CANCELLED status, got %s", updated.Status)
+		}
+		if !repo.restocked {
+			t.Fatal("expected restock to be true when transitioning from PAID to CANCELLED")
+		}
+
+		// Attempting second cancel/status change on already CANCELLED order must fail with 400
+		repo.restocked = false
+		_, err = svc.UpdateOrderStatus(ctx, "ord-paid", domain.StatusProcessing)
+		if err == nil {
+			t.Fatal("expected error when updating already CANCELLED order, got nil")
+		}
+		if repo.restocked {
+			t.Fatal("must not restock on second invalid transition attempt")
+		}
+	})
+
+	t.Run("SHIPPED order cannot transition to CANCELLED", func(t *testing.T) {
+		order := &domain.Order{
+			ID:     "ord-shipped",
+			Status: domain.StatusShipped,
+		}
+		repo := &mockOrderRepoForFocus{order: order}
+		svc := service.NewOrderService(repo, &mockCartRepoForOrder{}, &mockProductRepoForOrder{})
+
+		_, err := svc.UpdateOrderStatus(ctx, "ord-shipped", domain.StatusCancelled)
+		if err == nil {
+			t.Fatal("expected error transitioning SHIPPED to CANCELLED, got nil")
+		}
+	})
+}
+
+// TestOrderHandler_ProcessPayment_MarksPaidAndClearsCart tests /api/payment and admin /api/orders/:id/status.
+func TestOrderHandler_ProcessPayment_MarksPaidAndClearsCart(t *testing.T) {
+	jwtSecret := "test-secret-key-very-secure-32b!"
+	jwtMgr := token.NewJWTManager(jwtSecret, 1)
+
+	userToken, _ := jwtMgr.Sign(token.UserClaims{
+		UserID: "user-1",
+		Email:  "user@example.com",
+		Role:   "USER",
+	})
+	otherUserToken, _ := jwtMgr.Sign(token.UserClaims{
+		UserID: "user-2",
+		Email:  "other@example.com",
+		Role:   "USER",
+	})
+	adminToken, _ := jwtMgr.Sign(token.UserClaims{
+		UserID: "admin-1",
+		Email:  "admin@example.com",
+		Role:   "ADMIN",
+	})
+
+	order := &domain.Order{
+		ID:          "ord-pay-1",
+		OrderNumber: "ORD-PAY-1",
+		UserID:      "user-1",
+		Status:      domain.StatusPending,
+		TotalAmount: 250000,
+	}
+
+	orderRepo := &mockOrderRepoForFocus{order: order}
+	cart := &domain.Cart{ID: "cart-1", UserID: "user-1", Items: []domain.CartItem{{ID: "it-1"}}}
+	cartRepo := &mockCartRepoForOrder{cart: cart}
+	prodRepo := &mockProductRepoForOrder{}
+
+	orderSvc := service.NewOrderService(orderRepo, cartRepo, prodRepo)
+	paymentSvc := service.NewPaymentService(orderRepo, cartRepo)
+	orderHandler := handler.NewOrderHandler(orderSvc).WithPaymentService(paymentSvc)
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		JWTSecret:    jwtSecret,
+		JWTManager:   jwtMgr,
+		OrderHandler: orderHandler,
+	})
+
+	t.Run("POST /api/payment unauthenticated returns 401", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"orderId": "ord-pay-1"})
+		req := httptest.NewRequest(http.MethodPost, "/api/payment", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401, got %d", rec.Code)
+		}
+	})
+
+	t.Run("POST /api/payment for other user's order returns 403", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"orderId": "ord-pay-1"})
+		req := httptest.NewRequest(http.MethodPost, "/api/payment", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+otherUserToken)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden, got %d", rec.Code)
+		}
+	})
+
+	t.Run("POST /api/payment by owner marks PAID and clears cart", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"orderId": "ord-pay-1"})
+		req := httptest.NewRequest(http.MethodPost, "/api/payment", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", rec.Code, rec.Body.String())
+		}
+
+		if order.Status != domain.StatusPaid {
+			t.Fatalf("expected order status PAID, got %s", order.Status)
+		}
+	})
+
+	t.Run("PATCH /api/orders/ord-pay-1/status by ADMIN updates status", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"status": "PROCESSING"})
+		req := httptest.NewRequest(http.MethodPatch, "/api/orders/ord-pay-1/status", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", rec.Code, rec.Body.String())
+		}
+		if order.Status != domain.StatusProcessing {
+			t.Fatalf("expected status PROCESSING, got %s", order.Status)
+		}
+	})
+
+	t.Run("PATCH /api/orders/ord-pay-1/status by regular USER returns 403", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"status": "SHIPPED"})
+		req := httptest.NewRequest(http.MethodPatch, "/api/orders/ord-pay-1/status", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden, got %d", rec.Code)
+		}
+	})
+}
