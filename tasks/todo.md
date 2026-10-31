@@ -193,14 +193,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan `ReviewRepository`, `ReviewService`, dan `ReviewHandler` untuk melayani `GET /api/reviews?productId=:id` (termasuk mode `summaryOnly=true`) dan `POST /api/reviews` untuk pengguna terautentikasi.
 
 **Acceptance criteria:**
-- [ ] `GET /api/reviews?productId=:id&summaryOnly=true` mengembalikan `{ data: { summary: { averageRating, total } } }`.
-- [ ] `GET /api/reviews?productId=:id` mengembalikan `{ data: { reviews: [...], summary: { averageRating, total } } }` lengkap dengan nama pembuat ulasan (`user.name`).
-- [ ] `POST /api/reviews` memvalidasi `rating` (1–5) dan `comment`, menyimpan ulasan ke tabel `reviews`, dan mengembalikan `201 Created`.
+- [x] `GET /api/reviews?productId=:id&summaryOnly=true` mengembalikan `{ data: { summary: { averageRating, total } } }`.
+- [x] `GET /api/reviews?productId=:id` mengembalikan `{ data: { reviews: [...], summary: { averageRating, total } } }` lengkap dengan nama pembuat ulasan (`user.name`).
+- [x] `POST /api/reviews` memvalidasi `rating` (1–5) dan `comment`, menyimpan ulasan ke tabel `reviews`, dan mengembalikan `201 Created`.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestReview`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Buka tab Ulasan di `/product/:id` dan kirim ulasan baru melalui `ReviewForm`.
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestReview`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Buka tab Ulasan di `/product/:id` dan kirim ulasan baru melalui `ReviewForm`.
 
 **Dependencies:** Task 5
 
@@ -216,8 +216,8 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 ---
 
 ## Checkpoint 3: Catalog, Admin CRUD & Reviews Verified
-- [ ] All tests pass (`cd backend && go test -race ./...`).
-- [ ] Product listing, filters, search, admin product creation/editing (`FormData`), and product reviews work end-to-end.
+- [x] All tests pass (`cd backend && go test -race ./...`).
+- [x] Product listing, filters, search, admin product creation/editing (`FormData`), and product reviews work end-to-end.
 
 ---
 
