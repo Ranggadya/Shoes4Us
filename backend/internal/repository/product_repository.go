@@ -324,6 +324,41 @@ func (r *PostgresProductRepository) FindSizesByProductID(ctx context.Context, pr
 	return sizes, nil
 }
 
+// FindSizesByProductIDs returns all size variants for a slice of product IDs grouped by product ID.
+func (r *PostgresProductRepository) FindSizesByProductIDs(ctx context.Context, productIDs []string) (map[string][]domain.ProductSize, error) {
+	if len(productIDs) == 0 {
+		return make(map[string][]domain.ProductSize), nil
+	}
+
+	const query = `
+		SELECT id, "productId", size, stock, "createdAt", "updatedAt"
+		FROM product_sizes
+		WHERE "productId" = ANY($1)
+		ORDER BY size ASC
+	`
+
+	rows, err := r.pool.Query(ctx, query, productIDs)
+	if err != nil {
+		return nil, domain.NewInternal("Gagal mengambil varian ukuran produk")
+	}
+	defer rows.Close()
+
+	out := make(map[string][]domain.ProductSize)
+	for rows.Next() {
+		var s domain.ProductSize
+		if err := rows.Scan(&s.ID, &s.ProductID, &s.Size, &s.Stock, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, domain.NewInternal("Gagal memproses varian ukuran")
+		}
+		out[s.ProductID] = append(out[s.ProductID], s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, domain.NewInternal("Terjadi kesalahan membaca varian ukuran produk")
+	}
+
+	return out, nil
+}
+
 // GetSizeStock returns the current stock quantity for a specific product size variant.
 func (r *PostgresProductRepository) GetSizeStock(ctx context.Context, productID, size string) (int, error) {
 	const query = `
@@ -528,19 +563,48 @@ func (r *PostgresProductRepository) Delete(ctx context.Context, id string) error
 	return nil
 }
 
-// SoftDelete deactivates a product and clears stock to prevent foreign-key breakage when orders exist.
+// SoftDelete deactivates a product, zeroes size stocks, and clears active cart_items to prevent foreign-key breakage when orders exist.
 func (r *PostgresProductRepository) SoftDelete(ctx context.Context, id string) error {
-	const query = `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.NewInternal("Gagal memulai transaksi database")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	now := time.Now().UTC()
+	const updateProductQuery = `
 		UPDATE products
 		SET "isActive" = false, stock = 0, "updatedAt" = $2
 		WHERE id = $1
 	`
-	res, err := r.pool.Exec(ctx, query, id, time.Now().UTC())
+	res, err := tx.Exec(ctx, updateProductQuery, id, now)
 	if err != nil {
 		return domain.NewInternal("Gagal menonaktifkan produk")
 	}
 	if res.RowsAffected() == 0 {
 		return domain.NewNotFound("Produk tidak ditemukan")
 	}
+
+	const updateSizesQuery = `
+		UPDATE product_sizes
+		SET stock = 0, "updatedAt" = $2
+		WHERE "productId" = $1
+	`
+	if _, err := tx.Exec(ctx, updateSizesQuery, id, now); err != nil {
+		return domain.NewInternal("Gagal mengosongkan stok varian ukuran produk")
+	}
+
+	const deleteCartItemsQuery = `
+		DELETE FROM cart_items
+		WHERE "productId" = $1
+	`
+	if _, err := tx.Exec(ctx, deleteCartItemsQuery, id); err != nil {
+		return domain.NewInternal("Gagal membersihkan item keranjang untuk produk yang dinonaktifkan")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return domain.NewInternal("Gagal menyelesaikan penonaktifan produk")
+	}
+
 	return nil
 }

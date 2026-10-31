@@ -140,6 +140,7 @@ type ProductRepository interface {
 	FindAll(ctx context.Context, filter ProductFilter) ([]Product, int, error)
 	FindByIDOrSlug(ctx context.Context, idOrSlug string) (*Product, error)
 	FindSizesByProductID(ctx context.Context, productID string) ([]ProductSize, error)
+	FindSizesByProductIDs(ctx context.Context, productIDs []string) (map[string][]ProductSize, error)
 	GetSizeStock(ctx context.Context, productID, size string) (int, error)
 	HasOrderHistory(ctx context.Context, productID string) (bool, error)
 	Create(ctx context.Context, product *Product, sizes []ProductSize) error
@@ -151,6 +152,7 @@ type ProductRepository interface {
 // ProductService defines catalog business operations.
 type ProductService interface {
 	ListCategories(ctx context.Context) ([]Category, error)
+	CreateCategory(ctx context.Context, name, slug string) (*Category, error)
 	ListProducts(ctx context.Context, filter ProductFilter) (*ProductListResult, error)
 	GetProduct(ctx context.Context, idOrSlug string) (*Product, error)
 	CreateProduct(ctx context.Context, input ProductUpsertInput) (*Product, error)

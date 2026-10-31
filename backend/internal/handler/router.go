@@ -75,10 +75,22 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 		if deps.ProductHandler != nil {
 			api.Get("/categories", deps.ProductHandler.ListCategories)
+			if jwtMgr != nil {
+				api.With(middleware.RequireAuth(jwtMgr), middleware.RequireAdmin).Post("/categories", deps.ProductHandler.CreateCategory)
+			}
 
 			api.Route("/products", func(products chi.Router) {
 				products.Get("/", deps.ProductHandler.ListProducts)
 				products.Get("/{id}", deps.ProductHandler.GetProduct)
+
+				if jwtMgr != nil {
+					products.Group(func(admin chi.Router) {
+						admin.Use(middleware.RequireAuth(jwtMgr), middleware.RequireAdmin)
+						admin.Post("/", deps.ProductHandler.CreateProduct)
+						admin.Put("/{id}", deps.ProductHandler.UpdateProduct)
+						admin.Delete("/{id}", deps.ProductHandler.DeleteProduct)
+					})
+				}
 			})
 		}
 	})

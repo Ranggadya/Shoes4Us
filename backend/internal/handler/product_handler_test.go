@@ -1,10 +1,15 @@
 package handler_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +17,7 @@ import (
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/internal/handler"
 	"github.com/ranggadya/shoes4us/backend/internal/service"
+	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
 type fakeCategoryRepo struct {
@@ -46,14 +52,16 @@ func (r *fakeCategoryRepo) Create(_ context.Context, category *domain.Category) 
 }
 
 type fakeProductRepo struct {
-	products []domain.Product
-	sizes    map[string][]domain.ProductSize
+	products      []domain.Product
+	sizes         map[string][]domain.ProductSize
+	ordersHistory map[string]bool
 }
 
 func newFakeProductRepo() *fakeProductRepo {
 	return &fakeProductRepo{
-		products: make([]domain.Product, 0),
-		sizes:    make(map[string][]domain.ProductSize),
+		products:      make([]domain.Product, 0),
+		sizes:         make(map[string][]domain.ProductSize),
+		ordersHistory: make(map[string]bool),
 	}
 }
 
@@ -163,6 +171,14 @@ func (r *fakeProductRepo) FindSizesByProductID(_ context.Context, productID stri
 	return r.sizes[productID], nil
 }
 
+func (r *fakeProductRepo) FindSizesByProductIDs(_ context.Context, productIDs []string) (map[string][]domain.ProductSize, error) {
+	out := make(map[string][]domain.ProductSize)
+	for _, id := range productIDs {
+		out[id] = r.sizes[id]
+	}
+	return out, nil
+}
+
 func (r *fakeProductRepo) GetSizeStock(_ context.Context, productID, size string) (int, error) {
 	for _, s := range r.sizes[productID] {
 		if s.Size == size {
@@ -172,17 +188,31 @@ func (r *fakeProductRepo) GetSizeStock(_ context.Context, productID, size string
 	return 0, nil
 }
 
-func (r *fakeProductRepo) HasOrderHistory(_ context.Context, _ string) (bool, error) {
-	return false, nil
+func (r *fakeProductRepo) HasOrderHistory(_ context.Context, productID string) (bool, error) {
+	return r.ordersHistory[productID], nil
 }
 
 func (r *fakeProductRepo) Create(_ context.Context, product *domain.Product, sizes []domain.ProductSize) error {
+	if len(sizes) > 0 {
+		totalStock := 0
+		for _, s := range sizes {
+			totalStock += s.Stock
+		}
+		product.Stock = totalStock
+	}
 	r.products = append(r.products, *product)
 	r.sizes[product.ID] = sizes
 	return nil
 }
 
 func (r *fakeProductRepo) Update(_ context.Context, product *domain.Product, sizes []domain.ProductSize) error {
+	if len(sizes) > 0 {
+		totalStock := 0
+		for _, s := range sizes {
+			totalStock += s.Stock
+		}
+		product.Stock = totalStock
+	}
 	for i, p := range r.products {
 		if p.ID == product.ID {
 			r.products[i] = *product
@@ -209,6 +239,9 @@ func (r *fakeProductRepo) SoftDelete(_ context.Context, id string) error {
 		if p.ID == id {
 			r.products[i].IsActive = false
 			r.products[i].Stock = 0
+			for sIdx := range r.sizes[id] {
+				r.sizes[id][sIdx].Stock = 0
+			}
 			return nil
 		}
 	}
@@ -356,5 +389,278 @@ func TestProductHandler_ListAndDetail(t *testing.T) {
 
 	if notFoundRec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 Not Found, got %d", notFoundRec.Code)
+	}
+}
+
+func TestProductHandler_Create_MultipartFormData(t *testing.T) {
+	tempUploadDir := t.TempDir()
+
+	catRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-1", Name: "Running", Slug: "running", IsActive: true},
+		},
+	}
+	prodRepo := newFakeProductRepo()
+	prodSvc := service.NewProductService(catRepo, prodRepo)
+	prodHandler := handler.NewProductHandler(prodSvc).WithUploadDir(tempUploadDir)
+
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	adminToken, err := jwtMgr.Sign(token.UserClaims{
+		UserID: "admin-1",
+		Email:  "admin@shoes4us.com",
+		Name:   "Admin Shoes4Us",
+		Role:   domain.RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("failed to sign admin token: %v", err)
+	}
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		UploadDir:      tempUploadDir,
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	// Prepare multipart form with text fields, JSON sizes string, and image file
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	_ = writer.WriteField("name", "Air Zoom Pegasus 39")
+	_ = writer.WriteField("price", "1799000")
+	_ = writer.WriteField("category", "Running")
+	_ = writer.WriteField("brand", "Nike")
+	_ = writer.WriteField("audience", "MEN")
+	_ = writer.WriteField("segment", "SHOES")
+	_ = writer.WriteField("description", "Sepatu lari pria responsif")
+	_ = writer.WriteField("isNewArrival", "true")
+	_ = writer.WriteField("sizes", `[{"size":"40","stock":3},{"size":"42","stock":5}]`)
+
+	// PNG magic bytes
+	pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D}
+	part, err := writer.CreateFormFile("image", "pegasus.png")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	_, _ = part.Write(pngHeader)
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/products", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Product domain.Product `json:"product"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	prod := res.Data.Product
+	if prod.Name != "Air Zoom Pegasus 39" {
+		t.Errorf("expected product name 'Air Zoom Pegasus 39', got %q", prod.Name)
+	}
+	if prod.Stock != 8 {
+		t.Errorf("expected total stock 8 (3+5), got %d", prod.Stock)
+	}
+	if len(prod.Sizes) != 2 {
+		t.Errorf("expected 2 sizes, got %d", len(prod.Sizes))
+	}
+	if prod.ImageURL == nil || !strings.HasPrefix(*prod.ImageURL, "/uploads/") {
+		t.Errorf("expected imageUrl to start with /uploads/, got %v", prod.ImageURL)
+	} else {
+		filename := filepath.Base(*prod.ImageURL)
+		savedFile := filepath.Join(tempUploadDir, filename)
+		if _, err := os.Stat(savedFile); err != nil {
+			t.Errorf("expected uploaded image file to exist at %s: %v", savedFile, err)
+		}
+	}
+}
+
+func TestProductService_DeleteProduct_SoftDeletesWhenOrdered(t *testing.T) {
+	catRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-1", Name: "Running", Slug: "running", IsActive: true},
+		},
+	}
+	prodRepo := newFakeProductRepo()
+
+	p1 := domain.Product{
+		ID:         "prod-ordered",
+		Name:       "Historical Shoes",
+		Slug:       "historical-shoes",
+		Price:      1000000,
+		Stock:      10,
+		CategoryID: "cat-1",
+		IsActive:   true,
+	}
+	p2 := domain.Product{
+		ID:         "prod-unopened",
+		Name:       "Brand New Shoes",
+		Slug:       "brand-new-shoes",
+		Price:      2000000,
+		Stock:      5,
+		CategoryID: "cat-1",
+		IsActive:   true,
+	}
+
+	_ = prodRepo.Create(context.Background(), &p1, nil)
+	_ = prodRepo.Create(context.Background(), &p2, nil)
+	prodRepo.ordersHistory["prod-ordered"] = true
+	prodRepo.ordersHistory["prod-unopened"] = false
+
+	prodSvc := service.NewProductService(catRepo, prodRepo)
+
+	// Case 1: Product with order history -> soft-delete
+	softDeleted, err := prodSvc.DeleteProduct(context.Background(), "prod-ordered")
+	if err != nil {
+		t.Fatalf("unexpected error deleting ordered product: %v", err)
+	}
+	if !softDeleted {
+		t.Fatalf("expected softDeleted = true for product with order history")
+	}
+	updated, _ := prodRepo.FindByIDOrSlug(context.Background(), "prod-ordered")
+	if updated == nil || updated.IsActive || updated.Stock != 0 {
+		t.Fatalf("expected product to be soft-deleted (isActive=false, stock=0), got %+v", updated)
+	}
+
+	// Case 2: Product without order history -> hard delete
+	softDeleted2, err := prodSvc.DeleteProduct(context.Background(), "prod-unopened")
+	if err != nil {
+		t.Fatalf("unexpected error deleting unordered product: %v", err)
+	}
+	if softDeleted2 {
+		t.Fatalf("expected softDeleted = false for product without order history")
+	}
+	deleted, _ := prodRepo.FindByIDOrSlug(context.Background(), "prod-unopened")
+	if deleted != nil {
+		t.Fatalf("expected product to be permanently removed, got %+v", deleted)
+	}
+}
+
+func TestProductHandler_AdminCRUD_And_IncludeDetails(t *testing.T) {
+	tempDir := t.TempDir()
+	catRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-1", Name: "Basketball", Slug: "basketball", IsActive: true},
+		},
+	}
+	prodRepo := newFakeProductRepo()
+	prodSvc := service.NewProductService(catRepo, prodRepo)
+	prodHandler := handler.NewProductHandler(prodSvc).WithUploadDir(tempDir)
+
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	adminToken, _ := jwtMgr.Sign(token.UserClaims{
+		UserID: "admin-1",
+		Email:  "admin@shoes4us.com",
+		Role:   domain.RoleAdmin,
+	})
+	userToken, _ := jwtMgr.Sign(token.UserClaims{
+		UserID: "user-1",
+		Email:  "user@shoes4us.com",
+		Role:   domain.RoleUser,
+	})
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		UploadDir:      tempDir,
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	// 1. POST /api/categories by Admin
+	catJSON := `{"name":"Training","slug":"training"}`
+	catReq := httptest.NewRequest(http.MethodPost, "/api/categories", strings.NewReader(catJSON))
+	catReq.Header.Set("Content-Type", "application/json")
+	catReq.Header.Set("Authorization", "Bearer "+adminToken)
+	catRec := httptest.NewRecorder()
+	router.ServeHTTP(catRec, catReq)
+
+	if catRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created for POST /api/categories, got %d: %s", catRec.Code, catRec.Body.String())
+	}
+
+	// 2. POST /api/products by Non-Admin returns 403 Forbidden
+	prodJSON := `{"name":"Jordan 1","price":2000000,"category":"Basketball","sizes":[{"size":"42","stock":10}]}`
+	forbidReq := httptest.NewRequest(http.MethodPost, "/api/products", strings.NewReader(prodJSON))
+	forbidReq.Header.Set("Content-Type", "application/json")
+	forbidReq.Header.Set("Authorization", "Bearer "+userToken)
+	forbidRec := httptest.NewRecorder()
+	router.ServeHTTP(forbidRec, forbidReq)
+
+	if forbidRec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for non-admin product creation, got %d", forbidRec.Code)
+	}
+
+	// 3. POST /api/products with JSON by Admin
+	createReq := httptest.NewRequest(http.MethodPost, "/api/products", strings.NewReader(prodJSON))
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("Authorization", "Bearer "+adminToken)
+	createRec := httptest.NewRecorder()
+	router.ServeHTTP(createRec, createReq)
+
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created for admin product creation, got %d: %s", createRec.Code, createRec.Body.String())
+	}
+
+	var createRes struct {
+		Data struct {
+			Product domain.Product `json:"product"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(createRec.Body.Bytes(), &createRes)
+	createdID := createRes.Data.Product.ID
+	if createdID == "" {
+		t.Fatalf("expected product ID to be set")
+	}
+
+	// 4. GET /api/products?includeDetails=true verifies sizes are attached
+	listReq := httptest.NewRequest(http.MethodGet, "/api/products?includeDetails=true", nil)
+	listRec := httptest.NewRecorder()
+	router.ServeHTTP(listRec, listReq)
+
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for list products with includeDetails, got %d", listRec.Code)
+	}
+	var listRes struct {
+		Data struct {
+			Items []domain.Product `json:"items"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(listRec.Body.Bytes(), &listRes)
+	if len(listRes.Data.Items) == 0 || len(listRes.Data.Items[0].Sizes) == 0 {
+		t.Fatalf("expected sizes to be populated when includeDetails=true, got %+v", listRes.Data.Items)
+	}
+
+	// 5. PUT /api/products/:id updates price and sizes
+	updateJSON := `{"name":"Jordan 1 High","price":2200000,"category":"Basketball","sizes":[{"size":"42","stock":8}]}`
+	updateReq := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/products/%s", createdID), strings.NewReader(updateJSON))
+	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.Header.Set("Authorization", "Bearer "+adminToken)
+	updateRec := httptest.NewRecorder()
+	router.ServeHTTP(updateRec, updateReq)
+
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for product update, got %d: %s", updateRec.Code, updateRec.Body.String())
+	}
+
+	// 6. DELETE /api/products/:id deletes the product
+	delReq := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/products/%s", createdID), nil)
+	delReq.Header.Set("Authorization", "Bearer "+adminToken)
+	delRec := httptest.NewRecorder()
+	router.ServeHTTP(delRec, delReq)
+
+	if delRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for product deletion, got %d: %s", delRec.Code, delRec.Body.String())
 	}
 }

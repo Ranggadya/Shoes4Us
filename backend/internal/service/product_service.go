@@ -6,6 +6,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
@@ -34,6 +35,34 @@ func (s *ProductService) ListCategories(ctx context.Context) ([]domain.Category,
 	return s.categoryRepo.FindAll(ctx)
 }
 
+// CreateCategory creates a new category (Admin operation).
+func (s *ProductService) CreateCategory(ctx context.Context, name, slug string) (*domain.Category, error) {
+	cleanName := strings.TrimSpace(name)
+	if cleanName == "" {
+		return nil, domain.NewBadRequest("Nama kategori wajib diisi")
+	}
+
+	cleanSlug := strings.TrimSpace(slug)
+	if cleanSlug == "" {
+		cleanSlug = GenerateSlug(cleanName)
+	}
+
+	category := &domain.Category{
+		ID:        uuid.NewString(),
+		Name:      cleanName,
+		Slug:      cleanSlug,
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	if err := s.categoryRepo.Create(ctx, category); err != nil {
+		return nil, err
+	}
+
+	return category, nil
+}
+
 // ListProducts returns filtered, paginated products.
 func (s *ProductService) ListProducts(ctx context.Context, filter domain.ProductFilter) (*domain.ProductListResult, error) {
 	if filter.Page < 1 {
@@ -46,6 +75,26 @@ func (s *ProductService) ListProducts(ctx context.Context, filter domain.Product
 	items, total, err := s.productRepo.FindAll(ctx, filter)
 	if err != nil {
 		return nil, err
+	}
+
+	if filter.IncludeDetails && len(items) > 0 {
+		productIDs := make([]string, len(items))
+		for i, p := range items {
+			productIDs[i] = p.ID
+		}
+		sizesMap, err := s.productRepo.FindSizesByProductIDs(ctx, productIDs)
+		if err != nil {
+			return nil, err
+		}
+		if true {
+			for i := range items {
+				if sz, ok := sizesMap[items[i].ID]; ok {
+					items[i].Sizes = sz
+				} else {
+					items[i].Sizes = []domain.ProductSize{}
+				}
+			}
+		}
 	}
 
 	totalPages := 0
@@ -160,6 +209,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, input domain.Product
 	}
 
 	var sizes []domain.ProductSize
+	totalStock := 0
 	for _, s := range input.Sizes {
 		cleanSize := strings.TrimSpace(s.Size)
 		if cleanSize != "" {
@@ -167,7 +217,11 @@ func (s *ProductService) CreateProduct(ctx context.Context, input domain.Product
 				Size:  cleanSize,
 				Stock: s.Stock,
 			})
+			totalStock += s.Stock
 		}
+	}
+	if len(sizes) > 0 {
+		product.Stock = totalStock
 	}
 
 	if err := s.productRepo.Create(ctx, product, sizes); err != nil {
@@ -231,10 +285,25 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input dom
 		}
 		if cat != nil {
 			existing.CategoryID = cat.ID
+		} else {
+			catSlug := GenerateSlug(catName)
+			newCat := &domain.Category{
+				ID:        uuid.NewString(),
+				Name:      catName,
+				Slug:      catSlug,
+				IsActive:  true,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+			if err := s.categoryRepo.Create(ctx, newCat); err != nil {
+				return nil, err
+			}
+			existing.CategoryID = newCat.ID
 		}
 	}
 
 	var sizes []domain.ProductSize
+	totalStock := 0
 	for _, s := range input.Sizes {
 		cleanSize := strings.TrimSpace(s.Size)
 		if cleanSize != "" {
@@ -242,7 +311,11 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input dom
 				Size:  cleanSize,
 				Stock: s.Stock,
 			})
+			totalStock += s.Stock
 		}
+	}
+	if len(sizes) > 0 {
+		existing.Stock = totalStock
 	}
 
 	if err := s.productRepo.Update(ctx, existing, sizes); err != nil {
