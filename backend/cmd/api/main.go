@@ -63,6 +63,10 @@ func main() {
 	reviewSvc := service.NewReviewService(reviewRepo)
 	reviewHandler := handler.NewReviewHandler(reviewSvc)
 
+	cartRepo := repository.NewCartRepository(pool)
+	cartSvc := service.NewCartService(cartRepo, productRepo)
+	cartHandler := handler.NewCartHandler(cartSvc)
+
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins: cfg.AllowedOrigins,
 		UploadDir:      cfg.UploadDir,
@@ -72,6 +76,7 @@ func main() {
 		UserHandler:    userHandler,
 		ProductHandler: productHandler,
 		ReviewHandler:  reviewHandler,
+		CartHandler:    cartHandler,
 	})
 
 	srv := &http.Server{
