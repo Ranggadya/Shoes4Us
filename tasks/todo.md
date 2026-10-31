@@ -317,14 +317,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Melengkapi alur transaksi dengan endpoint Admin `PATCH /api/orders/:id/status`, endpoint konfirmasi pembayaran `POST /api/payment` (mengubah status menjadi `PAID` dan mengosongkan keranjang belanja), pembuatan seeder opsional (`cmd/seed/main.go`), serta penambahan script `dev:be` / `build:be` di `package.json` root.
 
 **Acceptance criteria:**
-- [ ] `PATCH /api/orders/:id/status` (khusus `ADMIN`) memperbarui status pesanan sesuai transisi yang valid dan mengembalikan stok apabila status diubah ke `CANCELLED`.
-- [ ] `POST /api/payment` memverifikasi kepemilikan pesanan, mengubah status pesanan menjadi `PAID`, mengosongkan keranjang user, dan mengembalikan response sukses.
-- [ ] `package.json` di root menyediakan script `dev:be` dan `build:be` untuk memudahkan eksekusi dari root monorepo.
+- [x] `PATCH /api/orders/:id/status` (khusus `ADMIN`) memperbarui status pesanan sesuai transisi yang valid dan mengembalikan stok apabila status diubah ke `CANCELLED`.
+- [x] `POST /api/payment` memverifikasi kepemilikan pesanan, mengubah status pesanan menjadi `PAID`, mengosongkan keranjang user, dan mengembalikan response sukses.
+- [x] `package.json` di root menyediakan script `dev:be` dan `build:be` untuk memudahkan eksekusi dari root monorepo.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v -race ./...`
-- [ ] Build succeeds: `cd backend && go build -o bin/shoes4us-api.exe ./cmd/api`
-- [ ] Manual check: Selesaikan pembayaran di `/payment` → diarahkan ke `/status-pesanan` dengan status `PAID` dan keranjang kosong; ubah status ke `SHIPPED`/`DELIVERED` dari `/admin/dashboard`.
+- [x] Tests pass: `cd backend && go test -v -race ./...`
+- [x] Build succeeds: `cd backend && go build -o bin/shoes4us-api.exe ./cmd/api`
+- [x] Manual check: Selesaikan pembayaran di `/payment` → diarahkan ke `/status-pesanan` dengan status `PAID` dan keranjang kosong; ubah status ke `SHIPPED`/`DELIVERED` dari `/admin/dashboard`.
 
 **Dependencies:** Task 10
 
@@ -340,8 +340,8 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 ---
 
 ## Checkpoint 5: Complete End-to-End Verification
-- [ ] Seluruh unit & handler test di `backend/` lulus (`go test -race ./...`).
-- [ ] `go vet ./...` dan `go build ./cmd/api` menghasilkan 0 error dan 0 warning.
-- [ ] Seluruh *Success Criteria* di [`SPEC-backend.md`](../SPEC-backend.md#9-success-criteria) terpenuhi.
-- [ ] Siap untuk direview pengguna.
+- [x] Seluruh unit & handler test di `backend/` lulus (`go test -race ./...`).
+- [x] `go vet ./...` dan `go build ./cmd/api` menghasilkan 0 error dan 0 warning.
+- [x] Seluruh *Success Criteria* di [`SPEC-backend.md`](../SPEC-backend.md#9-success-criteria) terpenuhi.
+- [x] Siap untuk direview pengguna.
 
