@@ -228,14 +228,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Mengimplementasikan `CartRepository`, `CartService`, dan `CartHandler` untuk operasi `GET /api/cart`, `POST /api/cart`, `PATCH` & `PUT /api/cart/:itemId`, `DELETE /api/cart/:itemId`, dan `DELETE /api/cart`.
 
 **Acceptance criteria:**
-- [ ] `GET /api/cart` mengembalikan daftar item keranjang user beserta `lineTotal` dan `totals: { subtotal, totalItems }`.
-- [ ] `POST /api/cart` memvalidasi ketersediaan stok ukuran di `product_sizes` (atau `products.stock`) sebelum menambah/menggabungkan kuantitas item yang memiliki `productId` dan `size` yang sama.
-- [ ] `PATCH /api/cart/:itemId` (dan `PUT /api/cart/:itemId`) memperbarui kuantitas item (atau menghapus item jika `quantity <= 0`), sedangkan `DELETE` menghapus satu item atau mengosongkan keranjang.
+- [x] `GET /api/cart` mengembalikan daftar item keranjang user beserta `lineTotal` dan `totals: { subtotal, totalItems }`.
+- [x] `POST /api/cart` memvalidasi ketersediaan stok ukuran di `product_sizes` (atau `products.stock`) sebelum menambah/menggabungkan kuantitas item yang memiliki `productId` dan `size` yang sama.
+- [x] `PATCH /api/cart/:itemId` (dan `PUT /api/cart/:itemId`) memperbarui kuantitas item (atau menghapus item jika `quantity <= 0`), sedangkan `DELETE` menghapus satu item atau mengosongkan keranjang.
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestCart`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Tambah sepatu dengan ukuran tertentu ke keranjang, ubah jumlah di `/cart`, dan periksa badge jumlah item di Navbar.
+- [x] Tests pass: `cd backend && go test -v ./internal/service/... ./internal/handler/... -run TestCart`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Tambah sepatu dengan ukuran tertentu ke keranjang, ubah jumlah di `/cart`, dan periksa badge jumlah item di Navbar.
 
 **Dependencies:** Task 3, Task 5
 
