@@ -59,12 +59,41 @@ npm run preview:fe
 
 ---
 
-## 🛠️ Pengembangan Backend (Go)
+## 🛠️ Pengembangan Backend (Go) & Database
 
-Silakan buka dokumentasi lengkap di:
-👉 **[`backend/README.md`](./backend/README.md)**
+Backend dibangun dengan **Go 1.24/1.25** menggunakan arsitektur clean architecture (Chi Router, pgx connection pool, JWT authentication, PostgreSQL).
 
-Di sana telah dijelaskan secara rinci:
-- Struktur Go standard project layout yang direkomendasikan.
-- Skema tabel database dari PostgreSQL (berdasarkan [`backend/reference/prisma/schema.prisma`](./backend/reference/prisma/schema.prisma)).
-- Spesifikasi lengkap seluruh endpoint REST API (Auth, Produk, Kategori, Keranjang, Wishlist, Transaksi/Pesanan, Review).
+### Menjalankan Backend & Unit Test
+```bash
+# Menjalankan backend Go di port 8080
+npm run dev:be
+
+# Menjalankan Database Seeder (Membuat tabel & data awal)
+npm run seed:be
+
+# Menjalankan semua unit tests backend
+npm run test:be
+```
+
+---
+
+## 🐳 Deployment Produksi (Docker & Cloud)
+
+Proyek ini telah siap untuk dideploy ke lingkungan produksi menggunakan **Docker Compose** atau layanan cloud PaaS (Vercel + Railway/Render + Supabase/Neon).
+
+### Quick Start dengan Docker Compose
+```bash
+# 1. Salin template konfigurasi environment
+cp .env.example .env
+
+# 2. Jalankan seluruh container (PostgreSQL, Backend API, Frontend Nginx)
+npm run docker:up
+
+# 3. Jalankan migrasi tabel & seeder awal di dalam container
+npm run docker:seed
+```
+Aplikasi langsung dapat diakses di `http://localhost`.
+
+📖 **Panduan deployment lengkap, monitoring, backup, dan cloud PaaS:**  
+👉 **Lihat [`DEPLOYMENT.md`](./DEPLOYMENT.md)**
+

@@ -43,4 +43,5 @@ yarn-error.log*
 
 skills-lock.json
 .superpowers/
+.agents/
 

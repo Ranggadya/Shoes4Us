@@ -1,0 +1,15 @@
+# ==========================================
+# Docker Compose Development Override Example
+# Rename this file to docker-compose.override.yml to enable local overrides
+# ==========================================
+services:
+  backend:
+    # Expose debug ports or mount local uploads directory
+    volumes:
+      - ./backend/uploads:/app/uploads
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80
+
+  frontend:
+    ports:
+      - "3000:80"

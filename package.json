@@ -11,7 +11,12 @@
     "dev:be": "cd backend && go run ./cmd/api",
     "build:be": "cd backend && go build -o bin/shoes4us-api.exe ./cmd/api",
     "seed:be": "cd backend && go run ./cmd/seed",
-    "test:be": "cd backend && go test -v ./..."
+    "test:be": "cd backend && go test -v ./...",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:seed": "docker compose exec backend /app/seed",
+    "docker:logs": "docker compose logs -f"
   },
   "keywords": [
     "ecommerce",
