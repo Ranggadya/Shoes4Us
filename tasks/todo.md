@@ -166,14 +166,14 @@ Dokumen ini berisi rincian tugas terurut (*vertical slices*) untuk mengimplement
 **Description:** Menambahkan kemampuan CRUD produk untuk `ADMIN` pada `ProductRepository`, `ProductService`, dan `ProductHandler`, termasuk parser `multipart/form-data` & `application/json`, resolusi nama kategori ke `categoryId`, generasi `slug` unik, sinkronisasi tabel `product_sizes` dalam transaksi DB, serta penghapusan aman (*safe delete* / *soft-delete* jika produk sudah ada di `order_items`).
 
 **Acceptance criteria:**
-- [ ] `POST /api/products` dan `PUT /api/products/:id` dilindungi middleware `RequireAdmin` dan berhasil mem-parsing baik `FormData` (dari `AdminProductPage.tsx` & `AdminAddProductPage.tsx`) maupun `JSON`.
-- [ ] Stok ukuran (`sizes`) disimpan secara sinkron ke tabel `product_sizes` dan total `stock` produk dihitung otomatis.
-- [ ] `DELETE /api/products/:id` menghapus produk (atau menonaktifkannya bila direferensikan oleh `order_items` agar tidak memicu foreign key error).
+- [x] `POST /api/products` dan `PUT /api/products/:id` dilindungi middleware `RequireAdmin` dan berhasil mem-parsing baik `FormData` (dari `AdminProductPage.tsx` & `AdminAddProductPage.tsx`) maupun `JSON`.
+- [x] Stok ukuran (`sizes`) disimpan secara sinkron ke tabel `product_sizes` dan total `stock` produk dihitung otomatis.
+- [x] `DELETE /api/products/:id` menghapus produk (atau menonaktifkannya bila direferensikan oleh `order_items` agar tidak memicu foreign key error).
 
 **Verification:**
-- [ ] Tests pass: `cd backend && go test -v ./internal/handler/... -run TestAdminProduct`
-- [ ] Build succeeds: `cd backend && go build ./cmd/api`
-- [ ] Manual check: Tambah, edit, dan hapus produk beserta stok ukuran dari `/admin/product` dan `/admin/product/add`.
+- [x] Tests pass: `cd backend && go test -v ./internal/handler/... -run TestAdminProduct`
+- [x] Build succeeds: `cd backend && go build ./cmd/api`
+- [x] Manual check: Tambah, edit, dan hapus produk beserta stok ukuran dari `/admin/product` dan `/admin/product/add`.
 
 **Dependencies:** Task 5
 
