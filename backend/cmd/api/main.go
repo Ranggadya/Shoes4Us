@@ -67,16 +67,21 @@ func main() {
 	cartSvc := service.NewCartService(cartRepo, productRepo)
 	cartHandler := handler.NewCartHandler(cartSvc)
 
+	wishlistRepo := repository.NewWishlistRepository(pool)
+	wishlistSvc := service.NewWishlistService(wishlistRepo)
+	wishlistHandler := handler.NewWishlistHandler(wishlistSvc)
+
 	router := handler.NewRouter(handler.RouterDependencies{
-		AllowedOrigins: cfg.AllowedOrigins,
-		UploadDir:      cfg.UploadDir,
-		JWTSecret:      cfg.JWTSecret,
-		JWTManager:     jwtMgr,
-		AuthHandler:    authHandler,
-		UserHandler:    userHandler,
-		ProductHandler: productHandler,
-		ReviewHandler:  reviewHandler,
-		CartHandler:    cartHandler,
+		AllowedOrigins:  cfg.AllowedOrigins,
+		UploadDir:       cfg.UploadDir,
+		JWTSecret:       cfg.JWTSecret,
+		JWTManager:      jwtMgr,
+		AuthHandler:     authHandler,
+		UserHandler:     userHandler,
+		ProductHandler:  productHandler,
+		ReviewHandler:   reviewHandler,
+		CartHandler:     cartHandler,
+		WishlistHandler: wishlistHandler,
 	})
 
 	srv := &http.Server{
