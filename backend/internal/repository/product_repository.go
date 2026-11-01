@@ -39,8 +39,8 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 	whereClauses = append(whereClauses, `p."isActive" = true`)
 
 	if filter.Search != "" {
-		term := "%" + strings.ToLower(filter.Search) + "%"
-		whereClauses = append(whereClauses, fmt.Sprintf(`(LOWER(p.name) LIKE $%d OR LOWER(COALESCE(p.description, '')) LIKE $%d OR LOWER(COALESCE(p.brand, '')) LIKE $%d)`, argIdx, argIdx, argIdx))
+		term := "%" + strings.TrimSpace(filter.Search) + "%"
+		whereClauses = append(whereClauses, fmt.Sprintf(`(p.name ILIKE $%d OR COALESCE(p.description, '') ILIKE $%d OR COALESCE(p.brand, '') ILIKE $%d)`, argIdx, argIdx, argIdx))
 		args = append(args, term)
 		argIdx++
 	}
