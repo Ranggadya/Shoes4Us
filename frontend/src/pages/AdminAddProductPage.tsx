@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import {
   Package,
   DollarSign,
-  Image as ImageIcon,
   FileText,
   Save,
   X,
@@ -14,6 +13,7 @@ import {
   Tag,
   Box,
 } from "lucide-react";
+import { ImageUploadDropzone } from "@/components/admin/ImageUploadDropzone";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
 import {
@@ -48,7 +48,6 @@ export default function AdminAddProductPage() {
   const [sizeStocks, setSizeStocks] = useState(DEFAULT_SIZE_STOCKS);
 
   // UI state
-  const [imagePreviewError, setImagePreviewError] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
@@ -525,53 +524,16 @@ export default function AdminAddProductPage() {
               </div>
             </div>
 
-            {/* Image URL */}
+            {/* Image Upload Dropzone */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                URL Gambar
-              </label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setImageUrl(e.target.value);
-                    setImagePreviewError(false);
-                    if (currentStep < 3) setCurrentStep(3);
-                  }}
-                  onFocus={() => setCurrentStep(3)}
-                  placeholder="/sepatu1.jpeg atau https://example.com/image.jpg"
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                  disabled={loading}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Gunakan path lokal (contoh: /sepatu1.jpeg) atau URL lengkap
-              </p>
-
-              {/* Image Preview */}
-              {imageUrl && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Preview Gambar:</p>
-                  <div className="flex items-center justify-center bg-white rounded-lg border-2 border-dashed border-gray-300 p-4">
-                    {!imagePreviewError ? (
-                      <img
-                        src={imageUrl}
-                        alt="Preview"
-                        className="max-h-48 object-contain"
-                        onError={() => setImagePreviewError(true)}
-                      />
-                    ) : (
-                      <div className="text-center py-8">
-                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Gagal memuat gambar</p>
-                        <p className="text-xs text-gray-400 mt-1">Periksa URL gambar</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <ImageUploadDropzone
+                value={imageUrl}
+                onChange={(url) => {
+                  setImageUrl(url);
+                  if (currentStep < 3) setCurrentStep(3);
+                }}
+                disabled={loading}
+              />
             </div>
 
             {/* Description */}

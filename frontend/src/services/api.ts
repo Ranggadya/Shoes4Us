@@ -107,4 +107,18 @@ export const api = {
 
   delete: <T>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { method: "DELETE", ...options }),
+
+  uploadImage: async (file: File): Promise<{ url: string; filename: string; size: number }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await request<{ data: { url: string; filename: string; size: number } }>("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    return res.data;
+  },
 };
+
+export async function uploadImage(file: File): Promise<{ url: string; filename: string; size: number }> {
+  return api.uploadImage(file);
+}
