@@ -210,3 +210,43 @@ docker run --rm -v shoes4us_uploads_data:/data -v $(pwd):/backup alpine tar czf 
 - [x] **Client Request Body Limiting**: Nginx membatasi ukuran body upload maksimal `15M` untuk mencegah serangan DoS memori.
 - [ ] **Ganti Kredensial Default**: Pastikan `JWT_SECRET` dan `POSTGRES_PASSWORD` pada `.env` telah diganti dengan string acak sebelum go-live.
 - [ ] **SSL / TLS**: Pastikan trafik HTTPS aktif (via Let's Encrypt atau Cloudflare SSL Strict).
+
+---
+
+## 7. Panduan Setup Cloudflare R2 (Object Storage Gambar Produk)
+
+Cloudflare R2 menyediakan penyimpanan objek kompatibel S3 dengan kuota gratis **10 GB storage per bulan** dan **$0 biaya egress (bandwidth bebas biaya seumur hidup)**.
+
+### Langkah 1: Buat R2 Bucket di Cloudflare
+1. Buka [dash.cloudflare.com](https://dash.cloudflare.com) lalu masuk ke menu **R2**.
+2. Klik tombol **Create bucket**, beri nama bucket: `shoes4us-images`.
+3. Pilih lokasi bucket (misal: `APAC` / Asia-Pacific).
+4. Klik **Create Bucket**.
+
+### Langkah 2: Izinkan Akses Publik (Public Access)
+1. Di halaman bucket `shoes4us-images`, buka tab **Settings**.
+2. Di bagian **Public Access**, Anda bisa memilih salah satu:
+   - **R2.dev subdomain**: Klik **Allow Access** untuk mendapatkan domain publik instan (contoh: `https://pub-abcdef123456.r2.dev`).
+   - Atau **Custom Domain**: Hubungkan domain Anda sendiri (misal: `cdn.shoes4us.com`).
+
+### Langkah 3: Buat API Token (Access Key & Secret Key)
+1. Kembali ke menu utama **R2** $\to$ klik **Manage R2 API Tokens** di sebelah kanan.
+2. Klik **Create API token**:
+   - Berikan izin: **Object Read & Write**.
+   - Berlaku untuk: Semua bucket atau spesifik `shoes4us-images`.
+3. Klik **Create API Token**.
+4. Salin data berikut (hanya tampil sekali!):
+   - **Access Key ID**
+   - **Secret Access Key**
+   - **Account ID** (tertera di URL endpoint R2 Anda)
+
+### Langkah 4: Masukkan ke File `.env`
+Di file `.env` (atau di dashboard hosting Anda):
+```env
+CF_R2_ACCOUNT_ID=d9a8b7c6e5f4...
+CF_R2_ACCESS_KEY_ID=1234567890abcdef...
+CF_R2_SECRET_ACCESS_KEY=fedcba0987654321...
+CF_R2_BUCKET_NAME=shoes4us-images
+CF_R2_PUBLIC_URL=https://pub-abcdef123456.r2.dev
+```
+Begitu nilai di atas terisi, semua upload gambar produk baru otomatis dialihkan ke Cloudflare CDN global!
