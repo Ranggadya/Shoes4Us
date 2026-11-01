@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/internal/middleware"
@@ -56,7 +58,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, res.Token)
+	setAuthCookie(w, r, res.Token)
 	response.WriteCreated(w, "Registrasi berhasil", res)
 }
 
@@ -74,7 +76,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, res.Token)
+	setAuthCookie(w, r, res.Token)
 	response.WriteSuccess(w, http.StatusOK, "Login berhasil", res, nil)
 }
 
@@ -135,12 +137,29 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	response.WriteSuccess(w, http.StatusOK, "Password berhasil direset", nil, nil)
 }
 
-func setAuthCookie(w http.ResponseWriter, jwtToken string) {
+func isSecureRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	if r.TLS != nil {
+		return true
+	}
+	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		return true
+	}
+	if strings.EqualFold(os.Getenv("ENVIRONMENT"), "production") {
+		return true
+	}
+	return false
+}
+
+func setAuthCookie(w http.ResponseWriter, r *http.Request, jwtToken string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    jwtToken,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   isSecureRequest(r),
 		MaxAge:   authCookieMaxAgeSeconds,
 		SameSite: http.SameSiteLaxMode,
 	})

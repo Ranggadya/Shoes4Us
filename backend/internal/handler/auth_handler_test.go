@@ -448,3 +448,64 @@ func TestAuthHandler_ForgotAndResetPassword(t *testing.T) {
 		t.Fatalf("expected 200 OK on reset-password with password field only, got %d: %s", resetRec2.Code, resetRec2.Body.String())
 	}
 }
+
+func TestAuthCookie_SecureFlag(t *testing.T) {
+	repo := newFakeUserRepo()
+	authService := service.NewAuthService(repo, token.NewJWTManager("test-secret", 24))
+	authHandler := handler.NewAuthHandler(authService)
+
+	hashed, _ := hash.HashPassword("password123")
+	_ = repo.Create(context.Background(), &domain.User{
+		Email:        "secure@shoes4us.com",
+		PasswordHash: hashed,
+		Name:         "Secure User",
+		Role:         domain.RoleUser,
+		IsActive:     true,
+	})
+
+	loginPayload, _ := json.Marshal(map[string]string{
+		"email":    "secure@shoes4us.com",
+		"password": "password123",
+	})
+
+	// Case 1: Plain HTTP request -> Secure must be false
+	httpReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(loginPayload))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpRec := httptest.NewRecorder()
+	authHandler.Login(httpRec, httpReq)
+
+	var httpCookie *http.Cookie
+	for _, c := range httpRec.Result().Cookies() {
+		if c.Name == "token" {
+			httpCookie = c
+			break
+		}
+	}
+	if httpCookie == nil {
+		t.Fatalf("expected token cookie to be set")
+	}
+	if httpCookie.Secure {
+		t.Errorf("expected Secure=false on plain HTTP request, got true")
+	}
+
+	// Case 2: HTTPS request via X-Forwarded-Proto -> Secure must be true
+	httpsReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(loginPayload))
+	httpsReq.Header.Set("Content-Type", "application/json")
+	httpsReq.Header.Set("X-Forwarded-Proto", "https")
+	httpsRec := httptest.NewRecorder()
+	authHandler.Login(httpsRec, httpsReq)
+
+	var httpsCookie *http.Cookie
+	for _, c := range httpsRec.Result().Cookies() {
+		if c.Name == "token" {
+			httpsCookie = c
+			break
+		}
+	}
+	if httpsCookie == nil {
+		t.Fatalf("expected token cookie to be set on HTTPS request")
+	}
+	if !httpsCookie.Secure {
+		t.Errorf("expected Secure=true on X-Forwarded-Proto=https, got false")
+	}
+}
