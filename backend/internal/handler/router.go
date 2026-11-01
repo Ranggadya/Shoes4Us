@@ -78,6 +78,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		}
 
 		if deps.ProductHandler != nil {
+			if jwtMgr != nil {
+				api.With(middleware.RequireAuth(jwtMgr), middleware.RequireAdmin).Post("/upload", deps.ProductHandler.UploadImage)
+			}
 			api.Get("/categories", deps.ProductHandler.ListCategories)
 			if jwtMgr != nil {
 				api.With(middleware.RequireAuth(jwtMgr), middleware.RequireAdmin).Post("/categories", deps.ProductHandler.CreateCategory)

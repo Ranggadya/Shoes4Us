@@ -17,6 +17,7 @@ import (
 	"github.com/ranggadya/shoes4us/backend/internal/handler"
 	"github.com/ranggadya/shoes4us/backend/internal/repository"
 	"github.com/ranggadya/shoes4us/backend/internal/service"
+	"github.com/ranggadya/shoes4us/backend/pkg/storage"
 	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
@@ -57,7 +58,11 @@ func main() {
 	categoryRepo := repository.NewCategoryRepository(pool)
 	productRepo := repository.NewProductRepository(pool)
 	productSvc := service.NewProductService(categoryRepo, productRepo)
-	productHandler := handler.NewProductHandler(productSvc).WithUploadDir(cfg.UploadDir)
+	uploader, err := storage.NewUploader(cfg)
+	if err != nil {
+		log.Fatalf("failed to initialize storage uploader: %v", err)
+	}
+	productHandler := handler.NewProductHandler(productSvc).WithUploader(uploader).WithUploadDir(cfg.UploadDir)
 
 	reviewRepo := repository.NewReviewRepository(pool)
 	reviewSvc := service.NewReviewService(reviewRepo)

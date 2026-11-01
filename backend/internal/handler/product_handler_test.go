@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -664,3 +665,159 @@ func TestProductHandler_AdminCRUD_And_IncludeDetails(t *testing.T) {
 		t.Fatalf("expected 200 OK for product deletion, got %d: %s", delRec.Code, delRec.Body.String())
 	}
 }
+
+type fakeCustomUploader struct {
+	uploadedURL string
+	err         error
+}
+
+func (f *fakeCustomUploader) Upload(ctx context.Context, r io.Reader, filename string, contentType string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.uploadedURL, nil
+}
+
+func TestProductHandler_UploadImage_Success(t *testing.T) {
+	customUploader := &fakeCustomUploader{uploadedURL: "https://pub-r2.shoes4us.com/products/img123.jpg"}
+	prodHandler := handler.NewProductHandler(nil).WithUploader(customUploader)
+
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	adminToken, err := jwtMgr.Sign(token.UserClaims{
+		UserID: "admin-1",
+		Email:  "admin@shoes4us.com",
+		Role:   domain.RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("failed to sign admin token: %v", err)
+	}
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	jpegHeader := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01}
+	part, _ := writer.CreateFormFile("file", "test.jpg")
+	_, _ = part.Write(jpegHeader)
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res struct {
+		Success bool `json:"success"`
+		Data    struct {
+			URL      string `json:"url"`
+			Filename string `json:"filename"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+
+	if res.Data.URL != "https://pub-r2.shoes4us.com/products/img123.jpg" {
+		t.Errorf("expected uploaded url, got %q", res.Data.URL)
+	}
+}
+
+func TestProductHandler_UploadImage_Exceeds5MB(t *testing.T) {
+	prodHandler := handler.NewProductHandler(nil)
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	adminToken, _ := jwtMgr.Sign(token.UserClaims{UserID: "admin-1", Role: domain.RoleAdmin})
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"*"},
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, _ := writer.CreateFormFile("file", "large.png")
+	// write slightly more than 5MB
+	largeData := make([]byte, 5*1024*1024+10)
+	_, _ = part.Write(largeData)
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for file > 5MB, got %d", rec.Code)
+	}
+}
+
+func TestProductHandler_UploadImage_NonImageMime(t *testing.T) {
+	prodHandler := handler.NewProductHandler(nil)
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	adminToken, _ := jwtMgr.Sign(token.UserClaims{UserID: "admin-1", Role: domain.RoleAdmin})
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"*"},
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, _ := writer.CreateFormFile("file", "malicious.sh")
+	_, _ = part.Write([]byte("#!/bin/bash\necho bad\n"))
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for non-image, got %d", rec.Code)
+	}
+}
+
+func TestProductHandler_UploadImage_Unauthorized(t *testing.T) {
+	prodHandler := handler.NewProductHandler(nil)
+	jwtMgr := token.NewJWTManager("test-secret-key-32-chars-long!", 1)
+	userToken, _ := jwtMgr.Sign(token.UserClaims{UserID: "user-1", Role: domain.RoleUser})
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"*"},
+		JWTManager:     jwtMgr,
+		ProductHandler: prodHandler,
+	})
+
+	// 1. Missing token -> 401
+	req1 := httptest.NewRequest(http.MethodPost, "/api/upload", nil)
+	rec1 := httptest.NewRecorder()
+	router.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized, got %d", rec1.Code)
+	}
+
+	// 2. Regular user -> 403
+	req2 := httptest.NewRequest(http.MethodPost, "/api/upload", nil)
+	req2.Header.Set("Authorization", "Bearer "+userToken)
+	rec2 := httptest.NewRecorder()
+	router.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden, got %d", rec2.Code)
+	}
+}
+

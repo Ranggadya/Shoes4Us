@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -15,12 +14,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/pkg/response"
+	"github.com/ranggadya/shoes4us/backend/pkg/storage"
 )
 
 // ProductHandler handles HTTP requests for categories and product catalog.
 type ProductHandler struct {
 	productService domain.ProductService
 	uploadDir      string
+	uploader       storage.Uploader
 }
 
 // NewProductHandler constructs a new ProductHandler.
@@ -29,6 +30,12 @@ func NewProductHandler(productService domain.ProductService) *ProductHandler {
 		productService: productService,
 		uploadDir:      "./uploads",
 	}
+}
+
+// WithUploader configures a custom storage.Uploader (e.g. Cloudflare R2 or mock).
+func (h *ProductHandler) WithUploader(u storage.Uploader) *ProductHandler {
+	h.uploader = u
+	return h
 }
 
 // WithUploadDir configures the directory where uploaded product images are saved.
@@ -397,25 +404,94 @@ func (h *ProductHandler) saveUploadedImage(r *http.Request) (*string, error) {
 		}
 	}
 
-	if err := os.MkdirAll(h.uploadDir, 0755); err != nil {
-		return nil, domain.NewInternal("Gagal menyiapkan direktori penyimpanan gambar")
+	filename := fmt.Sprintf("%s%s", uuid.NewString(), ext)
+
+	uploader := h.uploader
+	if uploader == nil {
+		uploader = storage.NewLocalUploader(h.uploadDir)
+	}
+
+	urlPath, err := uploader.Upload(r.Context(), file, filename, mimeType)
+	if err != nil {
+		return nil, domain.NewInternal("Gagal mengunggah file gambar: " + err.Error())
+	}
+
+	return &urlPath, nil
+}
+
+// UploadImage handles POST /api/upload (Admin operation).
+func (h *ProductHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			file, header, err = r.FormFile("image")
+			if err != nil {
+				response.WriteError(w, domain.NewBadRequest("File gambar wajib diunggah (field 'file' atau 'image')"))
+				return
+			}
+		} else {
+			response.WriteError(w, domain.NewBadRequest("Gagal membaca file gambar: "+err.Error()))
+			return
+		}
+	}
+	defer file.Close()
+
+	if header.Size > 5*1024*1024 {
+		response.WriteError(w, domain.NewBadRequest("Ukuran file gambar maksimal 5MB"))
+		return
+	}
+
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		response.WriteError(w, domain.NewBadRequest("Gagal membaca konten file gambar"))
+		return
+	}
+
+	mimeType := http.DetectContentType(buf[:n])
+	if !strings.HasPrefix(mimeType, "image/") {
+		response.WriteError(w, domain.NewBadRequest("Format file harus berupa gambar"))
+		return
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		response.WriteError(w, domain.NewInternal("Gagal memproses file gambar"))
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext == "" || !isAllowedImageExt(ext) {
+		switch mimeType {
+		case "image/jpeg":
+			ext = ".jpg"
+		case "image/png":
+			ext = ".png"
+		case "image/webp":
+			ext = ".webp"
+		case "image/gif":
+			ext = ".gif"
+		default:
+			ext = ".jpg"
+		}
 	}
 
 	filename := fmt.Sprintf("%s%s", uuid.NewString(), ext)
-	dstPath := filepath.Join(h.uploadDir, filename)
+	uploader := h.uploader
+	if uploader == nil {
+		uploader = storage.NewLocalUploader(h.uploadDir)
+	}
 
-	dst, err := os.Create(dstPath)
+	uploadedURL, err := uploader.Upload(r.Context(), file, filename, mimeType)
 	if err != nil {
-		return nil, domain.NewInternal("Gagal menyimpan file gambar")
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		return nil, domain.NewInternal("Gagal menulis file gambar")
+		response.WriteError(w, domain.NewInternal("Gagal mengunggah file gambar: "+err.Error()))
+		return
 	}
 
-	urlPath := "/uploads/" + filename
-	return &urlPath, nil
+	response.WriteSuccess(w, http.StatusOK, "Gambar berhasil diunggah", map[string]any{
+		"url":      uploadedURL,
+		"filename": filename,
+		"size":     header.Size,
+	}, nil)
 }
 
 func isAllowedImageExt(ext string) bool {
