@@ -41,8 +41,7 @@ yarn-error.log*
 # Backups
 *.bak
 
-skills-lock.json
+# AI Agents & skills
+.agents/
 .superpowers/
-.agents/
-
-.agents/
+skills-lock.json
