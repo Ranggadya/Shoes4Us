@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,6 +25,29 @@ func NewOrderRepository(pool *pgxpool.Pool) *PostgresOrderRepository {
 	return &PostgresOrderRepository{pool: pool}
 }
 
+// sortOrderItemsForDeduction returns a copy of items sorted deterministically by ProductID and Size.
+// This prevents database deadlocks (SQLSTATE 40P01) during concurrent checkouts with overlapping products.
+func sortOrderItemsForDeduction(items []domain.OrderItem) []domain.OrderItem {
+	sorted := make([]domain.OrderItem, len(items))
+	copy(sorted, items)
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].ProductID != sorted[j].ProductID {
+			return sorted[i].ProductID < sorted[j].ProductID
+		}
+		var szI, szJ string
+		if sorted[i].Size != nil {
+			szI = *sorted[i].Size
+		}
+		if sorted[j].Size != nil {
+			szJ = *sorted[j].Size
+		}
+		return szI < szJ
+	})
+
+	return sorted
+}
+
 // CreateOrderWithTx creates an order and line items, deducts per-size stock, and clears the user's cart in a single atomic transaction.
 func (r *PostgresOrderRepository) CreateOrderWithTx(ctx context.Context, order *domain.Order, items []domain.OrderItem, cartID string) error {
 	if r.pool == nil {
@@ -38,8 +62,9 @@ func (r *PostgresOrderRepository) CreateOrderWithTx(ctx context.Context, order *
 
 	now := time.Now()
 
-	// 1. Deduct stock for each line item atomically
-	for _, item := range items {
+	// 1. Deduct stock for each line item atomically in deterministic order to prevent deadlocks
+	sortedItems := sortOrderItemsForDeduction(items)
+	for _, item := range sortedItems {
 		if item.Size != nil && strings.TrimSpace(*item.Size) != "" {
 			sz := strings.TrimSpace(*item.Size)
 			const decSizeQuery = `
