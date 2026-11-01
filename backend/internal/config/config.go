@@ -22,6 +22,11 @@ type Config struct {
 	SMTPUser        string
 	SMTPPass        string
 	SMTPFrom        string
+	CFR2AccountID   string
+	CFR2AccessKeyID string
+	CFR2SecretKey   string
+	CFR2BucketName  string
+	CFR2PublicURL   string
 }
 
 // Load reads environment variables (loading .env if present) and returns Config with defaults.
@@ -62,6 +67,11 @@ func Load() (*Config, error) {
 		SMTPUser:        strings.TrimSpace(os.Getenv("MAIL_USER")),
 		SMTPPass:        strings.TrimSpace(os.Getenv("MAIL_PASS")),
 		SMTPFrom:        getEnv("MAIL_FROM", "Shoes4Us <noreply@shoes4us.com>"),
+		CFR2AccountID:   strings.TrimSpace(os.Getenv("CF_R2_ACCOUNT_ID")),
+		CFR2AccessKeyID: strings.TrimSpace(os.Getenv("CF_R2_ACCESS_KEY_ID")),
+		CFR2SecretKey:   strings.TrimSpace(os.Getenv("CF_R2_SECRET_ACCESS_KEY")),
+		CFR2BucketName:  strings.TrimSpace(os.Getenv("CF_R2_BUCKET_NAME")),
+		CFR2PublicURL:   strings.TrimSpace(os.Getenv("CF_R2_PUBLIC_URL")),
 	}, nil
 }
 
