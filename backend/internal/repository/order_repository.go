@@ -37,10 +37,10 @@ func sortOrderItemsForDeduction(items []domain.OrderItem) []domain.OrderItem {
 		}
 		var szI, szJ string
 		if sorted[i].Size != nil {
-			szI = *sorted[i].Size
+			szI = strings.TrimSpace(*sorted[i].Size)
 		}
 		if sorted[j].Size != nil {
-			szJ = *sorted[j].Size
+			szJ = strings.TrimSpace(*sorted[j].Size)
 		}
 		return szI < szJ
 	})
