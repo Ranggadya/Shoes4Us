@@ -38,10 +38,10 @@
 **Context:**
 During checkout of multi-item carts, items are processed in arbitrary cart order. Concurrent transactions with inverted orders (`[A, B]` vs `[B, A]`) can trigger PostgreSQL `40P01` deadlock. Sorting items by `ProductID` and `Size` before the SQL deduction loop ensures a globally deterministic lock acquisition order.
 
-- [ ] Step 1: Write a unit test in `order_repository_test.go` verifying the deterministic sorting helper (`sortOrderItemsForDeduction`).
-- [ ] Step 2: Implement `sortOrderItemsForDeduction` in `order_repository.go` and sort `items` before entering `for _, item := range sortedItems`.
-- [ ] Step 3: Run `go test -v ./internal/repository/...` and confirm tests pass.
-- [ ] Step 4: Commit with message: `fix(order): prevent multi-item checkout deadlocks with deterministic item sorting`
+- [x] Step 1: Write a unit test in `order_repository_test.go` verifying the deterministic sorting helper (`sortOrderItemsForDeduction`).
+- [x] Step 2: Implement `sortOrderItemsForDeduction` in `order_repository.go` and sort `items` before entering `for _, item := range sortedItems`.
+- [x] Step 3: Run `go test -v ./internal/repository/...` and confirm tests pass.
+- [x] Step 4: Commit with message: `fix(order): prevent multi-item checkout deadlocks with deterministic item sorting`
 
 ---
 
@@ -54,11 +54,11 @@ During checkout of multi-item carts, items are processed in arbitrary cart order
 **Context:**
 Currently `setAuthCookie` omits the `Secure` flag. In local development (HTTP `localhost`), `Secure: false` is required, but in production (HTTPS or behind reverse proxy with `X-Forwarded-Proto: https`), `Secure: true` is mandated by OWASP and browser cookie security policies.
 
-- [ ] Step 1: Update `setAuthCookie` signature to accept `*http.Request` or check request properties (`r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" || os.Getenv("ENVIRONMENT") == "production"`).
-- [ ] Step 2: Update all `setAuthCookie` call sites in `auth_handler.go` (`Login`, `Register`).
-- [ ] Step 3: Add unit tests in `auth_handler_test.go` verifying that `Secure: true` is set when `X-Forwarded-Proto: https` is present, and `Secure: false` on plain HTTP.
-- [ ] Step 4: Run `go test -v ./internal/handler/... -run TestAuth` and confirm tests pass.
-- [ ] Step 5: Commit with message: `fix(auth): add dynamic secure cookie flag for HTTPS and production environments`
+- [x] Step 1: Update `setAuthCookie` signature to accept `*http.Request` or check request properties (`r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" || os.Getenv("ENVIRONMENT") == "production"`).
+- [x] Step 2: Update all `setAuthCookie` call sites in `auth_handler.go` (`Login`, `Register`).
+- [x] Step 3: Add unit tests in `auth_handler_test.go` verifying that `Secure: true` is set when `X-Forwarded-Proto: https` is present, and `Secure: false` on plain HTTP.
+- [x] Step 4: Run `go test -v ./internal/handler/... -run TestAuth` and confirm tests pass.
+- [x] Step 5: Commit with message: `fix(auth): add dynamic secure cookie flag for HTTPS and production environments`
 
 ---
 
@@ -71,10 +71,10 @@ Currently `setAuthCookie` omits the `Secure` flag. In local development (HTTP `l
 **Context:**
 To prevent goroutine hangs from stalled HTTP clients and enable distributed request tracing in logs, the Chi router should mount `chimw.RequestID` and `chimw.Timeout(30 * time.Second)`.
 
-- [ ] Step 1: Add `chimw.RequestID` and `chimw.Timeout(30 * time.Second)` to `NewRouter` in `router.go`.
-- [ ] Step 2: Add or update test in `router_test.go` to assert that responses include the `X-Request-Id` header.
-- [ ] Step 3: Run `go test -v ./internal/handler/... -run TestRouter` and confirm tests pass.
-- [ ] Step 4: Commit with message: `feat(api): mount RequestID and Timeout middleware on Chi router`
+- [x] Step 1: Add `chimw.RequestID` and `chimw.Timeout(30 * time.Second)` to `NewRouter` in `router.go`.
+- [x] Step 2: Add or update test in `router_test.go` to assert that responses include the `X-Request-Id` header.
+- [x] Step 3: Run `go test -v ./internal/handler/... -run TestRouter` and confirm tests pass.
+- [x] Step 4: Commit with message: `feat(api): mount RequestID and Timeout middleware on Chi router`
 
 ---
 
@@ -86,14 +86,14 @@ To prevent goroutine hangs from stalled HTTP clients and enable distributed requ
 **Context:**
 PostgreSQL table `products` has a GIN index on `name`: `products_name_trgm_idx USING GIN ("name" gin_trgm_ops)`. Wrapping the column with `LOWER(p.name) LIKE $1` can bypass the index in older Postgres planner heuristics. Using `p.name ILIKE $1` natively taps into `gin_trgm_ops`.
 
-- [ ] Step 1: Modify `FindAll` in `product_repository.go` to use `(p.name ILIKE $%d OR COALESCE(p.description, '') ILIKE $%d OR COALESCE(p.brand, '') ILIKE $%d)` with parameter `%search%`.
-- [ ] Step 2: Run all backend tests: `go test -v ./...`.
-- [ ] Step 3: Commit with message: `perf(product): optimize search query with ILIKE for GIN trigram index`
+- [x] Step 1: Modify `FindAll` in `product_repository.go` to use `(p.name ILIKE $%d OR COALESCE(p.description, '') ILIKE $%d OR COALESCE(p.brand, '') ILIKE $%d)` with parameter `%search%`.
+- [x] Step 2: Run all backend tests: `go test -v ./...`.
+- [x] Step 3: Commit with message: `perf(product): optimize search query with ILIKE for GIN trigram index`
 
 ---
 
 ### Verification and Final Gate
-- [ ] Run full test suite: `cd backend && go test -race ./...`
-- [ ] Run backend build: `cd backend && go build ./cmd/api`
-- [ ] Verify clean working tree with `git status`
+- [x] Run full test suite: `cd backend && go test -race ./...`
+- [x] Run backend build: `cd backend && go build ./cmd/api`
+- [x] Verify clean working tree with `git status`
 
