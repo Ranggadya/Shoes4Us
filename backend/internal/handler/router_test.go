@@ -79,3 +79,23 @@ func TestRouter_CORSPreflightAndStaticUploads(t *testing.T) {
 		t.Fatalf("expected 'nike-air', got %q", upRec.Body.String())
 	}
 }
+
+func TestRouter_RequestIDAndTimeout(t *testing.T) {
+	r := handler.NewRouter(handler.RouterDependencies{
+		AllowedOrigins: []string{"http://localhost:3000"},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", rec.Code)
+	}
+
+	requestID := rec.Header().Get("X-Request-Id")
+	if requestID == "" {
+		t.Fatalf("expected X-Request-Id header in response, got empty")
+	}
+}

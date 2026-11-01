@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -30,8 +31,18 @@ type RouterDependencies struct {
 func NewRouter(deps RouterDependencies) http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(chimw.RequestID)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if reqID := chimw.GetReqID(r.Context()); reqID != "" {
+				w.Header().Set("X-Request-Id", reqID)
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
+	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(middleware.NewCORSMiddleware(deps.AllowedOrigins))
 
 	jwtMgr := deps.JWTManager
