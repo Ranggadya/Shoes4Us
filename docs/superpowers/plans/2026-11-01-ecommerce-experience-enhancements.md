@@ -74,15 +74,15 @@
 - Create: `frontend/src/components/RelatedProducts.tsx`
 - Modify: `frontend/src/pages/ProductDetailPage.tsx`
 
-- [ ] Step 1: Add `FindRelated` to `ProductRepository` interface and `GetRelated` to `ProductService` interface in `domain/product.go`.
-- [ ] Step 2: Write failing test in `product_handler_test.go` verifying `GET /api/products/{id}/related` returns 4 related items.
-- [ ] Step 3: Implement `FindRelated` in `product_repository.go` querying products with same `categoryId` or `brand`, excluding current product.
-- [ ] Step 4: Implement `GetRelated` in `product_service.go` and `GetRelated` in `product_handler.go`. Mount route in `router.go`.
-- [ ] Step 5: Run `go test -v ./internal/handler/... -run TestProductHandler_GetRelated` and confirm it passes.
-- [ ] Step 6: Create `RelatedProducts.tsx` in `frontend/src/components/` fetching `/products/${productId}/related` and rendering product cards.
-- [ ] Step 7: Mount `RelatedProducts` in `ProductDetailPage.tsx` below reviews section.
-- [ ] Step 8: Verify frontend build (`npm run build`).
-- [ ] Step 9: Commit with message: `feat(product): add related products recommendation backend endpoint and frontend showcase`
+- [x] Step 1: Add `FindRelated` to `ProductRepository` interface and `GetRelated` to `ProductService` interface in `domain/product.go`.
+- [x] Step 2: Write failing test in `product_handler_test.go` verifying `GET /api/products/{id}/related` returns 4 related items.
+- [x] Step 3: Implement `FindRelated` in `product_repository.go` querying products with same `categoryId` or `brand`, excluding current product.
+- [x] Step 4: Implement `GetRelated` in `product_service.go` and `GetRelated` in `product_handler.go`. Mount route in `router.go`.
+- [x] Step 5: Run `go test -v ./internal/handler/... -run TestProductHandler_GetRelated` and confirm it passes.
+- [x] Step 6: Create `RelatedProducts.tsx` in `frontend/src/components/` fetching `/products/${productId}/related` and rendering product cards.
+- [x] Step 7: Mount `RelatedProducts` in `ProductDetailPage.tsx` below reviews section.
+- [x] Step 8: Verify frontend build (`npm run build`).
+- [x] Step 9: Commit with message: `feat(product): add related products recommendation backend endpoint and frontend showcase`
 
 ---
 
