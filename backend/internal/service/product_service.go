@@ -137,6 +137,48 @@ func (s *ProductService) GetProduct(ctx context.Context, idOrSlug string) (*doma
 	return product, nil
 }
 
+// GetRelated retrieves products related to the target product by category or brand.
+func (s *ProductService) GetRelated(ctx context.Context, idOrSlug string, limit int) ([]domain.Product, error) {
+	clean := strings.TrimSpace(idOrSlug)
+	if clean == "" {
+		return []domain.Product{}, nil
+	}
+
+	product, err := s.productRepo.FindByIDOrSlug(ctx, clean)
+	if err != nil {
+		return nil, err
+	}
+	if product == nil {
+		return []domain.Product{}, nil
+	}
+
+	if limit <= 0 {
+		limit = 4
+	}
+
+	related, err := s.productRepo.FindRelated(ctx, product.ID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(related) > 0 {
+		productIDs := make([]string, len(related))
+		for i, p := range related {
+			productIDs[i] = p.ID
+		}
+		sizesMap, err := s.productRepo.FindSizesByProductIDs(ctx, productIDs)
+		if err == nil {
+			for i := range related {
+				if sz, exists := sizesMap[related[i].ID]; exists {
+					related[i].Sizes = sz
+				}
+			}
+		}
+	}
+
+	return related, nil
+}
+
 // CreateProduct creates a new product and its size variants (Admin operation).
 func (s *ProductService) CreateProduct(ctx context.Context, input domain.ProductUpsertInput) (*domain.Product, error) {
 	name := strings.TrimSpace(input.Name)

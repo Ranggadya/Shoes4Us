@@ -8,6 +8,7 @@ import { api } from "@/services/api";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
+import RelatedProducts from "@/components/RelatedProducts";
 import toast from "react-hot-toast";
 import {
   Heart,
@@ -823,6 +824,9 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Related Products Recommendation */}
+        <RelatedProducts productId={product.id} />
       </div>
     </div>
   );

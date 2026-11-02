@@ -100,6 +100,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 			api.Route("/products", func(products chi.Router) {
 				products.Get("/", deps.ProductHandler.ListProducts)
 				products.Get("/{id}", deps.ProductHandler.GetProduct)
+				products.Get("/{id}/related", deps.ProductHandler.GetRelated)
 
 				if jwtMgr != nil {
 					products.Group(func(admin chi.Router) {

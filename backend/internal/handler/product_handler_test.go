@@ -193,6 +193,33 @@ func (r *fakeProductRepo) HasOrderHistory(_ context.Context, productID string) (
 	return r.ordersHistory[productID], nil
 }
 
+func (r *fakeProductRepo) FindRelated(_ context.Context, productID string, limit int) ([]domain.Product, error) {
+	var target *domain.Product
+	for _, p := range r.products {
+		if p.ID == productID {
+			target = &p
+			break
+		}
+	}
+	if target == nil {
+		return []domain.Product{}, nil
+	}
+
+	var related []domain.Product
+	for _, p := range r.products {
+		if p.ID == productID || !p.IsActive {
+			continue
+		}
+		if p.CategoryID == target.CategoryID || (p.Brand != nil && target.Brand != nil && strings.EqualFold(*p.Brand, *target.Brand)) {
+			related = append(related, p)
+		}
+		if limit > 0 && len(related) >= limit {
+			break
+		}
+	}
+	return related, nil
+}
+
 func (r *fakeProductRepo) Create(_ context.Context, product *domain.Product, sizes []domain.ProductSize) error {
 	if len(sizes) > 0 {
 		totalStock := 0
@@ -818,6 +845,63 @@ func TestProductHandler_UploadImage_Unauthorized(t *testing.T) {
 	router.ServeHTTP(rec2, req2)
 	if rec2.Code != http.StatusForbidden {
 		t.Fatalf("expected 403 Forbidden, got %d", rec2.Code)
+	}
+}
+
+func TestProductHandler_GetRelated(t *testing.T) {
+	categoryRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-running", Name: "Running", Slug: "running", IsActive: true},
+		},
+	}
+	productRepo := newFakeProductRepo()
+	brand := "Nike"
+	p1 := domain.Product{
+		ID:         "prod-1",
+		Name:       "Nike Air Zoom Pegasus",
+		Slug:       "nike-air-zoom-pegasus",
+		CategoryID: "cat-running",
+		Brand:      &brand,
+		Price:      1800000,
+		IsActive:   true,
+	}
+	p2 := domain.Product{
+		ID:         "prod-2",
+		Name:       "Nike Infinity Run",
+		Slug:       "nike-infinity-run",
+		CategoryID: "cat-running",
+		Brand:      &brand,
+		Price:      2100000,
+		IsActive:   true,
+	}
+	_ = productRepo.Create(context.Background(), &p1, nil)
+	_ = productRepo.Create(context.Background(), &p2, nil)
+
+	productService := service.NewProductService(categoryRepo, productRepo)
+	productHandler := handler.NewProductHandler(productService)
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		ProductHandler: productHandler,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/products/prod-1/related", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res struct {
+		Success bool             `json:"success"`
+		Data    []domain.Product `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(res.Data) != 1 || res.Data[0].ID != "prod-2" {
+		t.Fatalf("expected 1 related product (prod-2), got %+v", res.Data)
 	}
 }
 

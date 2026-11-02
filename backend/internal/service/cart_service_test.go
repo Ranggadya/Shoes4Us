@@ -148,6 +148,9 @@ func (m *mockProductRepoForCart) GetSizeStock(ctx context.Context, productID, si
 	}
 	return 0, nil
 }
+func (m *mockProductRepoForCart) FindRelated(ctx context.Context, productID string, limit int) ([]domain.Product, error) {
+	return nil, nil
+}
 func (m *mockProductRepoForCart) HasOrderHistory(ctx context.Context, productID string) (bool, error) {
 	return false, nil
 }

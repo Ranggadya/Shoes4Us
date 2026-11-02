@@ -359,6 +359,86 @@ func (r *PostgresProductRepository) FindSizesByProductIDs(ctx context.Context, p
 	return out, nil
 }
 
+// FindRelated finds active products related to the target product by category or brand, excluding itself.
+func (r *PostgresProductRepository) FindRelated(ctx context.Context, productID string, limit int) ([]domain.Product, error) {
+	if limit <= 0 {
+		limit = 4
+	}
+
+	target, err := r.FindByIDOrSlug(ctx, productID)
+	if err != nil || target == nil {
+		return []domain.Product{}, nil
+	}
+
+	targetBrand := ""
+	if target.Brand != nil {
+		targetBrand = strings.TrimSpace(*target.Brand)
+	}
+
+	const query = `
+		SELECT p.id, p.name, p.slug, p.description, p.price, p.stock, p."imageUrl", p."categoryId",
+		       p.brand, p.segment::text, p.audience::text, p."isNewArrival", p."isExclusive", p."isComingSoon",
+		       p."isSale", p."isActive", p."createdAt", p."updatedAt",
+		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt"
+		FROM products p
+		LEFT JOIN categories c ON p."categoryId" = c.id
+		WHERE p.id != $1 AND p."isActive" = true
+		  AND (p."categoryId" = $2 OR (p.brand IS NOT NULL AND $3 != '' AND p.brand ILIKE $3))
+		ORDER BY p."createdAt" DESC
+		LIMIT $4
+	`
+
+	rows, err := r.pool.Query(ctx, query, target.ID, target.CategoryID, targetBrand, limit)
+	if err != nil {
+		return nil, domain.NewInternal("Gagal mengambil produk terkait")
+	}
+	defer rows.Close()
+
+	var products []domain.Product
+	for rows.Next() {
+		var (
+			p                      domain.Product
+			cID, cName, cSlug      *string
+			cIsActive              *bool
+			cCreatedAt, cUpdatedAt *time.Time
+			priceStr               string
+		)
+
+		err := rows.Scan(
+			&p.ID, &p.Name, &p.Slug, &p.Description, &priceStr, &p.Stock, &p.ImageURL, &p.CategoryID,
+			&p.Brand, &p.Segment, &p.Audience, &p.IsNewArrival, &p.IsExclusive, &p.IsComingSoon,
+			&p.IsSale, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
+			&cID, &cName, &cSlug, &cIsActive, &cCreatedAt, &cUpdatedAt,
+		)
+		if err != nil {
+			return nil, domain.NewInternal("Gagal memproses produk terkait")
+		}
+
+		if parsedPrice, err := strconv.ParseFloat(priceStr, 64); err == nil {
+			p.Price = parsedPrice
+		}
+
+		if cID != nil {
+			p.Category = &domain.Category{
+				ID:        *cID,
+				Name:      *cName,
+				Slug:      *cSlug,
+				IsActive:  *cIsActive,
+				CreatedAt: *cCreatedAt,
+				UpdatedAt: *cUpdatedAt,
+			}
+		}
+
+		products = append(products, p)
+	}
+
+	if products == nil {
+		products = []domain.Product{}
+	}
+
+	return products, nil
+}
+
 // GetSizeStock returns the current stock quantity for a specific product size variant.
 func (r *PostgresProductRepository) GetSizeStock(ctx context.Context, productID, size string) (int, error) {
 	const query = `

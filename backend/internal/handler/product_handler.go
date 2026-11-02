@@ -194,6 +194,30 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	response.WriteSuccess(w, http.StatusOK, "Detail produk berhasil diambil", data, nil)
 }
 
+// GetRelated handles GET /api/products/{id}/related.
+func (h *ProductHandler) GetRelated(w http.ResponseWriter, r *http.Request) {
+	idOrSlug := chi.URLParam(r, "id")
+	if strings.TrimSpace(idOrSlug) == "" {
+		response.WriteError(w, domain.NewBadRequest("ID atau slug produk wajib diisi"))
+		return
+	}
+
+	limit := 4
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		if l, err := strconv.Atoi(rawLimit); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	related, err := h.productService.GetRelated(r.Context(), idOrSlug, limit)
+	if err != nil {
+		response.WriteError(w, err)
+		return
+	}
+
+	response.WriteSuccess(w, http.StatusOK, "Produk terkait berhasil diambil", related, nil)
+}
+
 // CreateProduct handles POST /api/products (Admin operation).
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	input, err := h.parseProductUpsertInput(r)
