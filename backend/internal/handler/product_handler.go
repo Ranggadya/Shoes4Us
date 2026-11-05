@@ -100,6 +100,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		Segment:    strings.TrimSpace(q.Get("segment")),
 		Audience:   strings.TrimSpace(q.Get("audience")),
 		Brand:      strings.TrimSpace(q.Get("brand")),
+		Size:       strings.TrimSpace(q.Get("size")),
 		Collection: strings.TrimSpace(q.Get("collection")),
 		SortBy:     strings.TrimSpace(q.Get("sortBy")),
 	}
@@ -135,6 +136,11 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		if val, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
 			filter.MaxPrice = &val
 		}
+	}
+
+	if q.Get("inStock") != "" {
+		val := strings.EqualFold(q.Get("inStock"), "true")
+		filter.InStock = &val
 	}
 
 	filter.IncludeDetails = strings.EqualFold(q.Get("includeDetails"), "true")

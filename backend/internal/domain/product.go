@@ -82,11 +82,13 @@ type ProductFilter struct {
 	Segment        string
 	Audience       string
 	Brand          string
+	Size           string
 	Collection     string // new-arrivals, exclusive, coming-soon, sale
 	IsNewArrival   *bool
 	IsExclusive    *bool
 	IsComingSoon   *bool
 	IsSale         *bool
+	InStock        *bool
 	MinPrice       *float64
 	MaxPrice       *float64
 	SortBy         string // newest, oldest, price-asc, price-desc, name-asc, name-desc, stock-asc

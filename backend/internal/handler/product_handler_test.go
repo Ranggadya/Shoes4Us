@@ -96,6 +96,23 @@ func (r *fakeProductRepo) FindAll(_ context.Context, filter domain.ProductFilter
 				continue
 			}
 		}
+		if filter.Size != "" {
+			hasAvailableSize := false
+			for _, sz := range r.sizes[p.ID] {
+				if strings.EqualFold(sz.Size, filter.Size) && sz.Stock > 0 {
+					hasAvailableSize = true
+					break
+				}
+			}
+			if !hasAvailableSize {
+				continue
+			}
+		}
+		if filter.InStock != nil && *filter.InStock {
+			if p.Stock <= 0 {
+				continue
+			}
+		}
 		if filter.Collection != "" {
 			switch filter.Collection {
 			case domain.CollectionNewArrivals:
@@ -902,6 +919,103 @@ func TestProductHandler_GetRelated(t *testing.T) {
 
 	if len(res.Data) != 1 || res.Data[0].ID != "prod-2" {
 		t.Fatalf("expected 1 related product (prod-2), got %+v", res.Data)
+	}
+}
+
+func TestProductHandler_ListProducts_SizeAndInStockFilter(t *testing.T) {
+	categoryRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-running", Name: "Running", Slug: "running", IsActive: true},
+		},
+	}
+	productRepo := newFakeProductRepo()
+	brand := "Nike"
+
+	p1 := domain.Product{
+		ID:         "prod-1",
+		Name:       "Nike Pegasus Size 42 Ready",
+		Slug:       "nike-pegasus-42",
+		CategoryID: "cat-running",
+		Brand:      &brand,
+		Price:      1800000,
+		Stock:      5,
+		IsActive:   true,
+	}
+	p2 := domain.Product{
+		ID:         "prod-2",
+		Name:       "Nike Vomero Size 42 Empty",
+		Slug:       "nike-vomero-42-empty",
+		CategoryID: "cat-running",
+		Brand:      &brand,
+		Price:      2100000,
+		Stock:      5,
+		IsActive:   true,
+	}
+	p3 := domain.Product{
+		ID:         "prod-3",
+		Name:       "Nike Sold Out Shoe",
+		Slug:       "nike-sold-out",
+		CategoryID: "cat-running",
+		Brand:      &brand,
+		Price:      1500000,
+		Stock:      0,
+		IsActive:   true,
+	}
+
+	_ = productRepo.Create(context.Background(), &p1, []domain.ProductSize{
+		{ProductID: "prod-1", Size: "42", Stock: 3},
+		{ProductID: "prod-1", Size: "43", Stock: 2},
+	})
+	_ = productRepo.Create(context.Background(), &p2, []domain.ProductSize{
+		{ProductID: "prod-2", Size: "42", Stock: 0},
+		{ProductID: "prod-2", Size: "40", Stock: 5},
+	})
+	_ = productRepo.Create(context.Background(), &p3, nil)
+
+	productService := service.NewProductService(categoryRepo, productRepo)
+	productHandler := handler.NewProductHandler(productService)
+	router := handler.NewRouter(handler.RouterDependencies{
+		ProductHandler: productHandler,
+	})
+
+	// 1. Filter by size=42 -> should only return prod-1 (prod-2 has stock 0 for size 42)
+	reqSize := httptest.NewRequest(http.MethodGet, "/api/products?size=42", nil)
+	recSize := httptest.NewRecorder()
+	router.ServeHTTP(recSize, reqSize)
+
+	if recSize.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", recSize.Code)
+	}
+	var resSize struct {
+		Data struct {
+			Items []domain.Product `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recSize.Body.Bytes(), &resSize); err != nil {
+		t.Fatalf("failed to decode size filter response: %v", err)
+	}
+	if len(resSize.Data.Items) != 1 || resSize.Data.Items[0].ID != "prod-1" {
+		t.Fatalf("expected only prod-1 for size=42, got %d items: %+v", len(resSize.Data.Items), resSize.Data.Items)
+	}
+
+	// 2. Filter by inStock=true -> should return prod-1 and prod-2 (excluding prod-3 with Stock 0)
+	reqStock := httptest.NewRequest(http.MethodGet, "/api/products?inStock=true", nil)
+	recStock := httptest.NewRecorder()
+	router.ServeHTTP(recStock, reqStock)
+
+	if recStock.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", recStock.Code)
+	}
+	var resStock struct {
+		Data struct {
+			Items []domain.Product `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recStock.Body.Bytes(), &resStock); err != nil {
+		t.Fatalf("failed to decode inStock filter response: %v", err)
+	}
+	if len(resStock.Data.Items) != 2 {
+		t.Fatalf("expected 2 in-stock products, got %d: %+v", len(resStock.Data.Items), resStock.Data.Items)
 	}
 }
 

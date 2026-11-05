@@ -76,6 +76,16 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 		argIdx++
 	}
 
+	if filter.Size != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf(`EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id AND LOWER(ps.size) = LOWER($%d) AND ps.stock > 0)`, argIdx))
+		args = append(args, strings.TrimSpace(filter.Size))
+		argIdx++
+	}
+
+	if filter.InStock != nil && *filter.InStock {
+		whereClauses = append(whereClauses, `p.stock > 0`)
+	}
+
 	if filter.Collection != "" {
 		switch strings.ToLower(filter.Collection) {
 		case domain.CollectionNewArrivals:
