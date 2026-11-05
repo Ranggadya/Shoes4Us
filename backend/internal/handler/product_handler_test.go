@@ -1019,3 +1019,62 @@ func TestProductHandler_ListProducts_SizeAndInStockFilter(t *testing.T) {
 	}
 }
 
+
+func TestProductHandler_ListProducts_IncludesRatingAndReviewCount(t *testing.T) {
+	categoryRepo := &fakeCategoryRepo{
+		categories: []domain.Category{
+			{ID: "cat-running", Name: "Running", Slug: "running", IsActive: true},
+		},
+	}
+	productRepo := newFakeProductRepo()
+	brand := "Nike"
+
+	p1 := domain.Product{
+		ID:            "prod-rated",
+		Name:          "Nike Pegasus Rated",
+		Slug:          "nike-pegasus-rated",
+		CategoryID:    "cat-running",
+		Brand:         &brand,
+		Price:         1800000,
+		Stock:         5,
+		IsActive:      true,
+		AverageRating: 4.5,
+		ReviewCount:   12,
+	}
+	_ = productRepo.Create(context.Background(), &p1, nil)
+
+	productService := service.NewProductService(categoryRepo, productRepo)
+	productHandler := handler.NewProductHandler(productService)
+	router := handler.NewRouter(handler.RouterDependencies{
+		ProductHandler: productHandler,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/products", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Items []map[string]any `json:"items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(res.Data.Items) != 1 {
+		t.Fatalf("expected 1 product, got %d", len(res.Data.Items))
+	}
+
+	item := res.Data.Items[0]
+	if item["averageRating"] != 4.5 {
+		t.Errorf("expected averageRating = 4.5, got %v", item["averageRating"])
+	}
+	if item["reviewCount"] != float64(12) {
+		t.Errorf("expected reviewCount = 12, got %v", item["reviewCount"])
+	}
+}

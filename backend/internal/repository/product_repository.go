@@ -185,7 +185,9 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 		SELECT p.id, p.name, p.slug, p.description, p.price, p.stock, p."imageUrl", p."categoryId",
 		       p.brand, p.segment::text, p.audience::text, p."isNewArrival", p."isExclusive", p."isComingSoon",
 		       p."isSale", p."isActive", p."createdAt", p."updatedAt",
-		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt"
+		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt",
+		       COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0),
+		       COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)
 		FROM products p
 		LEFT JOIN categories c ON p."categoryId" = c.id
 		%s
@@ -216,6 +218,7 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 			&p.Brand, &p.Segment, &p.Audience, &p.IsNewArrival, &p.IsExclusive, &p.IsComingSoon,
 			&p.IsSale, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
 			&cID, &cName, &cSlug, &cIsActive, &cCreatedAt, &cUpdatedAt,
+			&p.AverageRating, &p.ReviewCount,
 		)
 		if err != nil {
 			return nil, 0, domain.NewInternal("Gagal memproses data produk")
@@ -256,7 +259,9 @@ func (r *PostgresProductRepository) FindByIDOrSlug(ctx context.Context, idOrSlug
 		SELECT p.id, p.name, p.slug, p.description, p.price, p.stock, p."imageUrl", p."categoryId",
 		       p.brand, p.segment::text, p.audience::text, p."isNewArrival", p."isExclusive", p."isComingSoon",
 		       p."isSale", p."isActive", p."createdAt", p."updatedAt",
-		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt"
+		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt",
+		       COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0),
+		       COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)
 		FROM products p
 		LEFT JOIN categories c ON p."categoryId" = c.id
 		WHERE p.id = $1 OR p.slug = $1
@@ -277,6 +282,7 @@ func (r *PostgresProductRepository) FindByIDOrSlug(ctx context.Context, idOrSlug
 		&p.Brand, &p.Segment, &p.Audience, &p.IsNewArrival, &p.IsExclusive, &p.IsComingSoon,
 		&p.IsSale, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
 		&cID, &cName, &cSlug, &cIsActive, &cCreatedAt, &cUpdatedAt,
+		&p.AverageRating, &p.ReviewCount,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -389,7 +395,9 @@ func (r *PostgresProductRepository) FindRelated(ctx context.Context, productID s
 		SELECT p.id, p.name, p.slug, p.description, p.price, p.stock, p."imageUrl", p."categoryId",
 		       p.brand, p.segment::text, p.audience::text, p."isNewArrival", p."isExclusive", p."isComingSoon",
 		       p."isSale", p."isActive", p."createdAt", p."updatedAt",
-		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt"
+		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt",
+		       COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0),
+		       COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)
 		FROM products p
 		LEFT JOIN categories c ON p."categoryId" = c.id
 		WHERE p.id != $1 AND p."isActive" = true
@@ -419,6 +427,7 @@ func (r *PostgresProductRepository) FindRelated(ctx context.Context, productID s
 			&p.Brand, &p.Segment, &p.Audience, &p.IsNewArrival, &p.IsExclusive, &p.IsComingSoon,
 			&p.IsSale, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
 			&cID, &cName, &cSlug, &cIsActive, &cCreatedAt, &cUpdatedAt,
+			&p.AverageRating, &p.ReviewCount,
 		)
 		if err != nil {
 			return nil, domain.NewInternal("Gagal memproses produk terkait")

@@ -59,8 +59,10 @@ type Product struct {
 	IsExclusive  bool          `json:"isExclusive"`
 	IsComingSoon bool          `json:"isComingSoon"`
 	IsSale       bool          `json:"isSale"`
-	IsActive     bool          `json:"isActive"`
-	Category     *Category     `json:"category,omitempty"`
+	IsActive      bool          `json:"isActive"`
+	AverageRating float64       `json:"averageRating"`
+	ReviewCount   int           `json:"reviewCount"`
+	Category      *Category     `json:"category,omitempty"`
 	Sizes        []ProductSize `json:"sizes,omitempty"`
 	CreatedAt    time.Time     `json:"createdAt"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
