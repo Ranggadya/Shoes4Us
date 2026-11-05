@@ -92,13 +92,14 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
-    if (!user) {
-      navigate("/login");
+    if (!cart || cart.items.length === 0) {
+      toast.error("Keranjang masih kosong.");
       return;
     }
 
-    if (!cart || cart.items.length === 0) {
-      toast.error("Keranjang masih kosong.");
+    if (!user) {
+      toast("Silakan login untuk melanjutkan pembayaran.", { icon: "🔒" });
+      navigate("/login?redirect=/payment");
       return;
     }
 
@@ -125,10 +126,6 @@ export default function CartPage() {
         <CartSkeleton />
       ) : error ? (
         <p className="text-center text-red-600">{error}</p>
-      ) : !user ? (
-        <p className="text-center text-gray-600">
-          Silakan login untuk melihat keranjang Anda.
-        </p>
       ) : !cart || cart.items.length === 0 ? (
         <EmptyCart />
       ) : (
@@ -225,8 +222,13 @@ export default function CartPage() {
                 onClick={handleCheckout}
                 className="w-full bg-black text-white py-3 rounded font-semibold hover:bg-gray-800 transition-colors text-sm min-h-[44px]"
               >
-                Lanjut ke Pembayaran →
+                {user ? "Lanjut ke Pembayaran →" : "Login & Lanjut ke Pembayaran →"}
               </button>
+              {!user && (
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Keranjang Anda akan otomatis tersimpan ke akun setelah login.
+                </p>
+              )}
             </div>
           </div>
         </div>

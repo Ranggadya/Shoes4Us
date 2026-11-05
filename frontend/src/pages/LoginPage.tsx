@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "@/context/AuthContext";
@@ -7,6 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 export default function LoginPage() {
   const { login, error, isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/";
+  const safeRedirect = redirectTarget.startsWith("/") ? redirectTarget : "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +27,7 @@ export default function LoginPage() {
     try {
       setSubmitting(true);
       await login({ email, password });
-      navigate("/");
+      navigate(safeRedirect);
     } catch (err) {
       if (err instanceof Error) {
         setFormError(err.message);
@@ -38,9 +41,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate("/");
+      navigate(safeRedirect);
     }
-  }, [isLoading, user, navigate]);
+  }, [isLoading, user, navigate, safeRedirect]);
 
   if (!isLoading && user) {
     return null;
@@ -129,7 +132,11 @@ export default function LoginPage() {
         <p className="text-center text-sm text-gray-600 mt-4">
           Belum punya akun?{" "}
           <Link
-            to="/register"
+            to={
+              safeRedirect !== "/"
+                ? `/register?redirect=${encodeURIComponent(safeRedirect)}`
+                : "/register"
+            }
             className="text-black font-semibold hover:underline"
           >
             Daftar

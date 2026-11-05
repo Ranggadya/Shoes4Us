@@ -1,11 +1,14 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 
 export default function RegisterPage() {
   const { register, error, user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/";
+  const safeRedirect = redirectTarget.startsWith("/") ? redirectTarget : "/";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,9 +17,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      navigate("/");
+      navigate(safeRedirect);
     }
-  }, [isLoading, user, navigate]);
+  }, [isLoading, user, navigate, safeRedirect]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,7 +33,7 @@ export default function RegisterPage() {
     try {
       setSubmitting(true);
       await register({ name, email, password });
-      navigate("/");
+      navigate(safeRedirect);
     } catch (err) {
       if (err instanceof Error) {
         setFormError(err.message);
@@ -118,7 +121,14 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Sudah punya akun?{" "}
-          <Link to="/login" className="font-semibold text-black hover:underline">
+          <Link
+            to={
+              safeRedirect !== "/"
+                ? `/login?redirect=${encodeURIComponent(safeRedirect)}`
+                : "/login"
+            }
+            className="font-semibold text-black hover:underline"
+          >
             Login di sini
           </Link>
         </p>

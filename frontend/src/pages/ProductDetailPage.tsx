@@ -123,12 +123,6 @@ export default function ProductDetailPage() {
   const submitCartSelection = async (action: "cart" | "buy"): Promise<boolean> => {
     if (!product || submittingAction) return false;
 
-    if (!user) {
-      toast.error("Silakan login terlebih dahulu");
-      navigate("/login");
-      return false;
-    }
-
     if (!size) {
       toast.error("Pilih ukuran terlebih dahulu");
       return false;
@@ -143,7 +137,17 @@ export default function ProductDetailPage() {
 
     setSubmittingAction(action);
     try {
-      await addItem({ productId: String(product.id), quantity, size });
+      await addItem({
+        productId: String(product.id),
+        quantity,
+        size,
+        productSnapshot: {
+          id: String(product.id),
+          name: product.name,
+          price: product.price,
+          imageUrl: product.imageUrl,
+        },
+      });
       return true;
     } catch (err) {
       toast.error(
