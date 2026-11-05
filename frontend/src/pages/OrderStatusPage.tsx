@@ -95,6 +95,8 @@ export default function OrderStatusPage() {
                 productName={productName}
                 currentStatus={order.status}
                 statusLabel={mapStatusLabel(order.status)}
+                trackingNumber={order.trackingNumber}
+                shippingCourier={order.shippingCourier}
                 estimatedArrival={
                   order.status === "SHIPPED"
                     ? "2 - 3 hari lagi"

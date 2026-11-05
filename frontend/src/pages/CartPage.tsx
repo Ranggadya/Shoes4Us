@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -5,6 +6,8 @@ import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/utils/format";
 import CartSkeleton from "@/components/skeletons/CartSkeleton";
 import EmptyCart from "@/components/empty-states/EmptyCart";
+import CouponInput, { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
+import type { CouponValidationResult } from "@/types";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -17,6 +20,35 @@ export default function CartPage() {
     removeItem,
     clearCart,
   } = useCart();
+
+  const [appliedCoupon, setAppliedCoupon] =
+    useState<CouponValidationResult | null>(() => {
+      try {
+        const raw = sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY);
+        return raw ? (JSON.parse(raw) as CouponValidationResult) : null;
+      } catch {
+        return null;
+      }
+    });
+
+  const subtotal = cart?.totals?.subtotal ?? 0;
+
+  useEffect(() => {
+    if (appliedCoupon && subtotal > 0 && subtotal < appliedCoupon.minOrderAmount) {
+      setAppliedCoupon(null);
+      try {
+        sessionStorage.removeItem(SAVED_COUPON_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  }, [subtotal, appliedCoupon]);
+
+  const discountAmount =
+    appliedCoupon && subtotal >= appliedCoupon.minOrderAmount
+      ? appliedCoupon.discountAmount
+      : 0;
+  const finalTotal = Math.max(0, subtotal - discountAmount);
 
   const handleDecrease = async (itemId: string, current: number) => {
     if (current <= 1) return;
@@ -77,7 +109,7 @@ export default function CartPage() {
     <div className="bg-white text-black p-4 max-w-6xl mx-auto my-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-center lg:text-left">
-          #KERANJANG ANDA
+          KERANJANG ANDA
         </h1>
         {cart?.items.length ? (
           <button
@@ -164,17 +196,29 @@ export default function CartPage() {
               <div className="space-y-2 mb-4 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>{formatCurrency(cart?.totals?.subtotal ?? 0)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Jumlah Item</span>
                   <span>{cart?.totals?.totalItems ?? 0}</span>
                 </div>
+                {discountAmount > 0 && appliedCoupon && (
+                  <div className="flex justify-between text-emerald-600 font-semibold">
+                    <span>Diskon ({appliedCoupon.code})</span>
+                    <span>- {formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
               </div>
+
+              <CouponInput
+                subtotal={subtotal}
+                appliedCoupon={appliedCoupon}
+                onApply={setAppliedCoupon}
+              />
 
               <div className="flex justify-between font-bold text-base border-t border-gray-200 pt-3 mb-3">
                 <span>Total</span>
-                <span>{formatCurrency(cart?.totals?.subtotal ?? 0)}</span>
+                <span>{formatCurrency(finalTotal)}</span>
               </div>
 
               <button

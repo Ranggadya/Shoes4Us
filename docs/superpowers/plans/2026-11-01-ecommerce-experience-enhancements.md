@@ -102,16 +102,16 @@
 - Modify: `frontend/src/pages/PaymentPage.tsx`
 - Modify: `frontend/src/types/index.ts`
 
-- [ ] Step 1: Create `domain/coupon.go` defining `Coupon`, `DiscountType`, and standard active vouchers (`DISKON10`, `HEMAT50RB`, `GRATISONGKIR`).
-- [ ] Step 2: Write failing test in `coupon_service_test.go` verifying discount calculations (10% percentage capped, 50k fixed, free shipping) and minimum order rejections.
-- [ ] Step 3: Implement `coupon_service.go` satisfying all test cases.
-- [ ] Step 4: Create `coupon_handler.go` with `POST /api/coupons/validate` and write handler tests in `coupon_handler_test.go`.
-- [ ] Step 5: Mount coupon routes in `router.go`. Update `order_service.go` to compute discount when `CreateOrderInput.CouponCode` is provided.
-- [ ] Step 6: Run `go test -v ./internal/service/... ./internal/handler/... -run TestCoupon` and verify tests pass.
-- [ ] Step 7: Create `CouponInput.tsx` with instant badge, discount preview, and clear button.
-- [ ] Step 8: Integrate `CouponInput` in `CartPage.tsx` and `PaymentPage.tsx` updating order summary totals.
-- [ ] Step 9: Verify frontend build (`npm run build`).
-- [ ] Step 10: Commit with message: `feat(coupon): implement voucher discount engine and checkout coupon redemption`
+- [x] Step 1: Create `domain/coupon.go` defining `Coupon`, `DiscountType`, and standard active vouchers (`DISKON10`, `HEMAT50RB`, `GRATISONGKIR`).
+- [x] Step 2: Write failing test in `coupon_service_test.go` verifying discount calculations (10% percentage capped, 50k fixed, free shipping) and minimum order rejections.
+- [x] Step 3: Implement `coupon_service.go` satisfying all test cases.
+- [x] Step 4: Create `coupon_handler.go` with `POST /api/coupons/validate` and write handler tests in `coupon_handler_test.go`.
+- [x] Step 5: Mount coupon routes in `router.go`. Update `order_service.go` to compute discount when `CreateOrderInput.CouponCode` is provided.
+- [x] Step 6: Run `go test -v ./internal/service/... ./internal/handler/... -run TestCoupon` and verify tests pass.
+- [x] Step 7: Create `CouponInput.tsx` with instant badge, discount preview, and clear button.
+- [x] Step 8: Integrate `CouponInput` in `CartPage.tsx` and `PaymentPage.tsx` updating order summary totals.
+- [x] Step 9: Verify frontend build (`npm run build`).
+- [x] Step 10: Commit with message: `feat(coupon): implement voucher discount engine and checkout coupon redemption`
 
 ---
 
@@ -128,15 +128,15 @@
 - Modify: `frontend/src/pages/PaymentPage.tsx`
 - Modify: `frontend/src/types/index.ts`
 
-- [ ] Step 1: Create `domain/shipping.go` with courier definitions: JNE Reguler (Rp 18.000, 2-3 hari), SiCepat REG (Rp 16.000, 1-2 hari), J&T Express (Rp 17.000, 2-3 hari), JNE YES (Rp 32.000, 1 hari).
-- [ ] Step 2: Write failing test in `shipping_handler_test.go` for `GET /api/shipping/couriers`.
-- [ ] Step 3: Implement `shipping_handler.go` and mount in `router.go`.
-- [ ] Step 4: Update `Order` and `CreateOrderInput` in `domain/order.go` and `order_repository.go` to persist `shippingCourier` and `shippingCost`.
-- [ ] Step 5: Run tests: `go test -v ./internal/handler/... -run TestShipping`.
-- [ ] Step 6: Create `CourierSelector.tsx` with radio cards showing courier logo/icon, name, ETA, and cost.
-- [ ] Step 7: Integrate `CourierSelector` into `PaymentPage.tsx` so selecting courier updates shipping fee and grand total live.
-- [ ] Step 8: Verify frontend build (`npm run build`).
-- [ ] Step 9: Commit with message: `feat(shipping): add dynamic courier selection and live shipping fee calculation`
+- [x] Step 1: Create `domain/shipping.go` with courier definitions: JNE Reguler (Rp 18.000, 2-3 hari), SiCepat REG (Rp 16.000, 1-2 hari), J&T Express (Rp 17.000, 2-3 hari), JNE YES (Rp 32.000, 1 hari).
+- [x] Step 2: Write failing test in `shipping_handler_test.go` for `GET /api/shipping/couriers`.
+- [x] Step 3: Implement `shipping_handler.go` and mount in `router.go`.
+- [x] Step 4: Update `Order` and `CreateOrderInput` in `domain/order.go` and `order_repository.go` to persist `shippingCourier` and `shippingCost`.
+- [x] Step 5: Run tests: `go test -v ./internal/handler/... -run TestShipping`.
+- [x] Step 6: Create `CourierSelector.tsx` with radio cards showing courier logo/icon, name, ETA, and cost.
+- [x] Step 7: Integrate `CourierSelector` into `PaymentPage.tsx` so selecting courier updates shipping fee and grand total live.
+- [x] Step 8: Verify frontend build (`npm run build`).
+- [x] Step 9: Commit with message: `feat(shipping): add dynamic courier selection and live shipping fee calculation`
 
 ---
 
@@ -151,22 +151,22 @@
 - Modify: `frontend/src/pages/OrderStatusPage.tsx`
 - Modify: `frontend/src/pages/OrderHistoryPage.tsx`
 
-- [ ] Step 1: Add `TrackingNumber` to `domain.Order` and support tracking persistence in `order_repository.go`.
-- [ ] Step 2: In `order_service.go`, when status transitions to `SHIPPED` (or `PAID` in mock checkout), generate a realistic courier tracking number (e.g. `JNE-8839201948`) if empty.
-- [ ] Step 3: Write test in `order_handler_test.go` asserting `trackingNumber` is present on shipped orders.
-- [ ] Step 4: Run `go test -v ./internal/handler/... -run TestOrder`.
-- [ ] Step 5: Enhance `OrderTracking.tsx` to display:
+- [x] Step 1: Add `TrackingNumber` to `domain.Order` and support tracking persistence in `order_repository.go`.
+- [x] Step 2: In `order_service.go`, when status transitions to `SHIPPED` (or `PAID` in mock checkout), generate a realistic courier tracking number (e.g. `JNE-8839201948`) if empty.
+- [x] Step 3: Write test in `order_handler_test.go` asserting `trackingNumber` is present on shipped orders.
+- [x] Step 4: Run `go test -v ./internal/handler/... -run TestOrder`.
+- [x] Step 5: Enhance `OrderTracking.tsx` to display:
   - Courier badge & formatted Tracking Resi.
   - "Salin Resi" copy button with copied tooltip.
   - Detailed milestone explanations for each progress step.
-- [ ] Step 6: Connect `OrderTracking` in `OrderStatusPage.tsx` and `OrderHistoryPage.tsx`.
-- [ ] Step 7: Verify frontend build (`npm run build`).
-- [ ] Step 8: Commit with message: `feat(tracking): add copyable tracking resi and milestone logistics timeline`
+- [x] Step 6: Connect `OrderTracking` in `OrderStatusPage.tsx` and `OrderHistoryPage.tsx`.
+- [x] Step 7: Verify frontend build (`npm run build`).
+- [x] Step 8: Commit with message: `feat(tracking): add copyable tracking resi and milestone logistics timeline`
 
 ---
 
 ### Verification and Final Gate
-- [ ] Run full backend test suite: `cd backend && go test ./...`
-- [ ] Run backend binary build: `cd backend && go build ./cmd/api`
-- [ ] Run frontend linter & build: `cd frontend && npm run build`
-- [ ] Check git status and perform whole-branch review
+- [x] Run full backend test suite: `cd backend && go test ./...`
+- [x] Run backend binary build: `cd backend && go build ./cmd/api`
+- [x] Run frontend linter & build: `cd frontend && npm run build`
+- [x] Check git status and perform whole-branch review

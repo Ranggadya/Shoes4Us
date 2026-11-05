@@ -20,8 +20,20 @@ type PostgresOrderRepository struct {
 
 var _ domain.OrderRepository = (*PostgresOrderRepository)(nil)
 
-// NewOrderRepository constructs a new PostgresOrderRepository.
+// NewOrderRepository constructs a new PostgresOrderRepository and ensures logistics/coupon columns exist.
 func NewOrderRepository(pool *pgxpool.Pool) *PostgresOrderRepository {
+	if pool != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = pool.Exec(ctx, `
+			ALTER TABLE orders
+				ADD COLUMN IF NOT EXISTS "shippingCourier" TEXT,
+				ADD COLUMN IF NOT EXISTS "shippingCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+				ADD COLUMN IF NOT EXISTS "couponCode" TEXT,
+				ADD COLUMN IF NOT EXISTS "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+				ADD COLUMN IF NOT EXISTS "trackingNumber" TEXT;
+		`)
+	}
 	return &PostgresOrderRepository{pool: pool}
 }
 
@@ -110,8 +122,8 @@ func (r *PostgresOrderRepository) CreateOrderWithTx(ctx context.Context, order *
 
 	// 2. Insert order row
 	const insertOrderQuery = `
-		INSERT INTO orders ("id", "orderNumber", "userId", "status", "totalAmount", "shippingAddress", "shippingCity", "shippingPostalCode", "shippingPhone", "paymentMethod", "paymentUrl", "createdAt", "updatedAt")
-		VALUES ($1, $2, $3, $4::"OrderStatus", $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO orders ("id", "orderNumber", "userId", "status", "totalAmount", "shippingAddress", "shippingCity", "shippingPostalCode", "shippingPhone", "shippingCourier", "shippingCost", "couponCode", "discountAmount", "trackingNumber", "paymentMethod", "paymentUrl", "createdAt", "updatedAt")
+		VALUES ($1, $2, $3, $4::"OrderStatus", $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 	_, err = tx.Exec(ctx, insertOrderQuery,
 		order.ID,
@@ -123,6 +135,11 @@ func (r *PostgresOrderRepository) CreateOrderWithTx(ctx context.Context, order *
 		order.ShippingCity,
 		order.ShippingPostalCode,
 		order.ShippingPhone,
+		order.ShippingCourier,
+		order.ShippingCost,
+		order.CouponCode,
+		order.DiscountAmount,
+		order.TrackingNumber,
 		order.PaymentMethod,
 		order.PaymentURL,
 		order.CreatedAt,
@@ -175,6 +192,7 @@ func (r *PostgresOrderRepository) FindByID(ctx context.Context, orderID string) 
 	const orderQuery = `
 		SELECT o.id, o."orderNumber", o."userId", o.status::text, o."totalAmount",
 		       o."shippingAddress", o."shippingCity", o."shippingPostalCode", o."shippingPhone",
+		       o."shippingCourier", COALESCE(o."shippingCost", 0), o."couponCode", COALESCE(o."discountAmount", 0), o."trackingNumber",
 		       o."paymentMethod", o."paymentUrl", o."createdAt", o."updatedAt",
 		       u.name, u.email
 		FROM orders o
@@ -192,6 +210,11 @@ func (r *PostgresOrderRepository) FindByID(ctx context.Context, orderID string) 
 		sCity    *string
 		sPostal  *string
 		sPhone   *string
+		sCourier *string
+		sCost    float64
+		cCode    *string
+		dAmount  float64
+		tNumber  *string
 		pMethod  *string
 		pURL     *string
 	)
@@ -206,6 +229,11 @@ func (r *PostgresOrderRepository) FindByID(ctx context.Context, orderID string) 
 		&sCity,
 		&sPostal,
 		&sPhone,
+		&sCourier,
+		&sCost,
+		&cCode,
+		&dAmount,
+		&tNumber,
 		&pMethod,
 		&pURL,
 		&ord.CreatedAt,
@@ -225,6 +253,11 @@ func (r *PostgresOrderRepository) FindByID(ctx context.Context, orderID string) 
 	ord.ShippingCity = sCity
 	ord.ShippingPostalCode = sPostal
 	ord.ShippingPhone = sPhone
+	ord.ShippingCourier = sCourier
+	ord.ShippingCost = sCost
+	ord.CouponCode = cCode
+	ord.DiscountAmount = dAmount
+	ord.TrackingNumber = tNumber
 	ord.PaymentMethod = pMethod
 	ord.PaymentURL = pURL
 	ord.User = &domain.OrderUserSummary{
@@ -291,6 +324,7 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter domain.Ord
 	selectQuery := fmt.Sprintf(`
 		SELECT o.id, o."orderNumber", o."userId", o.status::text, o."totalAmount",
 		       o."shippingAddress", o."shippingCity", o."shippingPostalCode", o."shippingPhone",
+		       o."shippingCourier", COALESCE(o."shippingCost", 0), o."couponCode", COALESCE(o."discountAmount", 0), o."trackingNumber",
 		       o."paymentMethod", o."paymentUrl", o."createdAt", o."updatedAt",
 		       u.name, u.email
 		FROM orders o
@@ -313,16 +347,21 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter domain.Ord
 
 	for rows.Next() {
 		var (
-			ord     domain.Order
-			st      string
-			uName   string
-			uEmail  string
-			sAddr   *string
-			sCity   *string
-			sPostal *string
-			sPhone  *string
-			pMethod *string
-			pURL    *string
+			ord      domain.Order
+			st       string
+			uName    string
+			uEmail   string
+			sAddr    *string
+			sCity    *string
+			sPostal  *string
+			sPhone   *string
+			sCourier *string
+			sCost    float64
+			cCode    *string
+			dAmount  float64
+			tNumber  *string
+			pMethod  *string
+			pURL     *string
 		)
 
 		err := rows.Scan(
@@ -335,6 +374,11 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter domain.Ord
 			&sCity,
 			&sPostal,
 			&sPhone,
+			&sCourier,
+			&sCost,
+			&cCode,
+			&dAmount,
+			&tNumber,
 			&pMethod,
 			&pURL,
 			&ord.CreatedAt,
@@ -351,6 +395,11 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter domain.Ord
 		ord.ShippingCity = sCity
 		ord.ShippingPostalCode = sPostal
 		ord.ShippingPhone = sPhone
+		ord.ShippingCourier = sCourier
+		ord.ShippingCost = sCost
+		ord.CouponCode = cCode
+		ord.DiscountAmount = dAmount
+		ord.TrackingNumber = tNumber
 		ord.PaymentMethod = pMethod
 		ord.PaymentURL = pURL
 		ord.User = &domain.OrderUserSummary{

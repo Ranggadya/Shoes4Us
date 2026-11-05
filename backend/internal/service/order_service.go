@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ type orderService struct {
 	orderRepo   domain.OrderRepository
 	cartRepo    domain.CartRepository
 	productRepo domain.ProductRepository
+	couponSvc   domain.CouponService
 }
 
 var _ domain.OrderService = (*orderService)(nil)
@@ -37,7 +39,46 @@ func NewOrderService(
 		orderRepo:   orderRepo,
 		cartRepo:    cartRepo,
 		productRepo: productRepo,
+		couponSvc:   NewCouponService(),
 	}
+}
+
+// enrichOrderLogistics ensures shipped/delivered orders always carry a courier name and tracking resi.
+func enrichOrderLogistics(ord *domain.Order) {
+	if ord == nil {
+		return
+	}
+	if ord.Status != domain.StatusShipped && ord.Status != domain.StatusDelivered {
+		return
+	}
+	if ord.TrackingNumber != nil && strings.TrimSpace(*ord.TrackingNumber) != "" {
+		return
+	}
+
+	prefix := "JNE"
+	if ord.ShippingCourier != nil {
+		cUpper := strings.ToUpper(*ord.ShippingCourier)
+		switch {
+		case strings.Contains(cUpper, "SICEPAT"):
+			prefix = "SCP"
+		case strings.Contains(cUpper, "J&T") || strings.Contains(cUpper, "JNT"):
+			prefix = "JNT"
+		case strings.Contains(cUpper, "JNE"):
+			prefix = "JNE"
+		}
+	}
+
+	seed := strings.ReplaceAll(strings.ToUpper(ord.OrderNumber), "ORD-", "")
+	seed = strings.ReplaceAll(seed, "-", "")
+	if len(seed) < 8 {
+		seed = strings.ToUpper(strings.ReplaceAll(ord.ID, "-", ""))
+	}
+	if len(seed) > 10 {
+		seed = seed[:10]
+	}
+
+	resi := fmt.Sprintf("%s-%s", prefix, seed)
+	ord.TrackingNumber = &resi
 }
 
 // Checkout atomically creates an order from the user's current cart and deducts per-size stock.
@@ -85,6 +126,38 @@ func (s *orderService) Checkout(ctx context.Context, userID string, input domain
 		}
 	}
 
+	// Resolve shipping courier and fee
+	var shippingCourierPtr *string
+	shippingCost := input.ShippingCost
+	if cleanCourier := strings.TrimSpace(input.ShippingCourier); cleanCourier != "" {
+		if matchedCourier := domain.FindCourierByCodeOrName(cleanCourier); matchedCourier != nil {
+			cName := matchedCourier.Name
+			shippingCourierPtr = &cName
+			shippingCost = matchedCourier.Cost
+		} else {
+			shippingCourierPtr = &cleanCourier
+		}
+	}
+
+	// Resolve promotional coupon discount if provided
+	var couponCodePtr *string
+	var discountAmount float64
+	if cleanCode := strings.TrimSpace(input.CouponCode); cleanCode != "" {
+		valRes, err := s.couponSvc.Validate(domain.ValidateCouponInput{
+			Code:        cleanCode,
+			Subtotal:    cart.Totals.Subtotal,
+			ShippingFee: shippingCost,
+		})
+		if err != nil {
+			return nil, err
+		}
+		code := valRes.Code
+		couponCodePtr = &code
+		discountAmount = valRes.DiscountAmount
+	}
+
+	totalAmount := math.Max(0, cart.Totals.Subtotal+shippingCost-discountAmount)
+
 	now := time.Now()
 	orderID := uuid.NewString()
 	orderNumber := fmt.Sprintf("ORD-%s-%s", now.Format("20060102"), strings.ToUpper(uuid.NewString()[:8]))
@@ -100,11 +173,15 @@ func (s *orderService) Checkout(ctx context.Context, userID string, input domain
 		OrderNumber:        orderNumber,
 		UserID:             userID,
 		Status:             domain.StatusPending,
-		TotalAmount:        cart.Totals.Subtotal,
+		TotalAmount:        totalAmount,
 		ShippingAddress:    &sAddr,
 		ShippingCity:       &sCity,
 		ShippingPostalCode: &sPostal,
 		ShippingPhone:      &sPhone,
+		ShippingCourier:    shippingCourierPtr,
+		ShippingCost:       shippingCost,
+		CouponCode:         couponCodePtr,
+		DiscountAmount:     discountAmount,
 		PaymentMethod:      &pMethod,
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -149,7 +226,14 @@ func (s *orderService) ListOrders(ctx context.Context, userID, userRole string, 
 		filter.UserID = userID
 	}
 
-	return s.orderRepo.FindAll(ctx, filter)
+	orders, total, err := s.orderRepo.FindAll(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range orders {
+		enrichOrderLogistics(&orders[i])
+	}
+	return orders, total, nil
 }
 
 // GetOrderDetail retrieves a single order and enforces ownership/role permissions.
@@ -170,6 +254,7 @@ func (s *orderService) GetOrderDetail(ctx context.Context, userID, userRole, ord
 		return nil, domain.NewForbidden("Anda tidak memiliki akses ke pesanan ini")
 	}
 
+	enrichOrderLogistics(order)
 	return order, nil
 }
 
@@ -227,5 +312,10 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, orderID string, ne
 	}
 
 	restock := (newStatus == domain.StatusCancelled)
-	return s.orderRepo.UpdateStatusWithTx(ctx, orderID, newStatus, restock)
+	updated, err := s.orderRepo.UpdateStatusWithTx(ctx, orderID, newStatus, restock)
+	if err != nil {
+		return nil, err
+	}
+	enrichOrderLogistics(updated)
+	return updated, nil
 }

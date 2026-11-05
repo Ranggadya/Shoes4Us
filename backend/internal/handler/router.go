@@ -25,6 +25,8 @@ type RouterDependencies struct {
 	CartHandler    *CartHandler
 	WishlistHandler *WishlistHandler
 	OrderHandler    *OrderHandler
+	CouponHandler   *CouponHandler
+	ShippingHandler *ShippingHandler
 }
 
 // NewRouter constructs the root Chi HTTP router with CORS, static uploads, and /api endpoints.
@@ -63,6 +65,17 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		api.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 			response.WriteSuccess(w, http.StatusOK, "OK", map[string]string{"status": "ok"}, nil)
 		})
+
+		if deps.ShippingHandler != nil {
+			api.Get("/shipping/couriers", deps.ShippingHandler.ListCouriers)
+		}
+
+		if deps.CouponHandler != nil {
+			api.Route("/coupons", func(coupons chi.Router) {
+				coupons.Get("/", deps.CouponHandler.ListCoupons)
+				coupons.Post("/validate", deps.CouponHandler.ValidateCoupon)
+			})
+		}
 
 		if deps.AuthHandler != nil {
 			api.Route("/auth", func(auth chi.Router) {

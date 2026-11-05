@@ -552,3 +552,72 @@ func TestOrderHandler_ProcessPayment_MarksPaidAndClearsCart(t *testing.T) {
 		}
 	})
 }
+
+
+func TestOrderService_CouponCourierAndTracking(t *testing.T) {
+	ctx := context.Background()
+	size42 := "42"
+	cart := &domain.Cart{
+		ID:     "cart-promo-1",
+		UserID: "user-1",
+		Items: []domain.CartItem{
+			{
+				ID:        "ci-1",
+				ProductID: "prod-1",
+				Quantity:  1,
+				Size:      &size42,
+				Product: domain.CartProductSummary{
+					ID:    "prod-1",
+					Name:  "Nike Pegasus",
+					Price: 400000,
+				},
+			},
+		},
+		Totals: domain.CartTotals{
+			Subtotal:   400000,
+			TotalItems: 1,
+		},
+	}
+
+	cartRepo := &mockCartRepoForOrder{cart: cart}
+	prodRepo := &mockProductRepoForOrder{
+		sizeStock: map[string]int{"prod-1_42": 10},
+	}
+	orderRepo := &mockOrderRepoForFocus{}
+	orderSvc := service.NewOrderService(orderRepo, cartRepo, prodRepo)
+
+	ord, err := orderSvc.Checkout(ctx, "user-1", domain.CreateOrderInput{
+		ShippingAddress:    "Jl. Asia Afrika 10",
+		ShippingCity:       "Bandung",
+		ShippingPostalCode: "40111",
+		ShippingPhone:      "08123456789",
+		PaymentMethod:      "QRIS",
+		CouponCode:         "DISKON10",
+		ShippingCourier:    "JNE Reguler",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on checkout: %v", err)
+	}
+
+	if ord.DiscountAmount != 40000 {
+		t.Fatalf("expected discountAmount 40000, got %v", ord.DiscountAmount)
+	}
+	if ord.ShippingCost != 18000 {
+		t.Fatalf("expected shippingCost 18000, got %v", ord.ShippingCost)
+	}
+	// 400000 + 18000 - 40000 = 378000
+	if ord.TotalAmount != 378000 {
+		t.Fatalf("expected totalAmount 378000, got %v", ord.TotalAmount)
+	}
+
+	// Transition to PAID then SHIPPED and verify trackingNumber is generated
+	ord.Status = domain.StatusPaid
+	orderRepo.order = ord
+	shippedOrd, err := orderSvc.UpdateOrderStatus(ctx, ord.ID, domain.StatusShipped)
+	if err != nil {
+		t.Fatalf("unexpected error updating status to SHIPPED: %v", err)
+	}
+	if shippedOrd.TrackingNumber == nil || *shippedOrd.TrackingNumber == "" {
+		t.Fatalf("expected non-empty trackingNumber on SHIPPED order, got %+v", shippedOrd.TrackingNumber)
+	}
+}

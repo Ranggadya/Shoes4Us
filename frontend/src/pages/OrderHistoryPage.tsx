@@ -20,6 +20,8 @@ import {
   Eye,
   X,
   RotateCcw,
+  Copy,
+  Tag,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Order, OrderStatus } from "@/types";
@@ -396,6 +398,39 @@ export default function UserOrdersPage() {
                           })}
                         </p>
                       </div>
+                      {order.shippingCourier && (
+                        <>
+                          <div className="hidden md:block w-px h-10 bg-gray-300"></div>
+                          <div className="hidden md:block">
+                            <p className="text-sm text-gray-600">Kurir</p>
+                            <p className="font-medium text-gray-900">{order.shippingCourier}</p>
+                          </div>
+                        </>
+                      )}
+                      {order.trackingNumber && (
+                        <>
+                          <div className="hidden lg:block w-px h-10 bg-gray-300"></div>
+                          <div className="hidden lg:flex items-center gap-2">
+                            <div>
+                              <p className="text-xs text-gray-600">No. Resi</p>
+                              <p className="font-mono text-sm font-semibold text-blue-700">
+                                {order.trackingNumber}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(order.trackingNumber || "");
+                                toast.success("Nomor resi berhasil disalin!");
+                              }}
+                              className="p-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                              title="Salin Nomor Resi"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
@@ -558,6 +593,34 @@ export default function UserOrdersPage() {
                           Telp: {selectedOrder.shippingPhone}
                         </p>
                       )}
+                      {(selectedOrder.shippingCourier || selectedOrder.trackingNumber) && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap items-center gap-3 text-sm">
+                          {selectedOrder.shippingCourier && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white border border-gray-200 text-gray-700 font-medium">
+                              <Truck className="w-4 h-4 text-gray-500" />
+                              Kurir: {selectedOrder.shippingCourier}
+                            </span>
+                          )}
+                          {selectedOrder.trackingNumber && (
+                            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-blue-50 border border-blue-200 text-blue-800 font-medium">
+                              <span>
+                                No. Resi: <strong className="font-mono">{selectedOrder.trackingNumber}</strong>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigator.clipboard.writeText(selectedOrder.trackingNumber || "");
+                                  toast.success("Nomor resi berhasil disalin!");
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-blue-200 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition"
+                              >
+                                <Copy className="w-3 h-3" />
+                                Salin Resi
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -593,6 +656,29 @@ export default function UserOrdersPage() {
                         ))}
                       </tbody>
                       <tfoot className="bg-gray-50 border-t-2">
+                        {(selectedOrder.shippingCost ?? 0) > 0 && (
+                          <tr>
+                            <td colSpan={3} className="px-3 pt-3 pb-1 text-right text-sm text-gray-600">
+                              Ongkos Kirim {selectedOrder.shippingCourier ? `(${selectedOrder.shippingCourier})` : ""}
+                            </td>
+                            <td className="px-3 pt-3 pb-1 text-right text-sm font-medium text-gray-800">
+                              {formatCurrency(selectedOrder.shippingCost || 0)}
+                            </td>
+                          </tr>
+                        )}
+                        {(selectedOrder.discountAmount ?? 0) > 0 && (
+                          <tr>
+                            <td colSpan={3} className="px-3 py-1 text-right text-sm text-emerald-700">
+                              <span className="inline-flex items-center gap-1">
+                                <Tag className="w-3.5 h-3.5" />
+                                Diskon Voucher {selectedOrder.couponCode ? `(${selectedOrder.couponCode})` : ""}
+                              </span>
+                            </td>
+                            <td className="px-3 py-1 text-right text-sm font-semibold text-emerald-700">
+                              -{formatCurrency(selectedOrder.discountAmount || 0)}
+                            </td>
+                          </tr>
+                        )}
                         <tr>
                           <td colSpan={3} className="p-3 text-right font-semibold">Total</td>
                           <td className="p-3 text-right font-bold text-lg">

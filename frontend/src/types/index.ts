@@ -98,6 +98,23 @@ export interface OrderItem {
   };
 }
 
+export interface CouponValidationResult {
+  code: string;
+  description: string;
+  discountType: "PERCENTAGE" | "FIXED" | "FREE_SHIPPING";
+  discountAmount: number;
+  minOrderAmount: number;
+}
+
+export interface CourierOption {
+  code: string;
+  name: string;
+  service: string;
+  cost: number;
+  estimatedDays: string;
+  description: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -106,6 +123,11 @@ export interface Order {
   shippingCity?: string;
   shippingPostalCode?: string;
   shippingPhone?: string;
+  shippingCourier?: string;
+  shippingCost?: number;
+  couponCode?: string;
+  discountAmount?: number;
+  trackingNumber?: string;
   paymentMethod?: string;
   paymentUrl?: string | null;
   totalAmount: number;

@@ -54,6 +54,11 @@ type Order struct {
 	ShippingCity       *string           `json:"shippingCity,omitempty"`
 	ShippingPostalCode *string           `json:"shippingPostalCode,omitempty"`
 	ShippingPhone      *string           `json:"shippingPhone,omitempty"`
+	ShippingCourier    *string           `json:"shippingCourier,omitempty"`
+	ShippingCost       float64           `json:"shippingCost,omitempty"`
+	CouponCode         *string           `json:"couponCode,omitempty"`
+	DiscountAmount     float64           `json:"discountAmount,omitempty"`
+	TrackingNumber     *string           `json:"trackingNumber,omitempty"`
 	PaymentMethod      *string           `json:"paymentMethod,omitempty"`
 	PaymentURL         *string           `json:"paymentUrl,omitempty"`
 	CreatedAt          time.Time         `json:"createdAt"`
@@ -67,8 +72,11 @@ type CreateOrderInput struct {
 	ShippingAddress    string `json:"shippingAddress"`
 	ShippingCity       string `json:"shippingCity"`
 	ShippingPostalCode string `json:"shippingPostalCode"`
-	ShippingPhone      string `json:"shippingPhone"`
-	PaymentMethod      string `json:"paymentMethod"`
+	ShippingPhone      string  `json:"shippingPhone"`
+	ShippingCourier    string  `json:"shippingCourier,omitempty"`
+	ShippingCost       float64 `json:"shippingCost,omitempty"`
+	CouponCode         string  `json:"couponCode,omitempty"`
+	PaymentMethod      string  `json:"paymentMethod"`
 	Notes              string `json:"notes,omitempty"`
 }
 
