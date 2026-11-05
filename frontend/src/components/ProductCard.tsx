@@ -140,14 +140,14 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       to={`/product/${product.id}`}
-      className="group block border border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between h-full"
+      className="group border border-gray-200 bg-white hover:border-gray-300 transition-colors duration-150 flex flex-col justify-between h-full"
     >
-      {/* Top square photo frame */}
-      <div className="relative aspect-square w-full bg-white border-b border-gray-100 overflow-hidden flex items-center justify-center p-6">
+      {/* Top square photo frame — zero padding/margin between card border and image */}
+      <div className="relative aspect-square w-full bg-white border-b border-gray-200 overflow-hidden">
         <img
           src={imageSrc}
           alt={product.name}
-          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
 
@@ -157,38 +157,36 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
 
       {/* Content section */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      <div className="px-3.5 py-3 flex-1 flex flex-col justify-between">
         <div>
           {/* Brand & Product Name */}
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-600 mb-0.5">
+          <p className="text-[13px] font-normal uppercase tracking-normal text-gray-600 leading-tight mb-1">
             {brandLabel}
           </p>
-          <h3 className="text-[15px] font-bold text-gray-900 leading-snug line-clamp-1">
+          <h3 className="text-[15px] font-semibold text-gray-900 leading-snug line-clamp-1">
             {product.name}
           </h3>
 
           {/* Metadata block */}
-          <div className="mt-3 space-y-0.5 text-xs text-gray-500">
+          <div className="mt-4 space-y-0.5 text-xs text-gray-500">
             <p>{audienceLabel}</p>
             <p>Warna : {colorLabel}</p>
           </div>
         </div>
 
         {/* Bottom price & rating block */}
-        <div className="mt-2.5">
+        <div className="mt-3">
           {product.isSale ? (
-            <div className="space-y-0.5">
-              <p className="text-[15px] font-bold text-red-600">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-[15px] font-bold text-[#d91e2a]">
                 {formatCatalogPrice(product.price)}
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500 line-through">
-                  {formatCatalogPrice(originalPrice)}
-                </span>
-                <span className="bg-red-50 text-red-600 text-[11px] font-semibold px-1.5 py-0.5">
-                  20% OFF
-                </span>
-              </div>
+              </span>
+              <span className="text-xs text-gray-500 line-through">
+                {formatCatalogPrice(originalPrice)}
+              </span>
+              <span className="bg-red-50 text-[#d91e2a] text-[11px] font-semibold px-1.5 py-0.5">
+                20% OFF
+              </span>
             </div>
           ) : (
             <p className="text-[15px] font-bold text-gray-900">
@@ -199,21 +197,21 @@ export default function ProductCard({ product }: { product: Product }) {
           {/* Star rating row */}
           <div className="mt-2 flex items-center gap-1.5">
             <div
-              className="flex items-center text-sm leading-none tracking-tight"
+              className="flex items-center text-[15px] leading-none tracking-tight"
               aria-label={`Rating ${rating} dari 5`}
             >
               {[1, 2, 3, 4, 5].map((starIndex) => (
                 <span
                   key={starIndex}
                   className={
-                    starIndex <= filledStars ? "text-gray-800" : "text-gray-300"
+                    starIndex <= filledStars ? "text-[#4a4a4a]" : "text-gray-300"
                   }
                 >
                   ★
                 </span>
               ))}
             </div>
-            <span className="text-xs text-gray-600">({count})</span>
+            <span className="text-xs text-gray-700">({count})</span>
           </div>
         </div>
       </div>

@@ -44,13 +44,13 @@ export default function FeaturedProducts() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-8">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
+              <div key={i} className="h-80 bg-gray-100 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-8">
             {products.length > 0 ? (
               products.map((product) => (
                 <ProductCard key={product.id} product={product} />
