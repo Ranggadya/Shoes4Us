@@ -42,6 +42,12 @@ func main() {
 		}
 		defer pool.Close()
 		log.Println("connected to PostgreSQL database pool")
+
+		if err := database.EnsureSchema(ctx, pool); err != nil {
+			log.Printf("warning: failed to ensure database schema: %v", err)
+		} else {
+			log.Println("database schema verified and ready")
+		}
 	} else {
 		log.Println("warning: DATABASE_URL is empty; starting server without database connection")
 	}
@@ -80,6 +86,8 @@ func main() {
 	orderSvc := service.NewOrderService(orderRepo, cartRepo, productRepo)
 	paymentSvc := service.NewPaymentService(orderRepo, cartRepo)
 	orderHandler := handler.NewOrderHandler(orderSvc).WithPaymentService(paymentSvc)
+	couponHandler := handler.NewCouponHandler(service.NewCouponService())
+	shippingHandler := handler.NewShippingHandler()
 
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins:  cfg.AllowedOrigins,
@@ -93,6 +101,8 @@ func main() {
 		CartHandler:     cartHandler,
 		WishlistHandler: wishlistHandler,
 		OrderHandler:    orderHandler,
+		CouponHandler:   couponHandler,
+		ShippingHandler: shippingHandler,
 	})
 
 	srv := &http.Server{
