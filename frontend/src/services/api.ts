@@ -1,5 +1,5 @@
 const metaEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
-const BASE_URL = metaEnv?.VITE_API_URL || "/api";
+const BASE_URL = (metaEnv?.VITE_API_URL || "/api").trim();
 
 export class ApiError extends Error {
   status: number;
@@ -26,13 +26,35 @@ export function removeToken(): void {
 }
 
 function buildUrl(endpoint: string): string {
-  if (endpoint.startsWith("http")) return endpoint;
-  if (endpoint.startsWith("/api/") || endpoint === "/api") {
-    return BASE_URL === "/api"
-      ? endpoint
-      : `${BASE_URL}${endpoint.slice(4)}`;
+  if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
+    return endpoint;
   }
-  return `${BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+
+  // Normalize base URL
+  let base = BASE_URL.replace(/\/+$/, "");
+
+  // If base is an external domain and doesn't end with /api, ensure /api is appended
+  if (base.startsWith("http://") || base.startsWith("https://")) {
+    if (!base.endsWith("/api")) {
+      base = `${base}/api`;
+    }
+  } else if (!base.startsWith("/api")) {
+    base = "/api";
+  }
+
+  // Normalize endpoint: strip leading /api if present to prevent double /api
+  let path = endpoint.trim();
+  if (path.startsWith("/api/")) {
+    path = path.slice(4);
+  } else if (path === "/api") {
+    path = "";
+  }
+
+  if (path && !path.startsWith("/")) {
+    path = `/${path}`;
+  }
+
+  return `${base}${path}`;
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
