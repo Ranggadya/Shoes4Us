@@ -13,6 +13,8 @@ WORKDIR /app
 # Install ca-certificates and tzdata for building & fetching deps
 RUN apk add --no-cache git ca-certificates tzdata
 
+ENV GOTOOLCHAIN=auto
+
 # Cache Go modules layer
 COPY go.mod go.sum ./
 RUN go mod download
