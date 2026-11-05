@@ -89,3 +89,4 @@ func (s *couponService) Validate(input domain.ValidateCouponInput) (*domain.Coup
 		MinOrderAmount: matched.MinOrderAmount,
 	}, nil
 }
+

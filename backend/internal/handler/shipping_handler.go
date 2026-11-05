@@ -20,3 +20,4 @@ func (h *ShippingHandler) ListCouriers(w http.ResponseWriter, _ *http.Request) {
 	couriers := domain.DefaultCouriers()
 	response.WriteSuccess(w, http.StatusOK, "Daftar kurir pengiriman berhasil diambil", couriers, nil)
 }
+

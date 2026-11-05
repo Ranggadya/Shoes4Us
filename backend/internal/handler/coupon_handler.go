@@ -42,3 +42,4 @@ func (h *CouponHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteSuccess(w, http.StatusOK, "Voucher berhasil diterapkan", result, nil)
 }
+

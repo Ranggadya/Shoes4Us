@@ -36,3 +36,4 @@ func TestShippingHandler_ListCouriers(t *testing.T) {
 		t.Fatalf("expected at least 3 couriers, got %d", len(res.Data))
 	}
 }
+

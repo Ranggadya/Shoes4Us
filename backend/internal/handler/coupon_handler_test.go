@@ -67,3 +67,4 @@ func TestCouponHandler_ValidateAndList(t *testing.T) {
 		t.Fatalf("expected 400 Bad Request on invalid coupon, got %d", recBad.Code)
 	}
 }
+

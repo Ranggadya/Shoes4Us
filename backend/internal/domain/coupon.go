@@ -70,3 +70,4 @@ type CouponService interface {
 	ListCoupons() []Coupon
 	Validate(input ValidateCouponInput) (*CouponValidationResult, error)
 }
+
