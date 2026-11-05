@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "@/components/ProductCard";
 import ProductListSkeleton from "@/components/skeletons/ProductListSkeleton";
-import ProductFilters from "@/components/ProductFilters";
+import ProductFilters, { FilterValues } from "@/components/ProductFilters";
 import EmptySearchResults from "@/components/empty-states/EmptySearchResults";
 import EmptyCategory from "@/components/empty-states/EmptyCategory";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -22,8 +22,10 @@ type ProductListFilters = {
   segment: string;
   audience: string;
   brand: string;
+  size: string;
   collection: string;
   isSale: boolean;
+  inStock: boolean;
   minPrice: number;
   maxPrice: number;
   sortBy: string;
@@ -38,8 +40,10 @@ export default function ProductListPage() {
   const segmentQuery = searchParams?.get("segment") || "";
   const audienceQuery = searchParams?.get("audience") || "";
   const brandQuery = searchParams?.get("brand") || "";
+  const sizeQuery = searchParams?.get("size") || "";
   const collectionQuery = searchParams?.get("collection") || "";
   const saleQuery = searchParams?.get("sale") || searchParams?.get("isSale") || "";
+  const inStockQuery = searchParams?.get("inStock") || "";
   const minPriceQuery = searchParams?.get("minPrice");
   const maxPriceQuery = searchParams?.get("maxPrice");
   const sortByQuery = searchParams?.get("sortBy") || "newest";
@@ -49,8 +53,10 @@ export default function ProductListPage() {
     segment: segmentQuery,
     audience: audienceQuery,
     brand: brandQuery,
+    size: sizeQuery,
     collection: collectionQuery,
     isSale: saleQuery === "true",
+    inStock: inStockQuery === "true",
     minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
     maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
     sortBy: sortByQuery,
@@ -59,8 +65,10 @@ export default function ProductListPage() {
     segmentQuery,
     audienceQuery,
     brandQuery,
+    sizeQuery,
     collectionQuery,
     saleQuery,
+    inStockQuery,
     minPriceQuery,
     maxPriceQuery,
     sortByQuery,
@@ -104,12 +112,20 @@ export default function ProductListPage() {
           params.append("brand", filters.brand);
         }
 
+        if (filters.size) {
+          params.append("size", filters.size);
+        }
+
         if (filters.collection) {
           params.append("collection", filters.collection);
         }
 
         if (filters.isSale) {
           params.append("isSale", "true");
+        }
+
+        if (filters.inStock) {
+          params.append("inStock", "true");
         }
         
         if (searchQuery) {
@@ -204,12 +220,7 @@ export default function ProductListPage() {
   };
 
   const handleFilterChange = (
-    filterValues: {
-      category: string;
-      minPrice: number;
-      maxPrice: number;
-      sortBy: string;
-    },
+    filterValues: FilterValues,
     options?: { isReset?: boolean }
   ) => {
     if (options?.isReset) {
@@ -226,6 +237,44 @@ export default function ProductListPage() {
       nextParams.set("category", filterValues.category);
     } else {
       nextParams.delete("category");
+    }
+
+    if (filterValues.brand) {
+      nextParams.set("brand", filterValues.brand);
+    } else {
+      nextParams.delete("brand");
+    }
+
+    if (filterValues.audience) {
+      nextParams.set("audience", filterValues.audience);
+    } else {
+      nextParams.delete("audience");
+    }
+
+    if (filterValues.size) {
+      nextParams.set("size", filterValues.size);
+    } else {
+      nextParams.delete("size");
+    }
+
+    if (filterValues.collection) {
+      nextParams.set("collection", filterValues.collection);
+    } else {
+      nextParams.delete("collection");
+    }
+
+    if (filterValues.isSale) {
+      nextParams.set("isSale", "true");
+      nextParams.delete("sale");
+    } else {
+      nextParams.delete("isSale");
+      nextParams.delete("sale");
+    }
+
+    if (filterValues.inStock) {
+      nextParams.set("inStock", "true");
+    } else {
+      nextParams.delete("inStock");
     }
 
     if (filterValues.minPrice > 0) {

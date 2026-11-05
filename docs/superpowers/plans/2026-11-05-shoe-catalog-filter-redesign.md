@@ -39,7 +39,7 @@
   - `domain.ProductFilter.InStock *bool`
   - Query parameters on `GET /api/products`: `size` (e.g. `42`) and `inStock` (`true`)
 
-- [ ] **Step 1: Write failing test `TestProductHandler_ListProducts_SizeAndInStockFilter` in `backend/internal/handler/product_handler_test.go`**
+- [x] **Step 1: Write failing test `TestProductHandler_ListProducts_SizeAndInStockFilter` in `backend/internal/handler/product_handler_test.go`**
   - Seed 3 products in `fakeProductRepo`:
     - Product 1: stock 5, size `"42"` (stock 3) and `"43"` (stock 2)
     - Product 2: stock 5, size `"42"` (stock 0) and `"40"` (stock 5)
@@ -47,11 +47,11 @@
   - Assert `GET /api/products?size=42` returns only Product 1 (since Product 2 has stock 0 for size 42).
   - Assert `GET /api/products?inStock=true` returns Product 1 and Product 2 (excluding Product 3 with stock 0).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `cd backend && go test -v ./internal/handler/... -run TestProductHandler_ListProducts_SizeAndInStockFilter`
   - Expected: FAIL
 
-- [ ] **Step 3: Add `Size` and `InStock` to `domain.ProductFilter`, `product_repository.go`, and `product_handler.go`**
+- [x] **Step 3: Add `Size` and `InStock` to `domain.ProductFilter`, `product_repository.go`, and `product_handler.go`**
   - Add `Size string` and `InStock *bool` to `domain.ProductFilter`.
   - In `product_repository.go` `FindAll`:
     - If `filter.Size != ""`, append `EXISTS (SELECT 1 FROM product_sizes ps WHERE ps."productId" = p.id AND LOWER(ps.size) = LOWER($%d) AND ps.stock > 0)`.
@@ -59,11 +59,11 @@
   - In `product_handler.go` `ListProducts`: parse `size` and `inStock` query parameters.
   - Update `fakeProductRepo.FindAll` in `product_handler_test.go` to evaluate `filter.Size` (checking `r.sizes[p.ID]` with `stock > 0`) and `filter.InStock`.
 
-- [ ] **Step 4: Run backend tests to verify they pass**
+- [x] **Step 4: Run backend tests to verify they pass**
   - Run: `cd backend && go test -v ./internal/handler/... -run TestProductHandler_ListProducts_SizeAndInStockFilter`
   - Expected: PASS
 
-- [ ] **Step 5: Commit Backend Filter**
+- [x] **Step 5: Commit Backend Filter**
   - Commit message: `feat(catalog): support shoe size and in-stock filtering on products endpoint`
 
 ---
@@ -92,7 +92,7 @@
   };
   ```
 
-- [ ] **Step 1: Redesign `frontend/src/components/ProductFilters.tsx` into Style A (Clean Accordion & Size Matrix)**
+- [x] **Step 1: Redesign `frontend/src/components/ProductFilters.tsx` into Style A (Clean Accordion & Size Matrix)**
   - Header showing `Filter (N)` active badge and `Hapus Semua` button.
   - Active filter tags row (`Size: 42 ✕`, `Nike ✕`, `Pria ✕`, `Diskon ✕`, `Stok Tersedia ✕`, etc.) with individual removal.
   - Collapsible accordion sections:
@@ -104,15 +104,15 @@
     6. **Koleksi & Promo**: Toggles for *Sedang Diskon (`isSale`)*, *Rilisan Baru (`new-arrivals`)*, *Exclusive (`exclusive`)*, and switch *Hanya Stok Tersedia (`inStock`)*
     7. **Rentang Harga**: Quick preset chips (`< Rp 1 Jt`, `Rp 1 - 2 Jt`, `> Rp 2 Jt`) + formatted custom Min/Max inputs with 400ms debounce / apply.
 
-- [ ] **Step 2: Connect all filter fields and URL query sync in `frontend/src/pages/ProductListPage.tsx`**
+- [x] **Step 2: Connect all filter fields and URL query sync in `frontend/src/pages/ProductListPage.tsx`**
   - Read `size` and `inStock` from `useSearchParams()`.
   - Pass `size` and `inStock` to `GET /products` API request params.
   - Pass full `initialFilters` into `<ProductFilters />` and sync `handleFilterChange` with `setSearchParams`.
   - Display active filter summary bar above the product grid on mobile/desktop.
 
-- [ ] **Step 3: Verify Frontend TypeScript & Vite Production Build**
+- [x] **Step 3: Verify Frontend TypeScript & Vite Production Build**
   - Run: `cd frontend && npm run build`
   - Expected: `✓ built in ...` with 0 errors.
 
-- [ ] **Step 4: Commit Frontend Redesign**
+- [x] **Step 4: Commit Frontend Redesign**
   - Commit message: `feat(ui): redesign catalog sidebar filter with size matrix, brand, gender, and active tags`
