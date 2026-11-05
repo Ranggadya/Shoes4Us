@@ -648,7 +648,7 @@ export default function ProductFilters({
                         : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                     }`}
                   >
-                    🔥 Sedang Diskon
+                     Sedang Diskon
                   </button>
                   <button
                     type="button"
@@ -666,7 +666,7 @@ export default function ProductFilters({
                         : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                     }`}
                   >
-                    ✨ Rilisan Baru
+                     Rilisan Baru
                   </button>
                   <button
                     type="button"
@@ -684,7 +684,7 @@ export default function ProductFilters({
                         : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                     }`}
                   >
-                    💎 Exclusive
+                     Exclusive
                   </button>
                 </div>
               </div>
