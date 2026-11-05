@@ -8,11 +8,13 @@ import { useWishlist } from "@/context/WishlistContext";
 interface WishlistButtonProps {
   productId: string;
   className?: string;
+  variant?: "default" | "minimal";
 }
 
 export default function WishlistButton({
   productId,
   className = "",
+  variant = "default",
 }: WishlistButtonProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -47,6 +49,28 @@ export default function WishlistButton({
       setLoading(false);
     }
   };
+
+  if (variant === "minimal") {
+    return (
+      <button
+        onClick={handleToggle}
+        disabled={loading}
+        className={`p-1.5 transition ${
+          active
+            ? "text-red-500"
+            : "text-gray-700 hover:text-red-500"
+        } ${loading ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
+        aria-label={active ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart
+          className={`w-5 h-5 transition-all duration-200 ${
+            active ? "fill-red-500 text-red-500" : ""
+          }`}
+          strokeWidth={1.75}
+        />
+      </button>
+    );
+  }
 
   return (
     <button

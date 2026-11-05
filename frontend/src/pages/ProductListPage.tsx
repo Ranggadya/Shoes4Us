@@ -15,6 +15,11 @@ type Product = {
   category: { name: string } | null;
   description: string | null;
   imageUrl: string | null;
+  brand?: string | null;
+  audience?: string | null;
+  isSale?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
 };
 
 type ProductListFilters = {

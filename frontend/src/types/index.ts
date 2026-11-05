@@ -49,12 +49,14 @@ export interface Product {
   category?: Category | string | null;
   brand?: string | null;
   segment?: ProductSegment;
-  audience?: ProductAudience;
+  audience?: ProductAudience | null;
   isNewArrival?: boolean;
   isExclusive?: boolean;
   isComingSoon?: boolean;
   isSale?: boolean;
   isActive?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
   sizes?: ProductSizeStock[];
   createdAt?: string;
   updatedAt?: string;
