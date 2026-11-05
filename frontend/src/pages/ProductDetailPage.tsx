@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
-import { formatCurrency, getCategoryName } from "@/utils/format";
+import { getCategoryName } from "@/utils/format";
 import { api } from "@/services/api";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
@@ -16,9 +16,9 @@ import {
   Truck,
   ShieldCheck,
   RotateCcw,
-  ChevronRight,
-  Package,
-  Ruler,
+  ChevronUp,
+  ChevronDown,
+  Store,
   Check,
   X,
 } from "lucide-react";
@@ -26,9 +26,15 @@ import {
 type Product = {
   id: string;
   name: string;
+  slug?: string;
   price: number;
   description: string | null;
   imageUrl: string | null;
+  brand?: string | null;
+  audience?: string | null;
+  isExclusive?: boolean;
+  isNewArrival?: boolean;
+  isSale?: boolean;
   category: { id: string; name: string; slug: string } | string;
   stock: number;
   sizes?: Array<{ id: string; size: string; stock: number }>;
@@ -41,9 +47,136 @@ type ProductResponse = {
 
 const AVAILABLE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"];
 
-const getProductImages = (mainImage: string | null) => {
-  if (!mainImage) return ["/sepatu1.jpeg"];
-  return [mainImage];
+const EU_TO_US_MAP: Record<string, string> = {
+  "36": "US 5.5",
+  "37": "US 6",
+  "38": "US 7",
+  "39": "US 7.5",
+  "40": "US 8",
+  "41": "US 8.5",
+  "42": "US 9.5",
+  "43": "US 10",
+  "44": "US 10.5",
+  "45": "US 11",
+};
+
+const KNOWN_BRANDS = [
+  "New Balance",
+  "Nike",
+  "Adidas",
+  "Puma",
+  "Converse",
+  "Vans",
+  "Reebok",
+  "Asics",
+  "Skechers",
+  "Salomon",
+  "Onitsuka Tiger",
+  "Hoka",
+];
+
+function resolveBrand(product: Product): string {
+  if (product.brand && product.brand.trim().length > 0) {
+    return product.brand.trim().toUpperCase();
+  }
+  const lowerName = product.name.toLowerCase();
+  for (const brand of KNOWN_BRANDS) {
+    if (lowerName.includes(brand.toLowerCase())) {
+      return brand.toUpperCase();
+    }
+  }
+  const cat = getCategoryName(product.category);
+  return cat ? cat.toUpperCase() : "SHOES4US";
+}
+
+function resolveAudienceBreadcrumb(audience?: string | null): {
+  label: string;
+  categoryLabel: string;
+  href: string;
+} {
+  const upper = (audience || "").toUpperCase();
+  if (upper === "MEN") {
+    return {
+      label: "PRIA",
+      categoryLabel: "SEPATU PRIA",
+      href: "/product?audience=MEN",
+    };
+  }
+  if (upper === "WOMEN") {
+    return {
+      label: "WANITA",
+      categoryLabel: "SEPATU WANITA",
+      href: "/product?audience=WOMEN",
+    };
+  }
+  if (upper === "KIDS") {
+    return {
+      label: "ANAK",
+      categoryLabel: "SEPATU ANAK",
+      href: "/product?audience=KIDS",
+    };
+  }
+  return {
+    label: "UNISEX",
+    categoryLabel: "SEPATU UNISEX",
+    href: "/product?audience=UNISEX",
+  };
+}
+
+function generateSKU(product: Product): string {
+  const brandCode = resolveBrand(product)
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 3)
+    .padEnd(3, "X");
+  const modelMatch = product.name.toUpperCase().match(/[A-Z0-9]{3,6}/g);
+  const modelCode =
+    modelMatch && modelMatch.length > 1
+      ? modelMatch[1]
+      : (modelMatch?.[0] || "SHOE").slice(0, 5);
+  const idSuffix = product.id
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 3)
+    .toUpperCase();
+  return `0888-${brandCode}${modelCode}${idSuffix}`;
+}
+
+function formatDetailPrice(amount: number): string {
+  const rounded = Math.round(Number.isFinite(amount) ? amount : 0);
+  return `Rp. ${new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 0,
+  }).format(rounded)}`;
+}
+
+function formatSizeChipLabel(rawSize: string): string {
+  const trimmed = rawSize.trim();
+  if (trimmed.toUpperCase().startsWith("US")) {
+    return trimmed.toUpperCase();
+  }
+  return EU_TO_US_MAP[trimmed]
+    ? `${EU_TO_US_MAP[trimmed]} (EU ${trimmed})`
+    : `EU ${trimmed}`;
+}
+
+type GalleryView = {
+  label: string;
+  src: string;
+  transformClass: string;
+};
+
+const buildGalleryViews = (mainImage: string | null): GalleryView[] => {
+  const baseSrc =
+    mainImage && (mainImage.startsWith("http") || mainImage.startsWith("/"))
+      ? mainImage
+      : "/sepatu1.jpeg";
+
+  return [
+    { label: "Tampak Samping Kanan", src: baseSrc, transformClass: "" },
+    { label: "Tampak Samping Kiri", src: baseSrc, transformClass: "-scale-x-100" },
+    { label: "Detail 3/4 Depan", src: baseSrc, transformClass: "scale-110" },
+    { label: "Detail Upper & Logo", src: baseSrc, transformClass: "scale-125 object-center" },
+    { label: "Detail Tumit Belakang", src: baseSrc, transformClass: "scale-110 -rotate-3" },
+    { label: "Detail Outsole", src: baseSrc, transformClass: "scale-105 rotate-2" },
+  ];
 };
 
 type TabType = "description" | "reviews" | "shipping" | "sizeguide";
@@ -54,7 +187,8 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addItem } = useCart();
-  const { isWishlisted: checkIsWishlisted, toggleProduct: toggleWishlist } = useWishlist();
+  const { isWishlisted: checkIsWishlisted, toggleProduct: toggleWishlist } =
+    useWishlist();
   const isWishlisted = checkIsWishlisted(productId);
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -66,8 +200,11 @@ export default function ProductDetailPage() {
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [submittingAction, setSubmittingAction] = useState<"cart" | "buy" | null>(null);
+  const [submittingAction, setSubmittingAction] = useState<
+    "cart" | "buy" | null
+  >(null);
   const [togglingWishlist, setTogglingWishlist] = useState(false);
+  const [showStoreModal, setShowStoreModal] = useState(false);
 
   useEffect(() => {
     setSize("");
@@ -81,14 +218,17 @@ export default function ProductDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        // ✅ Fetch produk & review SECARA PARALEL
         const [productData, reviewData] = await Promise.all([
           api.get<ProductResponse>(`/products/${productId}`),
           api
             .get<{
               success?: boolean;
               data?: { summary?: { averageRating: number; total: number } };
-            }>(`/reviews?productId=${encodeURIComponent(productId)}&summaryOnly=true`)
+            }>(
+              `/reviews?productId=${encodeURIComponent(
+                productId
+              )}&summaryOnly=true`
+            )
             .catch(() => null),
         ]);
 
@@ -96,7 +236,22 @@ export default function ProductDetailPage() {
           throw new Error("Produk tidak ditemukan");
         }
 
-        setProduct(productData.data.product);
+        const fetched = productData.data.product;
+        setProduct(fetched);
+
+        // Preselect first available size if present
+        const sizesList =
+          fetched.sizes && fetched.sizes.length > 0
+            ? fetched.sizes
+            : AVAILABLE_SIZES.map((s) => ({
+                id: s,
+                size: s,
+                stock: fetched.stock,
+              }));
+        const firstInStock = sizesList.find((s) => s.stock > 0);
+        if (firstInStock) {
+          setSize(firstInStock.size);
+        }
 
         if (reviewData?.data?.summary) {
           setAverageRating(reviewData.data.summary.averageRating);
@@ -112,15 +267,16 @@ export default function ProductDetailPage() {
     };
 
     if (productId) {
-      fetchProduct();
+      void fetchProduct();
     } else {
       setError("ID produk tidak valid");
       setLoading(false);
     }
   }, [productId]);
 
-
-  const submitCartSelection = async (action: "cart" | "buy"): Promise<boolean> => {
+  const submitCartSelection = async (
+    action: "cart" | "buy"
+  ): Promise<boolean> => {
     if (!product || submittingAction) return false;
 
     if (!size) {
@@ -183,16 +339,13 @@ export default function ProductDetailPage() {
 
     setTogglingWishlist(true);
     try {
-      // ✅ Gunakan toggleProduct dari WishlistContext — tidak ada fetch duplikat
-      // State wishlist otomatis terupdate di semua komponen (optimistic update)
       const result = await toggleWishlist(productId);
       if (result === "added") {
-        toast.success("Ditambahkan ke wishlist ❤️");
+        toast.success("Ditambahkan ke wishlist");
       } else {
         toast.success("Dihapus dari wishlist");
       }
-    } catch (error) {
-      console.error("Error toggling wishlist:", error);
+    } catch {
       toast.error("Terjadi kesalahan");
     } finally {
       setTogglingWishlist(false);
@@ -209,8 +362,8 @@ export default function ProductDetailPage() {
         })
         .catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard!");
+      void navigator.clipboard.writeText(window.location.href);
+      toast.success("Tautan produk berhasil disalin!");
     }
   };
 
@@ -233,9 +386,9 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-gray-300 border-t-black rounded-full animate-spin" />
+          <div className="inline-block w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
           <p className="text-gray-600 mt-4">Memuat detail produk...</p>
         </div>
       </div>
@@ -244,7 +397,7 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
         <div className="text-center">
           <X className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <p className="text-gray-600 text-lg mb-2">
@@ -261,7 +414,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const productImages = getProductImages(product.imageUrl);
+  const galleryViews = buildGalleryViews(product.imageUrl);
   const availableSizes =
     product.sizes && product.sizes.length > 0
       ? product.sizes
@@ -271,292 +424,477 @@ export default function ProductDetailPage() {
           stock: product.stock,
         }));
   const selectedSizeStock =
-    availableSizes.find((option) => option.size === size)?.stock ?? product.stock;
+    availableSizes.find((option) => option.size === size)?.stock ??
+    product.stock;
   const hasStock = product.stock > 0;
+  const maxSelectableQuantity = Math.max(1, Math.min(10, selectedSizeStock));
+  const brandName = resolveBrand(product);
+  const audienceBreadcrumb = resolveAudienceBreadcrumb(product.audience);
+  const skuCode = generateSKU(product);
+  const originalPrice = Math.round(product.price / 0.8);
+
+  const handlePrevImage = () => {
+    setSelectedImageIndex((prev) =>
+      prev > 0 ? prev - 1 : galleryViews.length - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setSelectedImageIndex((prev) =>
+      prev < galleryViews.length - 1 ? prev + 1 : 0
+    );
+  };
+
+  const openSizeGuide = () => {
+    setActiveTab("sizeguide");
+    const tabsEl = document.getElementById("product-detail-tabs");
+    if (tabsEl) {
+      tabsEl.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <nav className="flex items-center gap-2 text-sm">
-            <Link to="/" className="text-gray-500 hover:text-gray-700">
-              Home
+    <div className="min-h-screen bg-white text-gray-900">
+      {/* Uppercase Slash Breadcrumb matching reference */}
+      <div className="border-b border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+          <nav className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs tracking-wide uppercase text-gray-600">
+            <Link to="/" className="hover:text-black transition">
+              HOME
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            <Link to="/product" className="text-gray-500 hover:text-gray-700">
-              Products
+            <span className="text-gray-300">/</span>
+            <Link
+              to={audienceBreadcrumb.href}
+              className="hover:text-black transition"
+            >
+              {audienceBreadcrumb.label}
             </Link>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-500 hover:text-gray-700">
-              {getCategoryName(product.category)}
+            <span className="text-gray-300">/</span>
+            <Link
+              to={audienceBreadcrumb.href}
+              className="hover:text-black transition"
+            >
+              {audienceBreadcrumb.categoryLabel}
+            </Link>
+            <span className="text-gray-300">/</span>
+            <span className="text-gray-900 font-medium truncate max-w-md sm:max-w-xl">
+              {product.name.toUpperCase()}
             </span>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-900 font-medium">{product.name}</span>
           </nav>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Retail Showcase Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
-          {/* Image Gallery */}
-          <div className="space-y-4">
-            {/* Main Image */}
-            <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg aspect-square">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-16">
+          {/* Left Column (7 cols): Vertical Thumbnails + Main White Studio Canvas */}
+          <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-4 items-start">
+            {/* Vertical Thumbnail Strip */}
+            <div className="flex sm:flex-col items-center gap-2.5 w-full sm:w-20 flex-shrink-0">
+              <button
+                type="button"
+                onClick={handlePrevImage}
+                className="hidden sm:flex items-center justify-center w-full py-1 text-gray-400 hover:text-gray-800 transition"
+                aria-label="Gambar sebelumnya"
+              >
+                <ChevronUp className="w-5 h-5" />
+              </button>
+
+              <div className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-visible w-full">
+                {galleryViews.map((view, idx) => (
+                  <button
+                    key={view.label}
+                    type="button"
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative w-16 h-16 sm:w-20 sm:h-20 bg-white border transition flex items-center justify-center p-2 flex-shrink-0 ${
+                      selectedImageIndex === idx
+                        ? "border-gray-900 ring-1 ring-gray-900"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
+                    title={view.label}
+                  >
+                    <img
+                      src={view.src}
+                      alt={`${product.name} - ${view.label}`}
+                      className={`w-full h-full object-contain ${view.transformClass}`}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextImage}
+                className="hidden sm:flex items-center justify-center w-full py-1 text-gray-400 hover:text-gray-800 transition"
+                aria-label="Gambar berikutnya"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Main Studio Image Canvas with EXCLUSIVE / BEST SELLER Badges */}
+            <div className="relative flex-1 w-full bg-white border border-gray-100 aspect-square flex items-center justify-center p-8 sm:p-14 overflow-hidden">
+              {/* Top-Left Badge: EXCLUSIVE */}
+              <div className="absolute top-3 left-0 z-10">
+                <span className="inline-block bg-[#3c3c3b] text-white text-xs sm:text-sm font-bold uppercase tracking-wider px-5 py-2 rounded-br-lg shadow-sm">
+                  {product.isExclusive === false && product.isNewArrival
+                    ? "NEW ARRIVAL"
+                    : "EXCLUSIVE"}
+                </span>
+              </div>
+
+              {/* Top-Right Badge: BEST SELLER / SALE */}
+              <div className="absolute top-0 right-0 z-10">
+                <span className="inline-block bg-[#3c3c3b] text-white text-sm sm:text-base font-extrabold uppercase tracking-wider px-6 py-2.5 rounded-bl-xl shadow-sm">
+                  {product.isSale ? "SPECIAL OFFER" : "BEST SELLER"}
+                </span>
+              </div>
+
               <img
-                src={productImages[selectedImageIndex]}
+                src={galleryViews[selectedImageIndex]?.src}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-contain transition-all duration-300 ${
+                  galleryViews[selectedImageIndex]?.transformClass || ""
+                }`}
               />
+
               {!hasStock && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                  <span className="bg-red-500 text-white px-6 py-3 rounded-lg text-lg font-bold">
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
+                  <span className="bg-red-600 text-white px-6 py-3 text-base font-bold uppercase tracking-wider">
                     STOK HABIS
                   </span>
                 </div>
               )}
             </div>
-
-            {/* Thumbnail Gallery */}
-            {productImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {productImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition ${
-                      selectedImageIndex === idx
-                        ? "border-black"
-                        : "border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${product.name} view ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Product Info */}
-          <div className="space-y-6">
-            {/* Category & Name */}
-            <div>
-              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold uppercase tracking-wider rounded-full">
-                {getCategoryName(product.category)}
-              </span>
-              <h1 className="text-4xl font-bold text-gray-900 mt-3">
-                {product.name}
-              </h1>
-            </div>
+          {/* Right Column (5 cols): Product Details & Purchase Controls */}
+          <div className="lg:col-span-5 flex flex-col">
+            {/* Brand Header in Red Uppercase */}
+            <Link
+              to={`/product?brand=${encodeURIComponent(brandName)}`}
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#d91e2a] hover:underline w-fit"
+            >
+              {brandName}
+            </Link>
 
-            {/* Rating */}
+            {/* Product Title */}
+            <h1 className="text-2xl sm:text-[28px] font-normal text-gray-900 leading-snug mt-1">
+              {product.name}
+            </h1>
+
+            {/* SKU Line */}
+            <p className="text-xs text-gray-400 mt-1.5 tracking-wide">
+              SKU#: {skuCode}
+            </p>
+
+            {/* Rating summary if available */}
             {totalReviews > 0 && (
-              <div className="flex items-center gap-3">
-                <StarRating rating={averageRating} size="md" />
-                <span className="text-sm text-gray-600">
-                  {averageRating.toFixed(1)} ({totalReviews}{" "}
-                  {totalReviews === 1 ? "review" : "reviews"})
-                </span>
+              <div className="flex items-center gap-2 mt-2">
+                <StarRating rating={averageRating} size="sm" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("reviews");
+                    document
+                      .getElementById("product-detail-tabs")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="text-xs text-gray-500 hover:underline"
+                >
+                  {averageRating.toFixed(1)} ({totalReviews} ulasan)
+                </button>
               </div>
             )}
 
-            {/* Price */}
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold text-gray-900">
-                {formatCurrency(product.price)}
-              </span>
-              {/* Could add discount price here */}
-            </div>
-
-            {/* Short Description */}
-            {product.description && (
-              <p className="text-gray-600 leading-relaxed text-lg border-t pt-6">
-                {product.description}
-              </p>
-            )}
-
-            {/* Size Selection */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                  Pilih Ukuran
-                </h2>
-                <button
-                  onClick={() => setActiveTab("sizeguide")}
-                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <Ruler className="w-4 h-4" />
-                  Size Guide
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {availableSizes.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      setSize(option.size);
-                      setQuantity(1);
-                    }}
-                    disabled={option.stock === 0}
-                    className={`px-4 py-3 rounded-lg border-2 font-semibold transition ${
-                      size === option.size
-                        ? "bg-black text-white border-black"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    }`}
-                  >
-                    <span className="block">{option.size}</span>
-                    {option.stock === 0 && (
-                      <span className="block text-[10px] font-medium">Habis</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quantity */}
-            <div>
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">
-                Jumlah
-              </h2>
-              <div className="inline-flex items-center border-2 border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  className="px-4 py-3 hover:bg-gray-100 transition disabled:opacity-30"
-                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                  disabled={!hasStock}
-                >
-                  −
-                </button>
-                <span className="px-6 py-3 font-semibold border-x-2 border-gray-300">
-                  {quantity}
-                </span>
-                <button
-                  className="px-4 py-3 hover:bg-gray-100 transition disabled:opacity-30"
-                  onClick={() =>
-                    setQuantity((prev) => Math.min(selectedSizeStock, prev + 1))
-                  }
-                  disabled={!hasStock || selectedSizeStock <= quantity}
-                >
-                  +
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                <Package className="w-4 h-4 inline mr-1" />
-                {hasStock ? (
-                  <span>
-                    {size && selectedSizeStock === 0
-                      ? "Ukuran ini habis"
-                      : "Produk tersedia"}
-                  </span>
-                ) : (
-                  <span className="text-red-500 font-semibold">
-                    Stok habis
-                  </span>
-                )}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={handleAddToCart}
-                disabled={
-                  !hasStock ||
-                  (size ? selectedSizeStock === 0 : false) ||
-                  submittingAction !== null
-                }
-                className="flex-1 bg-black text-white py-4 rounded-lg font-bold hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
+            {/* Price Block */}
+            <div className="mt-4 flex items-baseline gap-3 flex-wrap">
+              <span
+                className={`text-2xl sm:text-[26px] font-bold ${
+                  product.isSale ? "text-[#d91e2a]" : "text-gray-900"
+                }`}
               >
-                {submittingAction === "cart" ? "Adding..." : "Add to Cart"}
-              </button>
+                {formatDetailPrice(product.price)}
+              </span>
+              {product.isSale && (
+                <>
+                  <span className="text-sm text-gray-400 line-through">
+                    {formatDetailPrice(originalPrice)}
+                  </span>
+                  <span className="bg-red-50 text-[#d91e2a] text-xs font-bold px-2 py-0.5">
+                    20% OFF
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Size Selector Section */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-gray-900">Size</span>
+              </div>
+              <div className="flex justify-end mb-2.5">
+                <button
+                  type="button"
+                  onClick={openSizeGuide}
+                  className="text-xs font-bold text-[#005691] underline hover:text-blue-900 transition"
+                >
+                  Panduan Ukuran
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+                {availableSizes.map((option) => {
+                  const isSelected = size === option.size;
+                  const isOut = option.stock === 0;
+                  const usLabel =
+                    EU_TO_US_MAP[option.size.trim()] || `EU ${option.size}`;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        setSize(option.size);
+                        setQuantity(1);
+                      }}
+                      disabled={isOut}
+                      title={formatSizeChipLabel(option.size)}
+                      className={`h-11 px-2 border text-xs font-bold transition flex flex-col items-center justify-center ${
+                        isSelected
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : isOut
+                          ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                          : "border-gray-300 bg-white text-gray-900 hover:border-gray-900"
+                      }`}
+                    >
+                      <span>{usLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {size && (
+                <p className="text-[11px] text-gray-500 mt-1.5">
+                  Ukuran dipilih:{" "}
+                  <strong className="text-gray-800">
+                    {formatSizeChipLabel(size)}
+                  </strong>{" "}
+                  • Stok tersedia: {selectedSizeStock} pasang
+                </p>
+              )}
+            </div>
+
+            {/* KUANTITAS Dropdown */}
+            <div className="mt-6">
+              <label
+                htmlFor="product-quantity-select"
+                className="block text-xs font-medium uppercase tracking-wider text-gray-800 mb-2"
+              >
+                KUANTITAS
+              </label>
+              <div className="relative w-32">
+                <select
+                  id="product-quantity-select"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  disabled={!hasStock || selectedSizeStock === 0}
+                  className="w-full h-11 px-3.5 pr-8 border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:border-gray-900 disabled:bg-gray-100"
+                >
+                  {Array.from(
+                    { length: maxSelectableQuantity },
+                    (_, idx) => idx + 1
+                  ).map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Full-Width Stacked CTA Buttons matching reference */}
+            <div className="mt-6 space-y-3">
               <button
+                type="button"
                 onClick={handleBuyNow}
                 disabled={
                   !hasStock ||
                   (size ? selectedSizeStock === 0 : false) ||
                   submittingAction !== null
                 }
-                className="flex-1 bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed text-lg"
+                className="w-full h-12 bg-[#d91e2a] hover:bg-[#b81722] text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submittingAction === "buy" ? "Processing..." : "Buy Now"}
+                {submittingAction === "buy" ? "MEMPROSES..." : "BELI SEKARANG"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={
+                  !hasStock ||
+                  (size ? selectedSizeStock === 0 : false) ||
+                  submittingAction !== null
+                }
+                className="w-full h-12 bg-[#ed8b93] hover:bg-[#e4717b] text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submittingAction === "cart"
+                  ? "MENAMBAHKAN..."
+                  : "TAMBAH KE KERANJANG"}
               </button>
             </div>
 
-            {/* Wishlist & Share */}
-            <div className="flex gap-3">
+            {/* Store Availability Check & Secondary Wishlist/Share Row */}
+            <div className="mt-4 pt-3 flex items-center justify-between gap-4 flex-wrap">
               <button
-                onClick={handleWishlist}
-                disabled={togglingWishlist}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 font-semibold transition disabled:opacity-50 ${
-                  isWishlisted
-                    ? "bg-red-50 border-red-500 text-red-600"
-                    : "border-gray-300 text-gray-700 hover:border-gray-400"
-                }`}
+                type="button"
+                onClick={() => setShowStoreModal(true)}
+                className="inline-flex items-center gap-2 text-xs text-[#b5383f] hover:underline font-medium"
               >
-                <Heart
-                  className={`w-5 h-5 ${isWishlisted ? "fill-red-600" : ""}`}
-                />
-                {isWishlisted ? "Wishlisted" : "Add to Wishlist"}
+                <Store className="w-4 h-4" />
+                <span>Periksa ketersediaan di toko</span>
               </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-gray-300 text-gray-700 hover:border-gray-400 font-semibold transition"
-              >
-                <Share2 className="w-5 h-5" />
-                Share
-              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleWishlist}
+                  disabled={togglingWishlist}
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium transition ${
+                    isWishlisted
+                      ? "text-[#d91e2a]"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <Heart
+                    className={`w-4 h-4 ${
+                      isWishlisted ? "fill-[#d91e2a] text-[#d91e2a]" : ""
+                    }`}
+                  />
+                  <span>{isWishlisted ? "Tersimpan" : "Wishlist"}</span>
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 transition"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Bagikan</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Store Availability Modal */}
+        {showStoreModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white max-w-md w-full p-6 border border-gray-200 shadow-xl relative">
+              <button
+                type="button"
+                onClick={() => setShowStoreModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                Ketersediaan di Toko
+              </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                {product.name} {size ? `(${formatSizeChipLabel(size)})` : ""}
+              </p>
+              <div className="space-y-3 text-sm">
+                {[
+                  {
+                    store: "Shoes4Us Grand Indonesia, Jakarta",
+                    status: hasStock ? "Tersedia" : "Habis",
+                  },
+                  {
+                    store: "Shoes4Us Senayan City, Jakarta",
+                    status: hasStock ? "Tersedia" : "Habis",
+                  },
+                  {
+                    store: "Shoes4Us Paris Van Java, Bandung",
+                    status: hasStock ? "Stok Terbatas" : "Habis",
+                  },
+                  {
+                    store: "Shoes4Us Tunjungan Plaza, Surabaya",
+                    status: hasStock ? "Tersedia" : "Habis",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.store}
+                    className="flex items-center justify-between p-3 border border-gray-200"
+                  >
+                    <span className="font-medium text-gray-800">
+                      {item.store}
+                    </span>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 ${
+                        item.status === "Tersedia"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : item.status === "Stok Terbatas"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-red-50 text-red-600"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabs Section */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div
+          id="product-detail-tabs"
+          className="bg-white border border-gray-200 overflow-hidden"
+        >
           {/* Tab Headers */}
-          <div className="border-b">
+          <div className="border-b border-gray-200">
             <div className="flex overflow-x-auto">
               <button
                 onClick={() => setActiveTab("description")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
+                className={`px-6 py-4 text-sm font-semibold uppercase tracking-wider transition border-b-2 whitespace-nowrap ${
                   activeTab === "description"
                     ? "border-black text-black"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Description
+                Deskripsi Produk
               </button>
               <button
                 onClick={() => setActiveTab("reviews")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
+                className={`px-6 py-4 text-sm font-semibold uppercase tracking-wider transition border-b-2 whitespace-nowrap ${
                   activeTab === "reviews"
                     ? "border-black text-black"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Reviews ({totalReviews})
+                Ulasan ({totalReviews})
               </button>
               <button
                 onClick={() => setActiveTab("shipping")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
+                className={`px-6 py-4 text-sm font-semibold uppercase tracking-wider transition border-b-2 whitespace-nowrap ${
                   activeTab === "shipping"
                     ? "border-black text-black"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Shipping & Returns
+                Pengiriman & Pengembalian
               </button>
               <button
                 onClick={() => setActiveTab("sizeguide")}
-                className={`px-6 py-4 font-semibold transition border-b-2 whitespace-nowrap ${
+                className={`px-6 py-4 text-sm font-semibold uppercase tracking-wider transition border-b-2 whitespace-nowrap ${
                   activeTab === "sizeguide"
                     ? "border-black text-black"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Size Guide
+                Panduan Ukuran
               </button>
             </div>
           </div>
@@ -565,89 +903,91 @@ export default function ProductDetailPage() {
           <div className="p-8">
             {activeTab === "description" && (
               <div className="prose max-w-none">
-                <h3 className="text-2xl font-bold mb-4">Product Details</h3>
-                <p className="text-gray-700 leading-relaxed text-lg mb-6">
+                <h3 className="text-xl font-bold mb-4">Detail Produk</h3>
+                <p className="text-gray-700 leading-relaxed mb-6">
                   {product.description ||
-                    "Premium quality shoes designed for comfort and style. Perfect for everyday wear and special occasions."}
+                    "Sepatu berkualitas tinggi yang dirancang untuk kenyamanan dan gaya maksimal sepanjang hari."}
                 </p>
 
-                <h4 className="text-xl font-bold mb-3">Features:</h4>
-                <ul className="space-y-2 text-gray-700">
+                <h4 className="text-base font-bold mb-3">Keunggulan Utama:</h4>
+                <ul className="space-y-2 text-gray-700 text-sm">
                   <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>High-quality materials for durability</span>
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Material upper berkualitas tinggi yang tahan lama</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Comfortable cushioned insole</span>
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Bantalan midsole empuk untuk kenyamanan sepanjang hari</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Breathable lining for all-day comfort</span>
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Sirkulasi udara optimal (breathable mesh lining)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Non-slip rubber outsole</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Available in multiple sizes</span>
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Outsole karet anti-slip dengan daya cengkeram kuat</span>
                   </li>
                 </ul>
 
-                <h4 className="text-xl font-bold mb-3 mt-6">
-                  Specifications:
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="mt-8 pt-6 border-t grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="font-semibold">Category:</span>{" "}
-                    {getCategoryName(product.category)}
+                    <span className="text-gray-500 block text-xs">Brand</span>
+                    <span className="font-semibold">{brandName}</span>
                   </div>
                   <div>
-                    <span className="font-semibold">Available Sizes:</span> 38
-                    - 45
+                    <span className="text-gray-500 block text-xs">Kategori</span>
+                    <span className="font-semibold">
+                      {getCategoryName(product.category)}
+                    </span>
                   </div>
                   <div>
-                    <span className="font-semibold">Material:</span> Premium
-                    Leather
+                    <span className="text-gray-500 block text-xs">SKU</span>
+                    <span className="font-semibold">{skuCode}</span>
                   </div>
                   <div>
-                    <span className="font-semibold">Country:</span> Indonesia
+                    <span className="text-gray-500 block text-xs">Jaminan</span>
+                    <span className="font-semibold">100% Original</span>
                   </div>
                 </div>
 
                 {/* Horizontal Features Section */}
-                <div className="mt-12 pt-8 border-t grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-6 h-6 text-blue-600" />
+                <div className="mt-10 pt-8 border-t grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-200">
+                    <div className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                      <Truck className="w-5 h-5 text-gray-800" />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">Free Shipping</p>
+                      <p className="font-bold text-gray-900 text-sm">
+                        Pengiriman Cepat
+                      </p>
                       <p className="text-xs text-gray-500">
-                        On orders over Rp 500k
+                        Tersedia JNE, SiCepat & J&T ke seluruh Indonesia
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 p-4 bg-green-50 rounded-xl border border-green-100">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <ShieldCheck className="w-6 h-6 text-green-600" />
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-200">
+                    <div className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck className="w-5 h-5 text-gray-800" />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">Authentic Guarantee</p>
+                      <p className="font-bold text-gray-900 text-sm">
+                        Jaminan 100% Original
+                      </p>
                       <p className="text-xs text-gray-500">
-                        100% original products
+                        Produk resmi bergaransi keaslian
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <RotateCcw className="w-6 h-6 text-orange-600" />
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-200">
+                    <div className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                      <RotateCcw className="w-5 h-5 text-gray-800" />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900">Easy Returns</p>
+                      <p className="font-bold text-gray-900 text-sm">
+                        7 Hari Penukaran Ukuran
+                      </p>
                       <p className="text-xs text-gray-500">
-                        7 days return policy
+                        Bebas tukar ukuran jika kurang pas
                       </p>
                     </div>
                   </div>
@@ -658,7 +998,7 @@ export default function ProductDetailPage() {
             {activeTab === "reviews" && (
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-2xl font-bold mb-6">Customer Reviews</h3>
+                  <h3 className="text-xl font-bold mb-6">Ulasan Pelanggan</h3>
                   <ReviewList
                     productId={productId}
                     refreshTrigger={reviewRefresh}
@@ -666,7 +1006,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="border-t pt-8">
-                  <h3 className="text-2xl font-bold mb-6">Write a Review</h3>
+                  <h3 className="text-xl font-bold mb-6">Tulis Ulasan</h3>
                   <ReviewForm
                     productId={productId}
                     onSuccess={handleReviewSuccess}
@@ -676,153 +1016,108 @@ export default function ProductDetailPage() {
             )}
 
             {activeTab === "shipping" && (
-              <div className="prose max-w-none">
-                <h3 className="text-2xl font-bold mb-4">Shipping Information</h3>
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">
-                      Delivery Times:
-                    </h4>
-                    <ul className="space-y-2 text-gray-700">
-                      <li>• Jakarta & surrounding areas: 1-2 business days</li>
-                      <li>• Java Island: 2-3 business days</li>
-                      <li>• Other islands: 3-5 business days</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">
-                      Shipping Costs:
-                    </h4>
-                    <ul className="space-y-2 text-gray-700">
-                      <li>• FREE shipping for orders over Rp 500,000</li>
-                      <li>• Standard shipping: Rp 25,000 - Rp 50,000</li>
-                      <li>• Express shipping: Rp 50,000 - Rp 100,000</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">
-                      Return Policy:
-                    </h4>
-                    <p className="text-gray-700 mb-2">
-                      We offer a 7-day return policy for unworn items in
-                      original condition with tags attached.
-                    </p>
-                    <ul className="space-y-2 text-gray-700">
-                      <li>• Item must be in original packaging</li>
-                      <li>• Tags must be attached</li>
-                      <li>• Shoes must be unworn and clean</li>
-                      <li>• Return shipping is customer's responsibility</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">Exchange:</h4>
-                    <p className="text-gray-700">
-                      Size exchange is available within 7 days. Contact
-                      customer service for assistance.
-                    </p>
-                  </div>
+              <div className="prose max-w-none text-sm text-gray-700 space-y-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  Informasi Pengiriman & Pengembalian
+                </h3>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-1">
+                    Estimasi Waktu Pengiriman:
+                  </h4>
+                  <ul className="space-y-1">
+                    <li>• Jabodetabek & Bandung: 1 - 2 hari kerja</li>
+                    <li>• Pulau Jawa: 2 - 3 hari kerja</li>
+                    <li>• Luar Pulau Jawa: 3 - 5 hari kerja</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-1">
+                    Kebijakan Penukaran & Pengembalian:
+                  </h4>
+                  <ul className="space-y-1">
+                    <li>• Pengajuan maksimal 7 hari setelah pesanan diterima</li>
+                    <li>• Sepatu belum pernah digunakan di luar ruangan</li>
+                    <li>• Kotak sepatu dan label tag asli masih lengkap</li>
+                  </ul>
                 </div>
               </div>
             )}
 
             {activeTab === "sizeguide" && (
               <div className="prose max-w-none">
-                <h3 className="text-2xl font-bold mb-4">Size Guide</h3>
+                <h3 className="text-xl font-bold mb-4">
+                  Panduan Ukuran Sepatu (US / EU / CM)
+                </h3>
 
-                <div className="overflow-x-auto mb-8">
-                  <table className="min-w-full border-collapse border">
+                <div className="overflow-x-auto mb-6">
+                  <table className="min-w-full border-collapse border border-gray-200 text-sm">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border px-4 py-2 text-left font-semibold">
-                          EU Size
-                        </th>
-                        <th className="border px-4 py-2 text-left font-semibold">
+                        <th className="border border-gray-200 px-4 py-2.5 text-left font-semibold">
                           US Size
                         </th>
-                        <th className="border px-4 py-2 text-left font-semibold">
+                        <th className="border border-gray-200 px-4 py-2.5 text-left font-semibold">
+                          EU Size
+                        </th>
+                        <th className="border border-gray-200 px-4 py-2.5 text-left font-semibold">
                           UK Size
                         </th>
-                        <th className="border px-4 py-2 text-left font-semibold">
-                          CM
+                        <th className="border border-gray-200 px-4 py-2.5 text-left font-semibold">
+                          Panjang Kaki (CM)
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border px-4 py-2">38</td>
-                        <td className="border px-4 py-2">6</td>
-                        <td className="border px-4 py-2">5.5</td>
-                        <td className="border px-4 py-2">24.0</td>
+                        <td className="border border-gray-200 px-4 py-2">US 7</td>
+                        <td className="border border-gray-200 px-4 py-2">38</td>
+                        <td className="border border-gray-200 px-4 py-2">5.5</td>
+                        <td className="border border-gray-200 px-4 py-2">24.0</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">39</td>
-                        <td className="border px-4 py-2">6.5</td>
-                        <td className="border px-4 py-2">6</td>
-                        <td className="border px-4 py-2">24.5</td>
+                        <td className="border border-gray-200 px-4 py-2">US 7.5</td>
+                        <td className="border border-gray-200 px-4 py-2">39</td>
+                        <td className="border border-gray-200 px-4 py-2">6.5</td>
+                        <td className="border border-gray-200 px-4 py-2">24.5</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">40</td>
-                        <td className="border px-4 py-2">7</td>
-                        <td className="border px-4 py-2">6.5</td>
-                        <td className="border px-4 py-2">25.0</td>
+                        <td className="border border-gray-200 px-4 py-2">US 8</td>
+                        <td className="border border-gray-200 px-4 py-2">40</td>
+                        <td className="border border-gray-200 px-4 py-2">7.0</td>
+                        <td className="border border-gray-200 px-4 py-2">25.0</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">41</td>
-                        <td className="border px-4 py-2">8</td>
-                        <td className="border px-4 py-2">7</td>
-                        <td className="border px-4 py-2">25.5</td>
+                        <td className="border border-gray-200 px-4 py-2">US 8.5</td>
+                        <td className="border border-gray-200 px-4 py-2">41</td>
+                        <td className="border border-gray-200 px-4 py-2">7.5</td>
+                        <td className="border border-gray-200 px-4 py-2">25.5</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">42</td>
-                        <td className="border px-4 py-2">8.5</td>
-                        <td className="border px-4 py-2">8</td>
-                        <td className="border px-4 py-2">26.0</td>
+                        <td className="border border-gray-200 px-4 py-2">US 9.5</td>
+                        <td className="border border-gray-200 px-4 py-2">42</td>
+                        <td className="border border-gray-200 px-4 py-2">8.5</td>
+                        <td className="border border-gray-200 px-4 py-2">26.5</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">43</td>
-                        <td className="border px-4 py-2">9.5</td>
-                        <td className="border px-4 py-2">9</td>
-                        <td className="border px-4 py-2">27.0</td>
+                        <td className="border border-gray-200 px-4 py-2">US 10</td>
+                        <td className="border border-gray-200 px-4 py-2">43</td>
+                        <td className="border border-gray-200 px-4 py-2">9.0</td>
+                        <td className="border border-gray-200 px-4 py-2">27.0</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">44</td>
-                        <td className="border px-4 py-2">10</td>
-                        <td className="border px-4 py-2">9.5</td>
-                        <td className="border px-4 py-2">27.5</td>
+                        <td className="border border-gray-200 px-4 py-2">US 10.5</td>
+                        <td className="border border-gray-200 px-4 py-2">44</td>
+                        <td className="border border-gray-200 px-4 py-2">9.5</td>
+                        <td className="border border-gray-200 px-4 py-2">27.5</td>
                       </tr>
                       <tr>
-                        <td className="border px-4 py-2">45</td>
-                        <td className="border px-4 py-2">11</td>
-                        <td className="border px-4 py-2">10.5</td>
-                        <td className="border px-4 py-2">28.0</td>
+                        <td className="border border-gray-200 px-4 py-2">US 11</td>
+                        <td className="border border-gray-200 px-4 py-2">45</td>
+                        <td className="border border-gray-200 px-4 py-2">10.5</td>
+                        <td className="border border-gray-200 px-4 py-2">28.0</td>
                       </tr>
                     </tbody>
                   </table>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-xl font-bold">How to Measure:</h4>
-                  <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                    <li>Place your foot on a flat surface against a wall</li>
-                    <li>
-                      Mark the longest part of your foot on a piece of paper
-                    </li>
-                    <li>Measure the distance from the wall to the mark</li>
-                    <li>Compare your measurement with the size chart above</li>
-                    <li>
-                      If between sizes, we recommend ordering the larger size
-                    </li>
-                  </ol>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                    <p className="text-blue-800 font-semibold">
-                      💡 Pro Tip: Measure your feet in the afternoon as they
-                      tend to expand slightly during the day.
-                    </p>
-                  </div>
                 </div>
               </div>
             )}
