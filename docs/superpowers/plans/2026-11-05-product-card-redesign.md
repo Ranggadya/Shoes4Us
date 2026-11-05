@@ -32,9 +32,9 @@
 **Interfaces:**
 - Produces: `AverageRating float64` (`json:"averageRating"`) and `ReviewCount int` (`json:"reviewCount"`) on `domain.Product`.
 
-- [ ] **Step 1: Add `AverageRating` and `ReviewCount` fields to `domain.Product` in `backend/internal/domain/product.go` and write a test in `backend/internal/handler/product_handler_test.go` asserting `averageRating` and `reviewCount` are serialized in `GET /api/products`**
-- [ ] **Step 2: Update `FindAll`, `FindByIDOrSlug`, and `FindRelated` in `backend/internal/repository/product_repository.go` to select `COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0)` and `COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)`**
-- [ ] **Step 3: Run `cd backend && go test -v ./internal/handler/... -run TestProductHandler` and verify PASS**
+- [x] **Step 1: Add `AverageRating` and `ReviewCount` fields to `domain.Product` in `backend/internal/domain/product.go` and write a test in `backend/internal/handler/product_handler_test.go` asserting `averageRating` and `reviewCount` are serialized in `GET /api/products`**
+- [x] **Step 2: Update `FindAll`, `FindByIDOrSlug`, and `FindRelated` in `backend/internal/repository/product_repository.go` to select `COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0)` and `COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)`**
+- [x] **Step 3: Run `cd backend && go test -v ./internal/handler/... -run TestProductHandler` and verify PASS**
 
 ---
 
@@ -50,9 +50,9 @@
 - Consumes: `Product` fields (`id`, `name`, `price`, `imageUrl`, `brand`, `audience`, `isSale`, `category`, `averageRating`, `reviewCount`).
 - Produces: Redesigned `ProductCard` and `WishlistButton` (`variant?: "default" | "minimal"`).
 
-- [ ] **Step 1: Add `averageRating?: number` and `reviewCount?: number` to `Product` in `frontend/src/types/index.ts` and `frontend/src/pages/ProductListPage.tsx`**
-- [ ] **Step 2: Add `variant?: "default" | "minimal"` prop to `frontend/src/components/WishlistButton.tsx` so the catalog card can render a clean outline heart icon in the top-right corner matching the reference image**
-- [ ] **Step 3: Rewrite `frontend/src/components/ProductCard.tsx` with the retail footwear layout (white square image container, minimal heart button, uppercase brand, bold product title, audience & color lines, sale discount price + strikethrough + `% OFF` badge, and 5-star rating row)**
-- [ ] **Step 4: Run `cd frontend && npx tsc --noEmit && npm run build` and verify PASS**
-- [ ] **Step 5: Commit all changes**
+- [x] **Step 1: Add `averageRating?: number` and `reviewCount?: number` to `Product` in `frontend/src/types/index.ts` and `frontend/src/pages/ProductListPage.tsx`**
+- [x] **Step 2: Add `variant?: "default" | "minimal"` prop to `frontend/src/components/WishlistButton.tsx` so the catalog card can render a clean outline heart icon in the top-right corner matching the reference image**
+- [x] **Step 3: Rewrite `frontend/src/components/ProductCard.tsx` with the retail footwear layout (white square image container, minimal heart button, uppercase brand, bold product title, audience & color lines, sale discount price + strikethrough + `% OFF` badge, and 5-star rating row)**
+- [x] **Step 4: Run `cd frontend && npx tsc --noEmit && npm run build` and verify PASS**
+- [x] **Step 5: Commit all changes**
 
