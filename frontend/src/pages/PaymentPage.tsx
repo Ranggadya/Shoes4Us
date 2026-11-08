@@ -107,18 +107,25 @@ export default function PaymentPage() {
 
       if (!orderIdToPay) {
         try {
+          const orderIdemKey = `order-${user?.id || "guest"}-${cart?.id || "cart"}-${total}`;
           const { data: orderData } = await api.post<{
             data: { order: { id: string } };
-          }>("/orders", {
-            shippingAddress: address,
-            shippingCity: city,
-            shippingPostalCode: postalCode,
-            shippingPhone: phone,
-            shippingCourier: selectedCourier.name,
-            shippingCost: shippingFee,
-            couponCode: appliedCoupon?.code || "",
-            paymentMethod: method,
-          });
+          }>(
+            "/orders",
+            {
+              shippingAddress: address,
+              shippingCity: city,
+              shippingPostalCode: postalCode,
+              shippingPhone: phone,
+              shippingCourier: selectedCourier.name,
+              shippingCost: shippingFee,
+              couponCode: appliedCoupon?.code || "",
+              paymentMethod: method,
+            },
+            {
+              headers: { "Idempotency-Key": orderIdemKey },
+            }
+          );
           orderIdToPay = orderData.order.id;
           setCreatedOrderId(orderIdToPay);
           if (user) {
@@ -140,7 +147,11 @@ export default function PaymentPage() {
         }
       }
 
-      await api.post("/payment", { orderId: orderIdToPay });
+      await api.post(
+        "/payment",
+        { orderId: orderIdToPay },
+        { headers: { "Idempotency-Key": `pay-${orderIdToPay}` } }
+      );
 
       try {
         sessionStorage.removeItem(SAVED_COUPON_STORAGE_KEY);

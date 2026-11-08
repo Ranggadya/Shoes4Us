@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
@@ -14,15 +16,28 @@ import (
 	"github.com/ranggadya/shoes4us/backend/pkg/response"
 )
 
+type idempotencyEntry struct {
+	inFlight  bool
+	order     *domain.Order
+	payment   *service.PaymentResult
+	expiresAt time.Time
+}
+
 // OrderHandler manages HTTP endpoints for orders, checkout, and cancellation.
 type OrderHandler struct {
 	orderService   domain.OrderService
 	paymentService service.PaymentService
+
+	idemMu sync.Mutex
+	idem   map[string]*idempotencyEntry
 }
 
 // NewOrderHandler creates a new OrderHandler.
 func NewOrderHandler(orderService domain.OrderService) *OrderHandler {
-	return &OrderHandler{orderService: orderService}
+	return &OrderHandler{
+		orderService: orderService,
+		idem:         make(map[string]*idempotencyEntry),
+	}
 }
 
 // WithPaymentService injects a PaymentService instance into OrderHandler.
@@ -31,7 +46,7 @@ func (h *OrderHandler) WithPaymentService(paymentService service.PaymentService)
 	return h
 }
 
-// CreateOrder handles POST /api/orders.
+// CreateOrder handles POST /api/orders with optional Idempotency-Key protection.
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok || claims == nil {
@@ -39,16 +54,68 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	idemKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	scopedKey := ""
+	if idemKey != "" {
+		scopedKey = "order:" + claims.UserID + ":" + idemKey
+		h.idemMu.Lock()
+		if h.idem == nil {
+			h.idem = make(map[string]*idempotencyEntry)
+		}
+		now := time.Now()
+		if entry, exists := h.idem[scopedKey]; exists && now.Before(entry.expiresAt) {
+			if entry.inFlight {
+				h.idemMu.Unlock()
+				response.WriteError(w, domain.NewConflict("Permintaan pesanan sedang diproses, mohon tunggu sebentar"))
+				return
+			}
+			if entry.order != nil {
+				cachedOrder := entry.order
+				h.idemMu.Unlock()
+				w.Header().Set("X-Idempotent-Replay", "true")
+				response.WriteCreated(w, "Pesanan berhasil dibuat", map[string]any{
+					"order": cachedOrder,
+				})
+				return
+			}
+		}
+		h.idem[scopedKey] = &idempotencyEntry{
+			inFlight:  true,
+			expiresAt: now.Add(10 * time.Minute),
+		}
+		h.idemMu.Unlock()
+	}
+
 	var input domain.CreateOrderInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		if scopedKey != "" {
+			h.idemMu.Lock()
+			delete(h.idem, scopedKey)
+			h.idemMu.Unlock()
+		}
 		response.WriteError(w, domain.NewBadRequest("Format request tidak valid"))
 		return
 	}
 
 	order, err := h.orderService.Checkout(r.Context(), claims.UserID, input)
 	if err != nil {
+		if scopedKey != "" {
+			h.idemMu.Lock()
+			delete(h.idem, scopedKey)
+			h.idemMu.Unlock()
+		}
 		response.WriteError(w, err)
 		return
+	}
+
+	if scopedKey != "" {
+		h.idemMu.Lock()
+		h.idem[scopedKey] = &idempotencyEntry{
+			inFlight:  false,
+			order:     order,
+			expiresAt: time.Now().Add(10 * time.Minute),
+		}
+		h.idemMu.Unlock()
 	}
 
 	response.WriteCreated(w, "Pesanan berhasil dibuat", map[string]any{
@@ -219,23 +286,78 @@ func (h *OrderHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	idemKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	scopedKey := ""
+	if idemKey != "" {
+		scopedKey = "payment:" + claims.UserID + ":" + idemKey
+		h.idemMu.Lock()
+		if h.idem == nil {
+			h.idem = make(map[string]*idempotencyEntry)
+		}
+		now := time.Now()
+		if entry, exists := h.idem[scopedKey]; exists && now.Before(entry.expiresAt) {
+			if entry.inFlight {
+				h.idemMu.Unlock()
+				response.WriteError(w, domain.NewConflict("Pembayaran sedang diproses, mohon tunggu sebentar"))
+				return
+			}
+			if entry.payment != nil {
+				cachedRes := entry.payment
+				h.idemMu.Unlock()
+				w.Header().Set("X-Idempotent-Replay", "true")
+				response.WriteSuccess(w, http.StatusOK, "Pembayaran berhasil dikonfirmasi", cachedRes, nil)
+				return
+			}
+		}
+		h.idem[scopedKey] = &idempotencyEntry{
+			inFlight:  true,
+			expiresAt: now.Add(10 * time.Minute),
+		}
+		h.idemMu.Unlock()
+	}
+
 	var body struct {
 		OrderID string `json:"orderId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if scopedKey != "" {
+			h.idemMu.Lock()
+			delete(h.idem, scopedKey)
+			h.idemMu.Unlock()
+		}
 		response.WriteError(w, domain.NewBadRequest("Format request tidak valid"))
 		return
 	}
 
 	if h.paymentService == nil {
+		if scopedKey != "" {
+			h.idemMu.Lock()
+			delete(h.idem, scopedKey)
+			h.idemMu.Unlock()
+		}
 		response.WriteError(w, domain.NewInternal("Layanan pembayaran belum dikonfigurasi"))
 		return
 	}
 
 	res, err := h.paymentService.CreatePayment(r.Context(), claims.UserID, claims.Role, body.OrderID)
 	if err != nil {
+		if scopedKey != "" {
+			h.idemMu.Lock()
+			delete(h.idem, scopedKey)
+			h.idemMu.Unlock()
+		}
 		response.WriteError(w, err)
 		return
+	}
+
+	if scopedKey != "" {
+		h.idemMu.Lock()
+		h.idem[scopedKey] = &idempotencyEntry{
+			inFlight:  false,
+			payment:   res,
+			expiresAt: time.Now().Add(10 * time.Minute),
+		}
+		h.idemMu.Unlock()
 	}
 
 	response.WriteSuccess(w, http.StatusOK, "Pembayaran berhasil dikonfirmasi", res, nil)

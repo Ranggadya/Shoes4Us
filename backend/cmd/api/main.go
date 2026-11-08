@@ -89,11 +89,41 @@ func main() {
 	couponHandler := handler.NewCouponHandler(service.NewCouponService())
 	shippingHandler := handler.NewShippingHandler()
 
+	// Background durability worker: automatically expire unpaid PENDING orders > 24h and restore stock
+	if pool != nil {
+		go func() {
+			ticker := time.NewTicker(15 * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					expCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+					if count, err := orderRepo.ExpireStalePendingOrders(expCtx, 24*time.Hour); err != nil {
+						log.Printf("warning: stale order expiration failed: %v", err)
+					} else if count > 0 {
+						log.Printf("expired %d stale PENDING order(s) and restored inventory", count)
+					}
+					cancel()
+				}
+			}
+		}()
+	}
+
+	var healthCheckFn func(ctx context.Context) error
+	if pool != nil {
+		healthCheckFn = func(pingCtx context.Context) error {
+			return pool.Ping(pingCtx)
+		}
+	}
+
 	router := handler.NewRouter(handler.RouterDependencies{
 		AllowedOrigins:  cfg.AllowedOrigins,
 		UploadDir:       cfg.UploadDir,
 		JWTSecret:       cfg.JWTSecret,
 		JWTManager:      jwtMgr,
+		HealthCheck:     healthCheckFn,
 		AuthHandler:     authHandler,
 		UserHandler:     userHandler,
 		ProductHandler:  productHandler,
@@ -109,6 +139,10 @@ func main() {
 		Addr:              ":" + cfg.Port,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MB
 	}
 
 	errCh := make(chan error, 1)

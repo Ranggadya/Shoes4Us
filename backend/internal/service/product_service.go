@@ -6,6 +6,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,10 @@ var slugRegex = regexp.MustCompile(`[^a-z0-9]+`)
 type ProductService struct {
 	categoryRepo domain.CategoryRepository
 	productRepo  domain.ProductRepository
+
+	catMu        sync.RWMutex
+	cachedCats   []domain.Category
+	catExpiresAt time.Time
 }
 
 var _ domain.ProductService = (*ProductService)(nil)
@@ -30,12 +35,33 @@ func NewProductService(categoryRepo domain.CategoryRepository, productRepo domai
 	}
 }
 
-// ListCategories returns all active categories.
+// ListCategories returns all active categories with a 60-second in-memory TTL cache.
 func (s *ProductService) ListCategories(ctx context.Context) ([]domain.Category, error) {
-	return s.categoryRepo.FindAll(ctx)
+	now := time.Now()
+	s.catMu.RLock()
+	if s.cachedCats != nil && now.Before(s.catExpiresAt) {
+		copied := make([]domain.Category, len(s.cachedCats))
+		copy(copied, s.cachedCats)
+		s.catMu.RUnlock()
+		return copied, nil
+	}
+	s.catMu.RUnlock()
+
+	cats, err := s.categoryRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s.catMu.Lock()
+	s.cachedCats = make([]domain.Category, len(cats))
+	copy(s.cachedCats, cats)
+	s.catExpiresAt = time.Now().Add(60 * time.Second)
+	s.catMu.Unlock()
+
+	return cats, nil
 }
 
-// CreateCategory creates a new category (Admin operation).
+// CreateCategory creates a new category (Admin operation) and invalidates the category cache.
 func (s *ProductService) CreateCategory(ctx context.Context, name, slug string) (*domain.Category, error) {
 	cleanName := strings.TrimSpace(name)
 	if cleanName == "" {
@@ -59,6 +85,11 @@ func (s *ProductService) CreateCategory(ctx context.Context, name, slug string) 
 	if err := s.categoryRepo.Create(ctx, category); err != nil {
 		return nil, err
 	}
+
+	s.catMu.Lock()
+	s.cachedCats = nil
+	s.catExpiresAt = time.Time{}
+	s.catMu.Unlock()
 
 	return category, nil
 }

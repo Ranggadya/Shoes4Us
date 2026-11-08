@@ -1,6 +1,23 @@
 const metaEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
 const BASE_URL = (metaEnv?.VITE_API_URL || "/api").trim();
 
+const GET_CACHE_TTL_MS = 30_000;
+const getResponseCache = new Map<string, { data: unknown; expiresAt: number }>();
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
+
+function isCacheablePublicGet(url: string): boolean {
+  return (
+    url.includes("/products") ||
+    url.includes("/categories") ||
+    url.includes("/shipping/couriers") ||
+    url.includes("/reviews")
+  );
+}
+
+export function clearApiCache(): void {
+  getResponseCache.clear();
+}
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -103,32 +120,79 @@ function serializeBody(body: unknown): BodyInit | undefined {
 }
 
 export const api = {
-  get: <T>(endpoint: string, options?: RequestInit) =>
-    request<T>(endpoint, { method: "GET", ...options }),
+  get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+    const url = buildUrl(endpoint);
+    const hasAbortSignal = Boolean(options?.signal);
+    const canCache = isCacheablePublicGet(url);
 
-  post: <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
-    request<T>(endpoint, {
+    if (canCache) {
+      const cached = getResponseCache.get(url);
+      if (cached && Date.now() < cached.expiresAt) {
+        return cached.data as T;
+      }
+
+      if (!hasAbortSignal) {
+        const existingPromise = inFlightGetRequests.get(url);
+        if (existingPromise) {
+          return existingPromise as Promise<T>;
+        }
+      }
+    }
+
+    const fetchPromise = request<T>(endpoint, { method: "GET", ...options })
+      .then((res) => {
+        if (canCache) {
+          getResponseCache.set(url, {
+            data: res,
+            expiresAt: Date.now() + GET_CACHE_TTL_MS,
+          });
+        }
+        return res;
+      })
+      .finally(() => {
+        if (canCache && !hasAbortSignal) {
+          inFlightGetRequests.delete(url);
+        }
+      });
+
+    if (canCache && !hasAbortSignal) {
+      inFlightGetRequests.set(url, fetchPromise);
+    }
+
+    return fetchPromise;
+  },
+
+  post: <T>(endpoint: string, body?: unknown, options?: RequestInit) => {
+    clearApiCache();
+    return request<T>(endpoint, {
       method: "POST",
       body: serializeBody(body),
       ...options,
-    }),
+    });
+  },
 
-  put: <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
-    request<T>(endpoint, {
+  put: <T>(endpoint: string, body?: unknown, options?: RequestInit) => {
+    clearApiCache();
+    return request<T>(endpoint, {
       method: "PUT",
       body: serializeBody(body),
       ...options,
-    }),
+    });
+  },
 
-  patch: <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
-    request<T>(endpoint, {
+  patch: <T>(endpoint: string, body?: unknown, options?: RequestInit) => {
+    clearApiCache();
+    return request<T>(endpoint, {
       method: "PATCH",
       body: serializeBody(body),
       ...options,
-    }),
+    });
+  },
 
-  delete: <T>(endpoint: string, options?: RequestInit) =>
-    request<T>(endpoint, { method: "DELETE", ...options }),
+  delete: <T>(endpoint: string, options?: RequestInit) => {
+    clearApiCache();
+    return request<T>(endpoint, { method: "DELETE", ...options });
+  },
 
   uploadImage: async (file: File): Promise<{ url: string; filename: string; size: number }> => {
     const formData = new FormData();

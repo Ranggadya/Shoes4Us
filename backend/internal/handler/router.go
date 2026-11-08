@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -14,22 +15,23 @@ import (
 
 // RouterDependencies holds configuration and optional domain handlers to mount onto the HTTP router.
 type RouterDependencies struct {
-	AllowedOrigins []string
-	UploadDir      string
-	JWTSecret      string
-	JWTManager     *token.JWTManager
-	AuthHandler    *AuthHandler
-	UserHandler    *UserHandler
-	ProductHandler *ProductHandler
-	ReviewHandler  *ReviewHandler
-	CartHandler    *CartHandler
+	AllowedOrigins  []string
+	UploadDir       string
+	JWTSecret       string
+	JWTManager      *token.JWTManager
+	HealthCheck     func(ctx context.Context) error
+	AuthHandler     *AuthHandler
+	UserHandler     *UserHandler
+	ProductHandler  *ProductHandler
+	ReviewHandler   *ReviewHandler
+	CartHandler     *CartHandler
 	WishlistHandler *WishlistHandler
 	OrderHandler    *OrderHandler
 	CouponHandler   *CouponHandler
 	ShippingHandler *ShippingHandler
 }
 
-// NewRouter constructs the root Chi HTTP router with CORS, static uploads, and /api endpoints.
+// NewRouter constructs the root Chi HTTP router with security headers, rate limiting, CORS, compression, static uploads, and /api endpoints.
 func NewRouter(deps RouterDependencies) http.Handler {
 	r := chi.NewRouter()
 
@@ -43,8 +45,12 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		})
 	})
 	r.Use(chimw.RealIP)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.StructuredLogger)
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(30 * time.Second))
+	r.Use(chimw.Compress(5))
+	r.Use(middleware.MaxBodySize(2 << 20)) // 2 MB JSON payload limit
 	r.Use(middleware.NewCORSMiddleware(deps.AllowedOrigins))
 
 	jwtMgr := deps.JWTManager
@@ -58,16 +64,41 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	}
 	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir)))
 	r.Get("/uploads/*", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		fileServer.ServeHTTP(w, req)
 	})
 
+	apiLimiter := middleware.NewRateLimiter(600, time.Minute)
+	authStrictLimiter := middleware.NewRateLimiter(30, time.Minute)
+
 	r.Route("/api", func(api chi.Router) {
-		api.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
-			response.WriteSuccess(w, http.StatusOK, "OK", map[string]string{"status": "ok"}, nil)
+		api.Use(apiLimiter)
+
+		api.Get("/health", func(w http.ResponseWriter, req *http.Request) {
+			data := map[string]string{"status": "ok"}
+			if deps.HealthCheck != nil {
+				pingCtx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
+				defer cancel()
+				if err := deps.HealthCheck(pingCtx); err != nil {
+					data["status"] = "degraded"
+					data["database"] = "disconnected"
+					response.WriteJSON(w, http.StatusServiceUnavailable, response.Envelope{
+						Success: false,
+						Message: "Database unavailable",
+						Data:    data,
+					})
+					return
+				}
+				data["database"] = "connected"
+			}
+			response.WriteSuccess(w, http.StatusOK, "OK", data, nil)
 		})
 
 		if deps.ShippingHandler != nil {
-			api.Get("/shipping/couriers", deps.ShippingHandler.ListCouriers)
+			api.Get("/shipping/couriers", func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Set("Cache-Control", "public, max-age=300")
+				deps.ShippingHandler.ListCouriers(w, req)
+			})
 		}
 
 		if deps.CouponHandler != nil {
@@ -79,10 +110,10 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 		if deps.AuthHandler != nil {
 			api.Route("/auth", func(auth chi.Router) {
-				auth.Post("/register", deps.AuthHandler.Register)
-				auth.Post("/login", deps.AuthHandler.Login)
-				auth.Post("/forgot-password", deps.AuthHandler.ForgotPassword)
-				auth.Post("/reset-password", deps.AuthHandler.ResetPassword)
+				auth.With(authStrictLimiter).Post("/register", deps.AuthHandler.Register)
+				auth.With(authStrictLimiter).Post("/login", deps.AuthHandler.Login)
+				auth.With(authStrictLimiter).Post("/forgot-password", deps.AuthHandler.ForgotPassword)
+				auth.With(authStrictLimiter).Post("/reset-password", deps.AuthHandler.ResetPassword)
 				if jwtMgr != nil {
 					auth.With(middleware.RequireAuth(jwtMgr)).Get("/me", deps.AuthHandler.Me)
 				}

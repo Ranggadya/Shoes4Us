@@ -70,6 +70,9 @@ export default function HeroCarousel() {
             <img
               src={slide.image}
               alt={slide.title}
+              fetchPriority={index === 0 ? "high" : "auto"}
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/40" />

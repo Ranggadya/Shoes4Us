@@ -617,3 +617,42 @@ func (r *PostgresOrderRepository) loadItemsForOrderIDs(ctx context.Context, orde
 	return result, rows.Err()
 }
 
+// ExpireStalePendingOrders cancels PENDING orders older than `olderThan` and restores their reserved inventory.
+func (r *PostgresOrderRepository) ExpireStalePendingOrders(ctx context.Context, olderThan time.Duration) (int, error) {
+	if r.pool == nil {
+		return 0, nil
+	}
+	if olderThan <= 0 {
+		olderThan = 24 * time.Hour
+	}
+
+	cutoff := time.Now().Add(-olderThan)
+	const findStaleQuery = `
+		SELECT id
+		FROM orders
+		WHERE status = 'PENDING' AND "createdAt" < $1
+		ORDER BY "createdAt" ASC
+		LIMIT 50
+	`
+	rows, err := r.pool.Query(ctx, findStaleQuery, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	var staleIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			staleIDs = append(staleIDs, id)
+		}
+	}
+	rows.Close()
+
+	expiredCount := 0
+	for _, id := range staleIDs {
+		if _, err := r.UpdateStatusWithTx(ctx, id, domain.StatusCancelled, true); err == nil {
+			expiredCount++
+		}
+	}
+	return expiredCount, nil
+}
+
