@@ -24,6 +24,7 @@ const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const AdminDashboard = lazy(() => import("@/components/AdminDashboard"));
 const AdminProductPage = lazy(() => import("@/pages/AdminProductPage"));
 const AdminAddProductPage = lazy(() => import("@/pages/AdminAddProductPage"));
+const InfoPages = lazy(() => import("@/pages/InfoPages"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 function PageLoader() {
@@ -87,6 +88,14 @@ export default function App() {
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/product" element={<AdminProductPage />} />
                     <Route path="/admin/product/add" element={<AdminAddProductPage />} />
+                    <Route path="/tentang-kami" element={<InfoPages page="tentang-kami" />} />
+                    <Route path="/tentang-shoes4us" element={<InfoPages page="tentang-shoes4us" />} />
+                    <Route path="/syarat-dan-ketentuan" element={<InfoPages page="syarat-dan-ketentuan" />} />
+                    <Route path="/kebijakan-privasi" element={<InfoPages page="kebijakan-privasi" />} />
+                    <Route path="/faq" element={<InfoPages page="faq" />} />
+                    <Route path="/kebijakan-pengembalian" element={<InfoPages page="kebijakan-pengembalian" />} />
+                    <Route path="/kontak-kami" element={<InfoPages page="kontak-kami" />} />
+                    <Route path="/peta-situs" element={<InfoPages page="peta-situs" />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
