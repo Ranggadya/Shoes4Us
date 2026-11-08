@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import {
   SlidersHorizontal,
   X,
@@ -9,6 +9,32 @@ import {
 import toast from "react-hot-toast";
 import { api } from "@/services/api";
 import { Category } from "@/types";
+
+let cachedCategories: Category[] | null = null;
+let categoriesPromise: Promise<Category[]> | null = null;
+
+async function loadCategoriesOnce(): Promise<Category[]> {
+  if (cachedCategories) return cachedCategories;
+  if (!categoriesPromise) {
+    categoriesPromise = api
+      .get<{
+        success?: boolean;
+        data?: Category[] | { categories?: Category[] };
+      }>("/categories")
+      .then((json) => {
+        const list = Array.isArray(json.data)
+          ? json.data
+          : json.data?.categories || [];
+        cachedCategories = list;
+        return list;
+      })
+      .catch((err) => {
+        categoriesPromise = null;
+        throw err;
+      });
+  }
+  return categoriesPromise;
+}
 
 export type FilterValues = {
   category: string;
@@ -67,12 +93,14 @@ const PRICE_PRESETS = [
   { label: "> 2 Jt", min: 2000000, max: DEFAULT_MAX_PRICE },
 ];
 
-export default function ProductFilters({
+function ProductFilters({
   initialFilters,
   onFilterChange,
 }: FilterProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(
+    () => cachedCategories ?? []
+  );
 
   // Accordion open states (Gaya A: Clean Accordion)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -106,22 +134,25 @@ export default function ProductFilters({
   };
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const json = await api.get<{
-          success?: boolean;
-          data?: Category[] | { categories?: Category[] };
-        }>("/categories");
-        if (Array.isArray(json.data)) {
-          setCategories(json.data);
-        } else if (json.data?.categories) {
-          setCategories(json.data.categories);
-        }
-      } catch (error) {
+    let active = true;
+    loadCategoriesOnce()
+      .then((list) => {
+        if (active) setCategories(list);
+      })
+      .catch((error) => {
         console.error("Gagal mengambil kategori:", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (priceDebounceRef.current) {
+        clearTimeout(priceDebounceRef.current);
       }
     };
-    void fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -262,6 +293,9 @@ export default function ProductFilters({
       key: "price",
       label: `${minStr} - ${maxStr}`,
       onRemove: () => {
+        if (priceDebounceRef.current) {
+          clearTimeout(priceDebounceRef.current);
+        }
         setMinInput(0);
         setMaxInput(DEFAULT_MAX_PRICE);
         emitChange({ minPrice: 0, maxPrice: DEFAULT_MAX_PRICE });
@@ -726,6 +760,9 @@ export default function ProductFilters({
                         key={preset.label}
                         type="button"
                         onClick={() => {
+                          if (priceDebounceRef.current) {
+                            clearTimeout(priceDebounceRef.current);
+                          }
                           if (isPresetActive) {
                             setMinInput(0);
                             setMaxInput(DEFAULT_MAX_PRICE);
@@ -815,10 +852,12 @@ export default function ProductFilters({
             onClick={() => setIsOpen(false)}
             className="w-full py-2.5 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition"
           >
-            Terapkan Filter
+            Tampilkan Hasil
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+export default memo(ProductFilters);

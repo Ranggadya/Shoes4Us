@@ -71,6 +71,9 @@ func (s *ProductService) ListProducts(ctx context.Context, filter domain.Product
 	if filter.Limit < 1 {
 		filter.Limit = 20
 	}
+	if filter.Limit > 100 {
+		filter.Limit = 100
+	}
 
 	items, total, err := s.productRepo.FindAll(ctx, filter)
 	if err != nil {

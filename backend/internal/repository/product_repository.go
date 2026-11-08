@@ -65,8 +65,14 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 	}
 
 	if filter.Audience != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf(`p.audience::text = UPPER($%d)`, argIdx))
-		args = append(args, filter.Audience)
+		audUpper := strings.ToUpper(strings.TrimSpace(filter.Audience))
+		if audUpper == "MEN" || audUpper == "WOMEN" {
+			whereClauses = append(whereClauses, fmt.Sprintf(`p.audience::text IN ($%d, 'UNISEX')`, argIdx))
+			args = append(args, audUpper)
+		} else {
+			whereClauses = append(whereClauses, fmt.Sprintf(`p.audience::text = $%d`, argIdx))
+			args = append(args, audUpper)
+		}
 		argIdx++
 	}
 
@@ -152,6 +158,9 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 	if err := r.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, domain.NewInternal("Gagal menghitung total produk")
 	}
+	if total == 0 {
+		return []domain.Product{}, 0, nil
+	}
 
 	// 2. Sorting
 	orderBySQL := `ORDER BY p."createdAt" DESC`
@@ -186,10 +195,15 @@ func (r *PostgresProductRepository) FindAll(ctx context.Context, filter domain.P
 		       p.brand, p.segment::text, p.audience::text, p."isNewArrival", p."isExclusive", p."isComingSoon",
 		       p."isSale", p."isActive", p."createdAt", p."updatedAt",
 		       c.id, c.name, c.slug, c."isActive", c."createdAt", c."updatedAt",
-		       COALESCE((SELECT AVG(r.rating)::float8 FROM reviews r WHERE r."productId" = p.id), 0),
-		       COALESCE((SELECT COUNT(r.id) FROM reviews r WHERE r."productId" = p.id), 0)
+		       COALESCE(rev.avg_rating, 0),
+		       COALESCE(rev.review_count, 0)
 		FROM products p
 		LEFT JOIN categories c ON p."categoryId" = c.id
+		LEFT JOIN LATERAL (
+			SELECT AVG(r.rating)::float8 AS avg_rating, COUNT(r.id)::int AS review_count
+			FROM reviews r
+			WHERE r."productId" = p.id
+		) rev ON true
 		%s
 		%s
 		LIMIT $%d OFFSET $%d

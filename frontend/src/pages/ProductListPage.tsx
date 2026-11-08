@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "@/components/ProductCard";
 import ProductListSkeleton from "@/components/skeletons/ProductListSkeleton";
@@ -46,13 +46,20 @@ export default function ProductListPage() {
   const audienceQuery = searchParams?.get("audience") || "";
   const brandQuery = searchParams?.get("brand") || "";
   const sizeQuery = searchParams?.get("size") || "";
-  const collectionQuery = searchParams?.get("collection") || "";
+  const rawCollectionQuery = searchParams?.get("collection") || "";
   const saleQuery = searchParams?.get("sale") || searchParams?.get("isSale") || "";
+  const isCollectionSale = rawCollectionQuery.toLowerCase() === "sale";
+  const collectionQuery = isCollectionSale ? "" : rawCollectionQuery;
   const inStockQuery = searchParams?.get("inStock") || "";
   const minPriceQuery = searchParams?.get("minPrice");
   const maxPriceQuery = searchParams?.get("maxPrice");
   const sortByQuery = searchParams?.get("sortBy") || "newest";
-  
+  const pageQuery = searchParams?.get("page");
+  const currentPage = useMemo(() => {
+    const parsed = pageQuery ? parseInt(pageQuery, 10) : 1;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [pageQuery]);
+
   const filters = useMemo<ProductListFilters>(() => ({
     category: categoryQuery,
     segment: segmentQuery,
@@ -60,7 +67,7 @@ export default function ProductListPage() {
     brand: brandQuery,
     size: sizeQuery,
     collection: collectionQuery,
-    isSale: saleQuery === "true",
+    isSale: saleQuery === "true" || isCollectionSale,
     inStock: inStockQuery === "true",
     minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
     maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
@@ -73,6 +80,7 @@ export default function ProductListPage() {
     sizeQuery,
     collectionQuery,
     saleQuery,
+    isCollectionSale,
     inStockQuery,
     minPriceQuery,
     maxPriceQuery,
@@ -80,15 +88,9 @@ export default function ProductListPage() {
   ]);
 
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalItems, setTotalItems] = useState(0);
-
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters, searchQuery]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -218,90 +220,113 @@ export default function ProductListPage() {
     return pages;
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of product list
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (page <= 1) {
+          next.delete("page");
+        } else {
+          next.set("page", String(page));
+        }
+        return next;
+      });
+      // Scroll to top of product list
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [setSearchParams]
+  );
 
-  const handleFilterChange = (
-    filterValues: FilterValues,
-    options?: { isReset?: boolean }
-  ) => {
-    if (options?.isReset) {
-      const nextParams = new URLSearchParams();
-      if (searchQuery) {
-        nextParams.set("search", searchQuery);
-      }
-      setSearchParams(nextParams);
-      return;
-    }
+  const handleFilterChange = useCallback(
+    (filterValues: FilterValues, options?: { isReset?: boolean }) => {
+      setSearchParams((prev) => {
+        if (options?.isReset) {
+          const nextParams = new URLSearchParams();
+          const currentSearch = prev.get("search");
+          const currentSegment = prev.get("segment");
+          if (currentSearch) {
+            nextParams.set("search", currentSearch);
+          }
+          if (currentSegment) {
+            nextParams.set("segment", currentSegment);
+          }
+          return nextParams;
+        }
 
-    const nextParams = new URLSearchParams(searchParams);
-    if (filterValues.category) {
-      nextParams.set("category", filterValues.category);
-    } else {
-      nextParams.delete("category");
-    }
+        const nextParams = new URLSearchParams(prev);
+        // Always reset pagination to page 1 in the same atomic URL update
+        nextParams.delete("page");
 
-    if (filterValues.brand) {
-      nextParams.set("brand", filterValues.brand);
-    } else {
-      nextParams.delete("brand");
-    }
+        if (filterValues.category) {
+          nextParams.set("category", filterValues.category);
+        } else {
+          nextParams.delete("category");
+        }
 
-    if (filterValues.audience) {
-      nextParams.set("audience", filterValues.audience);
-    } else {
-      nextParams.delete("audience");
-    }
+        if (filterValues.brand) {
+          nextParams.set("brand", filterValues.brand);
+        } else {
+          nextParams.delete("brand");
+        }
 
-    if (filterValues.size) {
-      nextParams.set("size", filterValues.size);
-    } else {
-      nextParams.delete("size");
-    }
+        if (filterValues.audience) {
+          nextParams.set("audience", filterValues.audience);
+        } else {
+          nextParams.delete("audience");
+        }
 
-    if (filterValues.collection) {
-      nextParams.set("collection", filterValues.collection);
-    } else {
-      nextParams.delete("collection");
-    }
+        if (filterValues.size) {
+          nextParams.set("size", filterValues.size);
+        } else {
+          nextParams.delete("size");
+        }
 
-    if (filterValues.isSale) {
-      nextParams.set("isSale", "true");
-      nextParams.delete("sale");
-    } else {
-      nextParams.delete("isSale");
-      nextParams.delete("sale");
-    }
+        if (filterValues.collection) {
+          nextParams.set("collection", filterValues.collection);
+        } else {
+          nextParams.delete("collection");
+        }
 
-    if (filterValues.inStock) {
-      nextParams.set("inStock", "true");
-    } else {
-      nextParams.delete("inStock");
-    }
+        if (filterValues.isSale) {
+          nextParams.set("isSale", "true");
+          nextParams.delete("sale");
+        } else {
+          nextParams.delete("isSale");
+          nextParams.delete("sale");
+          if (nextParams.get("collection")?.toLowerCase() === "sale") {
+            nextParams.delete("collection");
+          }
+        }
 
-    if (filterValues.minPrice > 0) {
-      nextParams.set("minPrice", String(filterValues.minPrice));
-    } else {
-      nextParams.delete("minPrice");
-    }
+        if (filterValues.inStock) {
+          nextParams.set("inStock", "true");
+        } else {
+          nextParams.delete("inStock");
+        }
 
-    if (filterValues.maxPrice < 5000000) {
-      nextParams.set("maxPrice", String(filterValues.maxPrice));
-    } else {
-      nextParams.delete("maxPrice");
-    }
+        if (filterValues.minPrice > 0) {
+          nextParams.set("minPrice", String(filterValues.minPrice));
+        } else {
+          nextParams.delete("minPrice");
+        }
 
-    if (filterValues.sortBy && filterValues.sortBy !== "newest") {
-      nextParams.set("sortBy", filterValues.sortBy);
-    } else {
-      nextParams.delete("sortBy");
-    }
+        if (filterValues.maxPrice < 5000000) {
+          nextParams.set("maxPrice", String(filterValues.maxPrice));
+        } else {
+          nextParams.delete("maxPrice");
+        }
 
-    setSearchParams(nextParams);
-  };
+        if (filterValues.sortBy && filterValues.sortBy !== "newest") {
+          nextParams.set("sortBy", filterValues.sortBy);
+        } else {
+          nextParams.delete("sortBy");
+        }
+
+        return nextParams;
+      });
+    },
+    [setSearchParams]
+  );
 
   const getPageTitle = () => {
     if (searchQuery) return `Hasil Pencarian: "${searchQuery}"`;
