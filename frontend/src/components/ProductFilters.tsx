@@ -279,34 +279,34 @@ export default function ProductFilters({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2.5 w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition"
+          className="flex items-center gap-2.5 w-full px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 transition"
         >
           <SlidersHorizontal size={18} className="text-slate-700" />
           <span className="font-semibold text-slate-800 text-sm">
             Filter & Urutkan
           </span>
           {activeFiltersCount > 0 && (
-            <span className="ml-auto bg-blue-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+            <span className="ml-auto bg-slate-900 text-white text-xs font-bold px-2 py-0.5">
               {activeFiltersCount}
             </span>
           )}
         </button>
       </div>
 
-      {/* Sidebar Filter Panel (Gaya A: Clean Accordion & Size Matrix) */}
+      {/* Sidebar Filter Panel — Sharp Rectangular Retail Style */}
       <div
         className={`${
           isOpen ? "block" : "hidden"
-        } lg:block bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm sticky top-24`}
+        } lg:block bg-white border border-slate-200 p-5 sticky top-24`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={17} className="text-slate-900" />
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-bold uppercase tracking-wide text-slate-900">
               Filter
               {activeFiltersCount > 0 && (
-                <span className="ml-1.5 text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                <span className="ml-2 text-xs font-bold bg-slate-900 text-white px-2 py-0.5">
                   {activeFiltersCount}
                 </span>
               )}
@@ -318,7 +318,7 @@ export default function ProductFilters({
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-black underline transition"
               >
                 <RotateCcw size={12} />
                 Hapus Semua
@@ -337,13 +337,13 @@ export default function ProductFilters({
 
         {/* Active Filter Tags */}
         {activeTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 py-3 border-b border-dashed border-slate-200">
+          <div className="flex flex-wrap gap-1.5 py-3 border-b border-slate-200">
             {activeTags.map((tag) => (
               <button
                 key={tag.key}
                 type="button"
                 onClick={tag.onRemove}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-800 text-xs font-semibold transition group"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-slate-300 bg-slate-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-slate-800 text-xs font-semibold transition group"
               >
                 <span>{tag.label}</span>
                 <X
@@ -355,17 +355,21 @@ export default function ProductFilters({
           </div>
         )}
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-200">
           {/* 1. Sort By */}
           <div className="py-4">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
+            <label
+              htmlFor="filter-sort-select"
+              className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2.5"
+            >
               Urutkan Berdasarkan
             </label>
             <div className="relative">
               <select
+                id="filter-sort-select"
                 value={currentFilters.sortBy}
                 onChange={(e) => emitChange({ sortBy: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-sm font-medium text-slate-800 border border-slate-200 rounded-xl appearance-none bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer"
+                className="w-full px-3.5 py-2.5 text-sm font-medium text-slate-900 border border-slate-300 appearance-none bg-white hover:border-slate-900 focus:outline-none focus:border-slate-900 transition cursor-pointer"
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -375,7 +379,7 @@ export default function ProductFilters({
               </select>
               <ChevronDown
                 size={16}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
               />
             </div>
           </div>
@@ -387,12 +391,12 @@ export default function ProductFilters({
               onClick={() => toggleSection("size")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Ukuran Sepatu (EU)
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.size ? "rotate-180" : ""
                 }`}
               />
@@ -409,10 +413,10 @@ export default function ProductFilters({
                       onClick={() =>
                         emitChange({ size: isSelected ? "" : sz })
                       }
-                      className={`py-2 rounded-lg text-xs font-bold border transition ${
+                      className={`py-2 text-xs font-bold border transition ${
                         isSelected
-                          ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-900 hover:text-slate-900"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                       }`}
                     >
                       {sz}
@@ -430,12 +434,12 @@ export default function ProductFilters({
               onClick={() => toggleSection("brand")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Brand
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.brand ? "rotate-180" : ""
                 }`}
               />
@@ -458,10 +462,10 @@ export default function ProductFilters({
                     >
                       <div className="flex items-center gap-2.5">
                         <span
-                          className={`w-4 h-4 rounded flex items-center justify-center border transition ${
+                          className={`w-4 h-4 flex items-center justify-center border transition ${
                             isChecked
-                              ? "bg-blue-600 border-blue-600 text-white"
-                              : "border-slate-300 bg-white group-hover:border-blue-500"
+                              ? "bg-slate-900 border-slate-900 text-white"
+                              : "border-slate-300 bg-white group-hover:border-slate-900"
                           }`}
                         >
                           {isChecked && <Check size={11} strokeWidth={3} />}
@@ -483,26 +487,26 @@ export default function ProductFilters({
             )}
           </div>
 
-          {/* 4. Gender / Audience */}
+          {/* 4. Gender / Audience — Sharp Rectangular Boxes */}
           <div className="py-4">
             <button
               type="button"
               onClick={() => toggleSection("gender")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Gender
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.gender ? "rotate-180" : ""
                 }`}
               />
             </button>
 
             {openSections.gender && (
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="grid grid-cols-2 gap-2 mt-3">
                 {AUDIENCE_OPTIONS.map((aud) => {
                   const isSelected =
                     currentFilters.audience.toUpperCase() === aud.value;
@@ -515,10 +519,10 @@ export default function ProductFilters({
                           audience: isSelected ? "" : aud.value,
                         })
                       }
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
+                      className={`px-3 py-2 text-xs font-semibold border transition text-center ${
                         isSelected
                           ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-800"
+                          : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                       }`}
                     >
                       {aud.label}
@@ -529,33 +533,33 @@ export default function ProductFilters({
             )}
           </div>
 
-          {/* 5. Category */}
+          {/* 5. Category — Sharp Rectangular Boxes */}
           <div className="py-4">
             <button
               type="button"
               onClick={() => toggleSection("category")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Kategori Sepatu
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.category ? "rotate-180" : ""
                 }`}
               />
             </button>
 
             {openSections.category && (
-              <div className="flex flex-wrap gap-1.5 mt-3">
+              <div className="grid grid-cols-2 gap-2 mt-3">
                 <button
                   type="button"
                   onClick={() => emitChange({ category: "" })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                  className={`px-3 py-2 text-xs font-semibold border transition text-center ${
                     !currentFilters.category
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-blue-500"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                   }`}
                 >
                   Semua
@@ -575,10 +579,10 @@ export default function ProductFilters({
                           category: isSelected ? "" : cat.slug,
                         })
                       }
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                      className={`px-3 py-2 text-xs font-semibold border transition text-center truncate ${
                         isSelected
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-blue-500"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                       }`}
                     >
                       {cat.name}
@@ -589,19 +593,19 @@ export default function ProductFilters({
             )}
           </div>
 
-          {/* 6. Collection & Stock Availability */}
+          {/* 6. Collection & Stock Availability — Sharp Rectangular Boxes */}
           <div className="py-4">
             <button
               type="button"
               onClick={() => toggleSection("collection")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Koleksi & Status
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.collection ? "rotate-180" : ""
                 }`}
               />
@@ -609,24 +613,24 @@ export default function ProductFilters({
 
             {openSections.collection && (
               <div className="space-y-2.5 mt-3">
-                {/* Ready Stock Switch */}
+                {/* Ready Stock Switch — Square Track & Thumb */}
                 <button
                   type="button"
                   onClick={() =>
                     emitChange({ inStock: !currentFilters.inStock })
                   }
-                  className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition"
+                  className="flex items-center justify-between w-full px-3 py-2.5 border border-slate-300 bg-slate-50 hover:border-slate-900 transition"
                 >
                   <span className="text-xs font-semibold text-slate-800">
                     Hanya Stok Tersedia
                   </span>
                   <span
-                    className={`w-9 h-5 rounded-full transition-colors relative inline-flex items-center ${
-                      currentFilters.inStock ? "bg-blue-600" : "bg-slate-300"
+                    className={`w-9 h-5 transition-colors relative inline-flex items-center ${
+                      currentFilters.inStock ? "bg-slate-900" : "bg-slate-300"
                     }`}
                   >
                     <span
-                      className={`w-3.5 h-3.5 rounded-full bg-white shadow transform transition-transform ${
+                      className={`w-3.5 h-3.5 bg-white transform transition-transform ${
                         currentFilters.inStock
                           ? "translate-x-4"
                           : "translate-x-1"
@@ -635,20 +639,20 @@ export default function ProductFilters({
                   </span>
                 </button>
 
-                {/* Promo / Collection Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                {/* Promo / Collection Rectangular Cards */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
                   <button
                     type="button"
                     onClick={() =>
                       emitChange({ isSale: !currentFilters.isSale })
                     }
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    className={`px-2 py-2 text-xs font-semibold border transition text-center ${
                       currentFilters.isSale
-                        ? "bg-red-50 text-red-600 border-red-300"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                     }`}
                   >
-                     Sedang Diskon
+                    Sedang Diskon
                   </button>
                   <button
                     type="button"
@@ -660,13 +664,13 @@ export default function ProductFilters({
                             : "new-arrivals",
                       })
                     }
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    className={`px-2 py-2 text-xs font-semibold border transition text-center ${
                       currentFilters.collection === "new-arrivals"
-                        ? "bg-blue-50 text-blue-700 border-blue-300"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                     }`}
                   >
-                     Rilisan Baru
+                    Rilisan Baru
                   </button>
                   <button
                     type="button"
@@ -678,32 +682,32 @@ export default function ProductFilters({
                             : "exclusive",
                       })
                     }
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                    className={`px-2 py-2 text-xs font-semibold border transition text-center ${
                       currentFilters.collection === "exclusive"
-                        ? "bg-purple-50 text-purple-700 border-purple-300"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                     }`}
                   >
-                     Exclusive
+                    Exclusive
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 7. Price Range */}
+          {/* 7. Price Range — Sharp Rectangular Boxes */}
           <div className="py-4">
             <button
               type="button"
               onClick={() => toggleSection("price")}
               className="flex items-center justify-between w-full text-left"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Rentang Harga
               </span>
               <ChevronDown
                 size={15}
-                className={`text-slate-400 transition-transform ${
+                className={`text-slate-500 transition-transform ${
                   openSections.price ? "rotate-180" : ""
                 }`}
               />
@@ -711,7 +715,7 @@ export default function ProductFilters({
 
             {openSections.price && (
               <div className="mt-3 space-y-3">
-                {/* Quick Price Preset Chips */}
+                {/* Quick Price Preset Rectangular Boxes */}
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRICE_PRESETS.map((preset) => {
                     const isPresetActive =
@@ -738,10 +742,10 @@ export default function ProductFilters({
                             });
                           }
                         }}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold border text-center transition ${
+                        className={`py-2 px-2 text-xs font-semibold border text-center transition ${
                           isPresetActive
-                            ? "bg-blue-50 text-blue-700 border-blue-500"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-400"
+                            ? "bg-slate-900 text-white border-slate-900"
+                            : "bg-white text-slate-800 border-slate-300 hover:border-slate-900"
                         }`}
                       >
                         {preset.label}
@@ -753,10 +757,14 @@ export default function ProductFilters({
                 {/* Custom Min / Max Inputs */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    <label
+                      htmlFor="filter-min-price"
+                      className="block text-[11px] font-medium text-slate-600 mb-1"
+                    >
                       Minimum (Rp)
                     </label>
                     <input
+                      id="filter-min-price"
                       type="number"
                       value={minInput}
                       onChange={(e) =>
@@ -767,15 +775,19 @@ export default function ProductFilters({
                       }
                       min="0"
                       step="100000"
-                      className="w-full px-3 py-2 text-xs font-semibold text-slate-800 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-xs font-semibold text-slate-900 border border-slate-300 focus:outline-none focus:border-slate-900"
                       placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    <label
+                      htmlFor="filter-max-price"
+                      className="block text-[11px] font-medium text-slate-600 mb-1"
+                    >
                       Maksimum (Rp)
                     </label>
                     <input
+                      id="filter-max-price"
                       type="number"
                       value={maxInput}
                       onChange={(e) =>
@@ -786,7 +798,7 @@ export default function ProductFilters({
                       }
                       min="0"
                       step="100000"
-                      className="w-full px-3 py-2 text-xs font-semibold text-slate-800 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-xs font-semibold text-slate-900 border border-slate-300 focus:outline-none focus:border-slate-900"
                       placeholder="5000000"
                     />
                   </div>
@@ -797,13 +809,13 @@ export default function ProductFilters({
         </div>
 
         {/* Mobile Close/Apply Button */}
-        <div className="lg:hidden pt-4 border-t border-slate-100 mt-2">
+        <div className="lg:hidden pt-4 border-t border-slate-200 mt-2">
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="w-full bg-slate-900 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 transition"
+            className="w-full py-2.5 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition"
           >
-            Lihat Hasil Produk
+            Terapkan Filter
           </button>
         </div>
       </div>
