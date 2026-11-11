@@ -4,6 +4,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import AuthNavbar from "./AuthNavbar";
 import ErrorBoundary from "./ErrorBoundary";
+import WhatsAppSupportButton from "./WhatsAppSupportButton";
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -22,6 +23,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
       </main>
       {!isAdminPage && !isAuthPage && <Footer />}
+      {!isAdminPage && !isAuthPage && <WhatsAppSupportButton />}
     </div>
   );
 }
