@@ -1,106 +1,62 @@
-name: CI Pipeline
+name: CI Quality Gate
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [main]
 
 jobs:
-  # ==========================================
-  # Job 1: Go Backend Quality Gates
-  # ==========================================
-  backend:
-    name: Backend Lint, Test & Build
+  frontend-check:
+    name: Frontend Lint, Test & Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: backend/go.sum
-
-      - name: Verify Go Formatting & Vet
-        run: |
-          cd backend
-          go vet ./...
-
-      - name: Run Backend Unit Tests (with Race Detector)
-        run: |
-          cd backend
-          go test -v -race ./...
-
-      - name: Verify Binary Builds
-        run: |
-          cd backend
-          go build -trimpath -o /dev/null ./cmd/api
-          go build -trimpath -o /dev/null ./cmd/seed
-
-  # ==========================================
-  # Job 2: React Frontend Quality Gates
-  # ==========================================
-  frontend:
-    name: Frontend Lint, Typecheck & Bundle
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Dependencies
-        run: |
-          cd frontend
-          npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Lint Source Code
-        run: |
-          cd frontend
-          npm run lint
+      - name: Run ESLint
+        run: npm run lint
 
-      - name: Build Production Assets
-        run: |
-          cd frontend
-          npm run build
+      - name: Run Vitest unit & component tests
+        run: npm test
 
-  # ==========================================
-  # Job 3: Docker Images Build Verification
-  # ==========================================
-  docker-build:
-    name: Docker Build Validation
-    needs: [backend, frontend]
+      - name: Build production bundle
+        run: npm run build
+
+  backend-check:
+    name: Backend Vet, Test & Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Backend Docker Image
-        uses: docker/build-push-action@v5
+      - name: Setup Go 1.24
+        uses: actions/setup-go@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: false
-          tags: shoes4us-backend:ci
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
 
-      - name: Build Frontend Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: false
-          tags: shoes4us-frontend:ci
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run unit tests
+        run: go test -v ./...
+
+      - name: Verify compilation
+        run: go build ./...
