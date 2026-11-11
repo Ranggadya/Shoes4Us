@@ -49,7 +49,11 @@ export default function FlashSaleBanner({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown(calculateCountdown(endTimestamp));
+      const next = calculateCountdown(endTimestamp);
+      setCountdown(next);
+      if (next.expired) {
+        clearInterval(timer);
+      }
     }, 1000);
     return () => clearInterval(timer);
   }, [endTimestamp]);
@@ -103,3 +107,4 @@ export default function FlashSaleBanner({
     </section>
   );
 }
+

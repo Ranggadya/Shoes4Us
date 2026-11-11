@@ -678,7 +678,9 @@ export default function ProductDetailPage() {
                     setSize(recommendedEu);
                     toast.success(`Ukuran EU ${recommendedEu} dipilih!`);
                   } else {
-                    setSize(recommendedEu);
+                    toast.error(
+                      `Ukuran EU ${recommendedEu} saat ini belum tersedia untuk produk ini.`
+                    );
                   }
                 }}
               />

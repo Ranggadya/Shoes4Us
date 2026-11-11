@@ -59,3 +59,4 @@ describe("SEO component", () => {
     ).toBe("Shoes4Us");
   });
 });
+

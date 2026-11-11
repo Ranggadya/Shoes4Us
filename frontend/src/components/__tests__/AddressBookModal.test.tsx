@@ -89,4 +89,43 @@ describe("AddressBookModal component", () => {
       screen.getByRole("button", { name: /Tambah Alamat Baru/i })
     ).toBeInTheDocument();
   });
+
+  it("normalizes missing string fields (phone, city, postalCode) to empty strings when loaded", async () => {
+    const onSelect = vi.fn();
+    localStorage.setItem(
+      "shoes4us_address_book_v1:user-1",
+      JSON.stringify([
+        {
+          id: "partial-1",
+          recipientName: "Siti Aminah",
+          streetAddress: "Jl. Merdeka 10",
+        },
+      ])
+    );
+
+    render(
+      <AddressBookModal
+        isOpen={true}
+        userId="user-1"
+        onClose={vi.fn()}
+        onSelect={onSelect}
+      />
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Pilih Alamat Ini/i })
+    );
+
+    expect(onSelect).toHaveBeenCalledWith({
+      id: "partial-1",
+      label: "Rumah",
+      recipientName: "Siti Aminah",
+      phone: "",
+      streetAddress: "Jl. Merdeka 10",
+      city: "",
+      postalCode: "",
+      isDefault: false,
+    });
+  });
 });
+

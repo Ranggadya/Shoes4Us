@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import FlashSaleBanner, { calculateCountdown } from "../FlashSaleBanner";
 import { buildWhatsAppSupportUrl } from "../WhatsAppSupportButton";
@@ -40,6 +40,22 @@ describe("FlashSaleBanner & WhatsAppSupportButton", () => {
     expect(screen.getByText(/LIMITED SNEAKER DROP/i)).toBeInTheDocument();
     unmount();
     expect(clearIntervalSpy).toHaveBeenCalled();
+  });
+
+  it("stops interval timer automatically when countdown expires", () => {
+    vi.useFakeTimers();
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+    render(
+      <MemoryRouter>
+        <FlashSaleBanner targetTimeMs={Date.now() + 1000} />
+      </MemoryRouter>
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(clearIntervalSpy).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("builds WhatsApp concierge URL with encoded greeting message", () => {

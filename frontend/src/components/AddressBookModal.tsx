@@ -15,13 +15,24 @@ export function loadAddressBook(userId?: string | null): ShippingAddressEntry[] 
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ShippingAddressEntry[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item) =>
-        item &&
-        typeof item.id === "string" &&
-        typeof item.recipientName === "string" &&
-        typeof item.streetAddress === "string"
-    );
+    return parsed
+      .filter(
+        (item) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.recipientName === "string" &&
+          typeof item.streetAddress === "string"
+      )
+      .map((item) => ({
+        id: item.id,
+        label: typeof item.label === "string" && item.label ? item.label : "Rumah",
+        recipientName: item.recipientName,
+        phone: typeof item.phone === "string" ? item.phone : "",
+        streetAddress: item.streetAddress,
+        city: typeof item.city === "string" ? item.city : "",
+        postalCode: typeof item.postalCode === "string" ? item.postalCode : "",
+        isDefault: Boolean(item.isDefault),
+      }));
   } catch {
     return [];
   }

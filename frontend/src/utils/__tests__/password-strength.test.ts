@@ -34,3 +34,4 @@ describe("checkPasswordStrength", () => {
     expect(res.feedback).toHaveLength(0);
   });
 });
+

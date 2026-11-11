@@ -19,3 +19,4 @@ describe("format utilities", () => {
     expect(formatDate("invalid-date")).toBe("-");
   });
 });
+

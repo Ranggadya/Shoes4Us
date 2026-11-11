@@ -228,11 +228,11 @@ export default function PaymentPage() {
             userId={user.id}
             onClose={() => setShowAddressBook(false)}
             onSelect={(selected) => {
-              setName(selected.recipientName);
-              setPhone(selected.phone);
-              setAddress(selected.streetAddress);
-              setCity(selected.city);
-              setPostalCode(selected.postalCode);
+              setName(selected.recipientName || "");
+              setPhone(selected.phone || "");
+              setAddress(selected.streetAddress || "");
+              setCity(selected.city || "");
+              setPostalCode(selected.postalCode || "");
             }}
           />
           <form onSubmit={handlePay} className="space-y-4">

@@ -25,3 +25,4 @@ describe("convertFootLengthToSize", () => {
     expect(convertFootLengthToSize(26.0, "WIDE").eu).toBe(42);
   });
 });
+
