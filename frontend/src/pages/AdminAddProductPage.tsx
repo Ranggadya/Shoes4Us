@@ -14,6 +14,7 @@ import {
   Box,
 } from "lucide-react";
 import { ImageUploadDropzone } from "@/components/admin/ImageUploadDropzone";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
 import {
@@ -145,25 +146,25 @@ export default function AdminAddProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <AdminLayout>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Link
             to="/admin/product"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Kelola Produk</span>
+            <span>Kembali ke Katalog Produk</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Tambah Produk Baru</h1>
-          <p className="text-gray-600 mt-2">
-            Isi form di bawah untuk menambahkan produk baru ke katalog
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950">Tambah Produk Baru</h1>
+          <p className="text-xs text-gray-400 mt-1">
+            Isi form di bawah untuk menambahkan sepatu atau koleksi baru ke katalog.
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-3 ${currentStep >= 1 ? "text-blue-600" : "text-gray-400"}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 1 ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
@@ -623,7 +624,7 @@ export default function AdminAddProductPage() {
           </div>
         </form>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
 

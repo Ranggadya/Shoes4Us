@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ImageUploadDropzone } from "@/components/admin/ImageUploadDropzone";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
 import { getCategoryName } from "@/utils/format";
@@ -307,120 +308,100 @@ export default function AdminProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Back Button */}
+    <AdminLayout>
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950">
+            Products Catalog
+          </h1>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Tambah, edit, atau kelola inventaris ukuran sepatu di toko Anda.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4 group"
+            onClick={() => openModal()}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-800 rounded-full text-xs font-semibold hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
           >
-            <svg
-              className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="font-medium">Kembali ke Dashboard</span>
+            <Edit2 size={15} />
+            <span>Quick Add</span>
           </button>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Kelola Produk
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Tambah, edit, atau hapus produk
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => openModal()}
-                disabled={loading}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Edit2 size={18} />
-                <span className="hidden sm:inline">Quick Add</span>
-              </button>
-              <button
-                onClick={() => navigate("/admin/product/add")}
-                disabled={loading}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus size={20} />
-                <span>Tambah Produk</span>
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => navigate("/admin/product/add")}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-950 text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition shadow-sm disabled:opacity-50"
+          >
+            <Plus size={16} />
+            <span>Tambah Produk</span>
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Produk</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xs font-medium text-gray-500">Total Produk</p>
+                <p className="text-2xl font-bold text-gray-950 mt-2">
                   {totalProducts}
                 </p>
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className="bg-gray-50 p-3 rounded-2xl">
+                <Package className="w-5 h-5 text-gray-800" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Stok Rendah</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">
+                <p className="text-xs font-medium text-gray-500">Stok Rendah</p>
+                <p className="text-2xl font-bold text-amber-600 mt-2">
                   {lowStockProducts}
                 </p>
               </div>
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-orange-600" />
+              <div className="bg-amber-50 p-3 rounded-2xl">
+                <Package className="w-5 h-5 text-amber-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Habis</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">
+                <p className="text-xs font-medium text-gray-500">Stok Habis</p>
+                <p className="text-2xl font-bold text-rose-600 mt-2">
                   {outOfStockProducts}
                 </p>
               </div>
-              <div className="bg-red-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-red-600" />
+              <div className="bg-rose-50 p-3 rounded-2xl">
+                <Package className="w-5 h-5 text-rose-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Nilai</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">
-                  Rp {(totalValue / 1000000).toFixed(1)}M
+                <p className="text-xs font-medium text-gray-500">Total Nilai Inventaris</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-2">
+                  Rp {(totalValue / 1000000).toFixed(1)} jt
                 </p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-green-600" />
+              <div className="bg-emerald-50 p-3 rounded-2xl">
+                <Package className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 border border-gray-200">
+        <div className="bg-white rounded-3xl shadow-sm p-5 mb-6 border border-gray-100">
           {/* Search Bar */}
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1 relative">
@@ -548,7 +529,7 @@ export default function AdminProductPage() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition border border-gray-200 overflow-hidden"
+                className="bg-white rounded-3xl shadow-sm hover:shadow-md transition border border-gray-100 overflow-hidden flex flex-col justify-between"
               >
                 {/* Product Image */}
                 <div className="relative aspect-square bg-gray-100">
@@ -566,73 +547,81 @@ export default function AdminProductPage() {
 
                   {/* Stock Badge */}
                   {product.stock === 0 && (
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                    <div className="absolute top-3 right-3 bg-rose-500 text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
                       HABIS
                     </div>
                   )}
                   {product.stock !== null &&
                     product.stock > 0 &&
                     product.stock < 10 && (
-                      <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                      <div className="absolute top-3 right-3 bg-amber-500 text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
                         RENDAH
                       </div>
                     )}
                 </div>
 
                 {/* Product Info */}
-                <div className="p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">
-                    {getCategoryName(product.category)}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {product.brand && (
-                      <span className="rounded bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700">
-                        {product.brand}
-                      </span>
-                    )}
-                    {product.audience && (
-                      <span className="rounded bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
-                        {product.audience}
-                      </span>
-                    )}
-                    {product.isExclusive && (
-                      <span className="rounded bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
-                        Eksklusif
-                      </span>
-                    )}
-                    {product.isSale && (
-                      <span className="rounded bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700">
-                        Sale
-                      </span>
-                    )}
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      {getCategoryName(product.category)}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {product.brand && (
+                        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-700">
+                          {product.brand}
+                        </span>
+                      )}
+                      {product.audience && (
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                          {product.audience}
+                        </span>
+                      )}
+                      {product.isExclusive && (
+                        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                          Eksklusif
+                        </span>
+                      )}
+                      {product.isSale && (
+                        <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-600">
+                          Sale
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-gray-950 mt-2 line-clamp-2 text-sm">
+                      {product.name}
+                    </h3>
                   </div>
-                  <h3 className="font-semibold text-gray-900 mt-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-lg font-bold text-blue-600 mt-2">
-                    Rp {product.price.toLocaleString("id-ID")}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Stok: {product.stock ?? "N/A"}
-                  </p>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => openModal(product)}
-                      disabled={loading}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Edit2 size={16} />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      disabled={loading}
-                      className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <div className="mt-4">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-base font-extrabold text-gray-950">
+                        Rp {product.price.toLocaleString("id-ID")}
+                      </p>
+                      <p className="text-xs text-gray-400 font-medium">
+                        Stok: {product.stock ?? "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => openModal(product)}
+                        disabled={loading}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-950 text-white rounded-xl hover:bg-gray-800 transition text-xs font-semibold min-h-[40px] disabled:opacity-50"
+                      >
+                        <Edit2 size={14} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        disabled={loading}
+                        className="flex items-center justify-center px-3 py-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition min-h-[40px] disabled:opacity-50"
+                        aria-label="Hapus produk"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -892,7 +881,7 @@ export default function AdminProductPage() {
           </div>
         </>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 
