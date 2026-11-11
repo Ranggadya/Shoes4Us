@@ -10,6 +10,7 @@ import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
 import RelatedProducts from "@/components/RelatedProducts";
 import SEO from "@/components/SEO";
+import SizeGuideModal from "@/components/SizeGuideModal";
 import toast from "react-hot-toast";
 import {
   Heart,
@@ -206,6 +207,7 @@ export default function ProductDetailPage() {
   >(null);
   const [togglingWishlist, setTogglingWishlist] = useState(false);
   const [showStoreModal, setShowStoreModal] = useState(false);
+  const [showSizeCalculator, setShowSizeCalculator] = useState(false);
 
   useEffect(() => {
     setSize("");
@@ -447,11 +449,7 @@ export default function ProductDetailPage() {
   };
 
   const openSizeGuide = () => {
-    setActiveTab("sizeguide");
-    const tabsEl = document.getElementById("product-detail-tabs");
-    if (tabsEl) {
-      tabsEl.scrollIntoView({ behavior: "smooth" });
-    }
+    setShowSizeCalculator(true);
   };
 
   return (
@@ -666,9 +664,24 @@ export default function ProductDetailPage() {
                   onClick={openSizeGuide}
                   className="text-xs font-bold text-[#005691] underline hover:text-blue-900 transition"
                 >
-                  Panduan Ukuran
+                  Panduan Ukuran & Kalkulator CM
                 </button>
               </div>
+              <SizeGuideModal
+                isOpen={showSizeCalculator}
+                onClose={() => setShowSizeCalculator(false)}
+                onSelectSize={(recommendedEu) => {
+                  const found = availableSizes.find(
+                    (s) => s.size === recommendedEu && s.stock > 0
+                  );
+                  if (found) {
+                    setSize(recommendedEu);
+                    toast.success(`Ukuran EU ${recommendedEu} dipilih!`);
+                  } else {
+                    setSize(recommendedEu);
+                  }
+                }}
+              />
 
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
                 {availableSizes.map((option) => {
