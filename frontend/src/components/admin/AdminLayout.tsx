@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -30,6 +30,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const searchParams = new URLSearchParams(location.search);
   const currentTab = searchParams.get("tab") || "overview";
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileSidebarOpen) {
+        setMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileSidebarOpen]);
 
   const handleLogout = async () => {
     if (loggingOut) return;

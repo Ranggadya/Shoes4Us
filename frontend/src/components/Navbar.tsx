@@ -44,6 +44,17 @@ export default function Navbar() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleLogout = async () => {
     setIsOpen(false);
     setMobileMenuOpen(false);
@@ -135,7 +146,10 @@ export default function Navbar() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-black flex items-center space-x-2"
+                aria-label="Menu profil pengguna"
+                aria-expanded={isOpen}
+                aria-haspopup="menu"
+                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition text-black flex items-center space-x-2"
               >
                 <User size={18} />
                 <span className="hidden xl:inline">Profile</span>

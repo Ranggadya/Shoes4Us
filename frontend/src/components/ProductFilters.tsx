@@ -313,7 +313,9 @@ function ProductFilters({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2.5 w-full px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 transition"
+          aria-expanded={isOpen}
+          aria-label="Buka atau tutup filter produk"
+          className="flex items-center gap-2.5 w-full px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition"
         >
           <SlidersHorizontal size={18} className="text-slate-700" />
           <span className="font-semibold text-slate-800 text-sm">
