@@ -10,6 +10,7 @@ import {
 import { api } from "@/services/api";
 import CouponInput, { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
 import CourierSelector from "@/components/CourierSelector";
+import AddressBookModal from "@/components/AddressBookModal";
 import type { CouponValidationResult, CourierOption } from "@/types";
 
 const DEFAULT_COURIER: CourierOption = {
@@ -42,6 +43,7 @@ export default function PaymentPage() {
     }
   });
   const [showPopup, setShowPopup] = useState(false);
+  const [showAddressBook, setShowAddressBook] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
@@ -210,7 +212,29 @@ export default function PaymentPage() {
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
-          <h2 className="text-xl font-semibold mb-4">Informasi Pembeli</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Informasi Pembeli</h2>
+            <button
+              type="button"
+              onClick={() => setShowAddressBook(true)}
+              disabled={Boolean(createdOrderId)}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-gray-950 text-white hover:bg-gray-800 disabled:opacity-50 transition"
+            >
+              Pilih dari Buku Alamat
+            </button>
+          </div>
+          <AddressBookModal
+            isOpen={showAddressBook}
+            userId={user.id}
+            onClose={() => setShowAddressBook(false)}
+            onSelect={(selected) => {
+              setName(selected.recipientName);
+              setPhone(selected.phone);
+              setAddress(selected.streetAddress);
+              setCity(selected.city);
+              setPostalCode(selected.postalCode);
+            }}
+          />
           <form onSubmit={handlePay} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>

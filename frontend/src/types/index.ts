@@ -117,6 +117,17 @@ export interface CourierOption {
   description: string;
 }
 
+export interface ShippingAddressEntry {
+  id: string;
+  label: string;
+  recipientName: string;
+  phone: string;
+  streetAddress: string;
+  city: string;
+  postalCode: string;
+  isDefault: boolean;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
