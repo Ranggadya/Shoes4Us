@@ -149,6 +149,13 @@ export default function ProductCard({ product }: { product: Product }) {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.src.endsWith("/sepatu1.jpeg")) {
+              target.src = "/sepatu1.jpeg";
+            }
+          }}
         />
 
         <div className="absolute top-2.5 right-2.5 z-10">

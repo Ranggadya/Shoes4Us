@@ -516,6 +516,14 @@ export default function ProductDetailPage() {
                     <img
                       src={view.src}
                       alt={`${product.name} - ${view.label}`}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.src.endsWith("/sepatu1.jpeg")) {
+                          target.src = "/sepatu1.jpeg";
+                        }
+                      }}
                       className={`w-full h-full object-contain ${view.transformClass}`}
                     />
                   </button>
@@ -553,6 +561,14 @@ export default function ProductDetailPage() {
               <img
                 src={galleryViews[selectedImageIndex]?.src}
                 alt={product.name}
+                fetchPriority="high"
+                decoding="async"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith("/sepatu1.jpeg")) {
+                    target.src = "/sepatu1.jpeg";
+                  }
+                }}
                 className={`w-full h-full object-contain transition-all duration-300 ${
                   galleryViews[selectedImageIndex]?.transformClass || ""
                 }`}
