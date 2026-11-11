@@ -9,6 +9,7 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
 import RelatedProducts from "@/components/RelatedProducts";
+import SEO from "@/components/SEO";
 import toast from "react-hot-toast";
 import {
   Heart,
@@ -455,6 +456,16 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      <SEO
+        title={`${product.name} - ${brandName}`}
+        description={
+          product.description ||
+          `Beli ${product.name} (${brandName}) orisinal seharga ${formatDetailPrice(product.price)} di Shoes4Us.`
+        }
+        image={product.imageUrl}
+        type="product"
+        priceAmount={product.price}
+      />
       {/* Uppercase Slash Breadcrumb matching reference */}
       <div className="border-b border-gray-100 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
