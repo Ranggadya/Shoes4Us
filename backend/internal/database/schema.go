@@ -6,9 +6,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// EnsureSchema creates all necessary database types, tables, and constraints if they do not already exist.
-func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	const ddl = `
+// SchemaDDL returns the SQL DDL statements for database types, tables, and indexes.
+func SchemaDDL() string {
+	return `
 	DO $$ BEGIN
 		CREATE TYPE "UserRole" AS ENUM ('USER', 'ADMIN');
 	EXCEPTION WHEN duplicate_object THEN null;
@@ -155,13 +155,18 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 
 	CREATE INDEX IF NOT EXISTS idx_products_active_created ON products ("isActive", "createdAt" DESC);
 	CREATE INDEX IF NOT EXISTS idx_products_category ON products ("categoryId");
+	CREATE INDEX IF NOT EXISTS idx_products_category_active ON products ("categoryId", "isActive");
 	CREATE INDEX IF NOT EXISTS idx_products_segment_audience ON products ("segment", "audience");
 	CREATE INDEX IF NOT EXISTS idx_products_price ON products ("price");
 	CREATE INDEX IF NOT EXISTS idx_products_brand_lower ON products (LOWER("brand"));
+	CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items ("productId");
 	CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews ("productId");
 	`
+}
 
-	if _, err := pool.Exec(ctx, ddl); err != nil {
+// EnsureSchema creates all necessary database types, tables, and constraints if they do not already exist.
+func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	if _, err := pool.Exec(ctx, SchemaDDL()); err != nil {
 		return fmt.Errorf("database: failed to ensure schema: %w", err)
 	}
 

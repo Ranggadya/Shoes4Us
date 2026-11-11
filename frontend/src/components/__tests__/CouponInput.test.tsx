@@ -29,9 +29,8 @@ describe("CouponInput component", () => {
       code: "DISKON10",
       description: "Diskon 10% semua produk",
       discountType: "PERCENTAGE" as const,
-      discountValue: 10,
       discountAmount: 150000,
-      finalTotal: 1350000,
+      minOrderAmount: 100000,
     };
     vi.mocked(api.post).mockResolvedValueOnce({
       success: true,
@@ -97,9 +96,8 @@ describe("CouponInput component", () => {
           code: "HEMAT50RB",
           description: "Potongan Rp 50.000",
           discountType: "FIXED",
-          discountValue: 50000,
           discountAmount: 50000,
-          finalTotal: 950000,
+          minOrderAmount: 200000,
         }}
         onApply={onApply}
       />
@@ -112,3 +110,4 @@ describe("CouponInput component", () => {
     expect(onApply).toHaveBeenCalledWith(null);
   });
 });
+
