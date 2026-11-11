@@ -79,7 +79,18 @@ function loadGuestCart(): CartSummary {
     if (!raw) return emptyCart;
     const parsed = JSON.parse(raw) as CartItem[];
     if (!Array.isArray(parsed)) return emptyCart;
-    const items = parsed.map((item) => ({
+    const validItems = parsed.filter(
+      (item) =>
+        item &&
+        item.product &&
+        typeof item.product.id === "string" &&
+        typeof item.product.name === "string" &&
+        typeof item.product.price === "number" &&
+        Number.isFinite(item.product.price) &&
+        typeof item.quantity === "number" &&
+        item.quantity > 0
+    );
+    const items = validItems.map((item) => ({
       ...item,
       lineTotal: item.product.price * item.quantity,
     }));
