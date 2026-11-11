@@ -15,3 +15,18 @@ export function getCategoryName(
   if (typeof category === "string") return category;
   return category.name || fallback;
 }
+
+export function formatDate(
+  dateStr: string | null | undefined,
+  locale = "id-ID"
+): string {
+  if (!dateStr) return "-";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
+}
+
