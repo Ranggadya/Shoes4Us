@@ -188,8 +188,9 @@ export default function PaymentPage() {
             Silakan login terlebih dahulu sebelum melanjutkan pembayaran.
           </p>
           <button
+            type="button"
             onClick={() => navigate("/login")}
-            className="mt-4 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition"
+            className="mt-4 min-h-[44px] px-5 py-2.5 bg-black text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition-colors"
           >
             Masuk Sekarang
           </button>
@@ -213,12 +214,14 @@ export default function PaymentPage() {
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Informasi Pembeli</h2>
+            <h2 className="text-lg font-extrabold uppercase tracking-wider text-neutral-900">
+              Informasi Pembeli
+            </h2>
             <button
               type="button"
               onClick={() => setShowAddressBook(true)}
               disabled={Boolean(createdOrderId)}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-gray-950 text-white hover:bg-gray-800 disabled:opacity-50 transition"
+              className="min-h-[44px] text-xs font-bold uppercase tracking-wider px-3.5 py-2 bg-black text-white hover:bg-neutral-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition-colors"
             >
               Pilih dari Buku Alamat
             </button>
@@ -243,53 +246,53 @@ export default function PaymentPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={Boolean(createdOrderId)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
                 placeholder="Masukkan nama lengkap"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Pengiriman</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Alamat Pengiriman</label>
               <textarea
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 disabled={Boolean(createdOrderId)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
                 rows={3}
                 placeholder="Masukkan alamat lengkap"
               ></textarea>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kota</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Kota</label>
                 <input
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   disabled={Boolean(createdOrderId)}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                  className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
                   placeholder="Contoh: Bandung"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kode Pos</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Kode Pos</label>
                 <input
                   type="text"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   disabled={Boolean(createdOrderId)}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                  className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 tabular-nums focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
                   placeholder="40115"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Nomor Telepon</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 disabled={Boolean(createdOrderId)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 tabular-nums focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
                 placeholder="08xxxxxxxxxx"
               />
             </div>
@@ -303,12 +306,12 @@ export default function PaymentPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Metode Pembayaran</label>
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
                 disabled={Boolean(createdOrderId)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 disabled:bg-gray-100"
+                className="w-full border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black disabled:bg-neutral-100"
               >
                 <option>Kartu Kredit</option>
                 <option>QRIS</option>
@@ -317,12 +320,14 @@ export default function PaymentPage() {
             </div>
 
             {formError && (
-              <p className="text-sm text-red-600">{formError}</p>
+              <p className="text-sm font-medium text-red-700" role="alert">
+                {formError}
+              </p>
             )}
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors mt-4 disabled:opacity-60"
+              className="w-full min-h-[48px] bg-black text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition-colors mt-4 disabled:opacity-60"
               disabled={submitting}
             >
               {submitting ? "Memproses..." : "Bayar Sekarang"}
@@ -330,10 +335,12 @@ export default function PaymentPage() {
           </form>
         </div>
 
-        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 h-fit">
-          <h2 className="text-xl font-semibold mb-4">Ringkasan Pesanan</h2>
+        <aside className="bg-neutral-50 p-6 border border-neutral-200 h-fit">
+          <h2 className="text-base font-extrabold uppercase tracking-wider text-neutral-950 mb-4 pb-3 border-b border-neutral-200">
+            Ringkasan Pesanan
+          </h2>
 
-          <div className="mb-4 pb-4 border-b border-gray-200">
+          <div className="mb-4 pb-4 border-b border-neutral-200">
             <CouponInput
               subtotal={subtotal}
               shippingFee={shippingFee}
@@ -344,66 +351,73 @@ export default function PaymentPage() {
           </div>
 
           <div className="space-y-2.5 mb-4 text-sm">
-            <div className="flex justify-between text-gray-700">
+            <div className="flex justify-between text-neutral-700">
               <span>Subtotal Produk</span>
-              <span className="font-medium">{formatCurrency(subtotal)}</span>
+              <span className="font-semibold text-neutral-950 tabular-nums">
+                {formatCurrency(subtotal)}
+              </span>
             </div>
-            <div className="flex justify-between text-gray-700">
+            <div className="flex justify-between text-neutral-700">
               <span>
                 Ongkos Kirim ({selectedCourier.name})
-                <span className="block text-xs text-gray-500">
+                <span className="block text-xs text-neutral-500">
                   Estimasi {selectedCourier.estimatedDays}
                 </span>
               </span>
-              <span className="font-medium">
+              <span className="font-semibold text-neutral-950 tabular-nums">
                 {subtotal === 0 ? "-" : formatCurrency(shippingFee)}
               </span>
             </div>
             {discountAmount > 0 && appliedCoupon && (
-              <div className="flex justify-between text-emerald-700 font-medium">
+              <div className="flex justify-between text-emerald-700 font-semibold">
                 <span>Diskon Voucher ({appliedCoupon.code})</span>
-                <span>-{formatCurrency(discountAmount)}</span>
+                <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
             )}
           </div>
 
-          <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-4">
+          <div className="flex justify-between font-extrabold text-lg border-t border-neutral-900 pt-4">
             <span>Total Bayar</span>
-            <span>{formatCurrency(total)}</span>
+            <span className="tabular-nums">{formatCurrency(total)}</span>
           </div>
-        </div>
+        </aside>
       </div>
 
       {showPopup && (
         <>
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-black/60 z-40"
             onClick={() => setShowPopup(false)}
           ></div>
 
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md mx-auto relative">
-              <h2 className="text-2xl font-bold mb-1 text-center">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="payment-modal-title"
+              className="bg-white border border-neutral-900 shadow-2xl p-6 w-full max-w-md mx-auto relative"
+            >
+              <h2 id="payment-modal-title" className="text-xl font-extrabold uppercase tracking-wider mb-2 text-center pr-8">
                 Detail Pembayaran
               </h2>
-              <p className="text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded-md p-2 mb-4 text-center font-medium">
-                ⚠️ INFORMASI: Ini adalah mode SIMULASI. Anda tidak akan dikenakan biaya asli.
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2.5 mb-4 text-center font-medium">
+                MODE SIMULASI: Anda tidak akan dikenakan biaya asli.
               </p>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-xs space-y-1">
+              <div className="bg-neutral-50 border border-neutral-200 p-3 mb-4 text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Kurir Pengiriman:</span>
-                  <span className="font-semibold text-gray-900">{selectedCourier.name}</span>
+                  <span className="text-neutral-600">Kurir Pengiriman:</span>
+                  <span className="font-semibold text-neutral-900">{selectedCourier.name}</span>
                 </div>
                 {appliedCoupon && discountAmount > 0 && (
                   <div className="flex justify-between text-emerald-700">
                     <span>Voucher ({appliedCoupon.code}):</span>
-                    <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
+                    <span className="font-semibold tabular-nums">-{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-sm pt-1 border-t border-gray-200 text-gray-900">
+                <div className="flex justify-between font-bold text-sm pt-1.5 border-t border-neutral-200 text-neutral-950">
                   <span>Total Tagihan:</span>
-                  <span>{formatCurrency(total)}</span>
+                  <span className="tabular-nums">{formatCurrency(total)}</span>
                 </div>
               </div>
 
@@ -412,18 +426,18 @@ export default function PaymentPage() {
                   <input
                     type="text"
                     placeholder="Nomor Kartu (XXXX XXXX XXXX XXXX)"
-                    className="w-full border rounded-lg p-2"
+                    className="w-full border border-neutral-300 p-2.5 text-sm tabular-nums focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
                   />
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="MM/YY"
-                      className="w-1/2 border rounded-lg p-2"
+                      className="w-1/2 border border-neutral-300 p-2.5 text-sm tabular-nums focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
                     />
                     <input
                       type="text"
                       placeholder="CVV"
-                      className="w-1/2 border rounded-lg p-2"
+                      className="w-1/2 border border-neutral-300 p-2.5 text-sm tabular-nums focus:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
                     />
                   </div>
                 </div>
@@ -431,13 +445,13 @@ export default function PaymentPage() {
 
               {method === "QRIS" && (
                 <div className="text-center">
-                  <p className="text-gray-600 mb-2">
+                  <p className="text-sm text-neutral-600 mb-2">
                     Scan QR Code berikut untuk melakukan pembayaran:
                   </p>
-                  <div className="border rounded-lg p-4 bg-gray-100 inline-block">
+                  <div className="border border-neutral-300 p-4 bg-neutral-100 inline-block">
                     <img
                       src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PAYMENT-SHOES4U"
-                      alt="QR Code"
+                      alt="QR Code Pembayaran Shoes4Us"
                       width={150}
                       height={150}
                       className="mx-auto"
@@ -448,40 +462,43 @@ export default function PaymentPage() {
 
               {method === "Transfer Bank" && (
                 <div>
-                  <p className="text-gray-700 mb-1">
+                  <p className="text-sm text-neutral-700 mb-1">
                     Silakan transfer ke Virtual Account berikut:
                   </p>
-                  <div className="bg-gray-100 p-3 rounded-lg mt-2">
-                    <p className="font-semibold text-blue-700">Bank BCA (SIMULASI)</p>
+                  <div className="bg-neutral-100 border border-neutral-200 p-3 mt-2 text-sm space-y-0.5">
+                    <p className="font-bold text-neutral-950">Bank BCA (SIMULASI)</p>
                     <p>
                       No. VA:{" "}
-                      <span className="font-mono">1234567890123456</span>
+                      <span className="font-mono tabular-nums font-semibold">1234567890123456</span>
                     </p>
                     <p>a.n. Shoes4Us Official</p>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-2 italic text-center">
+                  <p className="text-xs text-neutral-500 mt-2 italic text-center">
                     Cukup klik konfirmasi untuk melanjutkan simulasi order.
                   </p>
                 </div>
               )}
 
               {formError && (
-                <p className="text-sm text-red-600 mt-4 text-center bg-red-50 p-2 rounded border border-red-100">
+                <p className="text-sm text-red-700 mt-4 text-center bg-red-50 p-2.5 border border-red-200" role="alert">
                   {formError}
                 </p>
               )}
 
               <button
+                type="button"
                 onClick={handleConfirm}
-                className="w-full bg-black text-white py-3 rounded font-semibold hover:bg-gray-800 transition-colors mt-6 disabled:opacity-60"
+                className="w-full min-h-[48px] bg-black text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition-colors mt-6 disabled:opacity-60"
                 disabled={submitting}
               >
                 {submitting ? "Memproses..." : "Konfirmasi Pembayaran"}
               </button>
 
               <button
+                type="button"
                 onClick={() => setShowPopup(false)}
-                className="absolute top-3 right-4 text-gray-500 hover:text-gray-700 text-xl"
+                aria-label="Tutup detail pembayaran"
+                className="absolute top-3 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-neutral-500 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black text-xl"
               >
                 ×
               </button>

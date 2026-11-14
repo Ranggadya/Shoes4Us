@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, formatDate, getCategoryName } from "../format";
+import {
+  formatCurrency,
+  formatDate,
+  getCategoryName,
+  resolveProductBrand,
+} from "../format";
 
 describe("format utilities", () => {
   it("formats Indonesian Rupiah currency properly", () => {
@@ -17,6 +22,16 @@ describe("format utilities", () => {
     expect(formatDate("2026-05-15T10:00:00Z")).toContain("2026");
     expect(formatDate("")).toBe("-");
     expect(formatDate("invalid-date")).toBe("-");
+  });
+
+  it("resolves product brand from explicit field, known name match, category, or fallback", () => {
+    expect(resolveProductBrand("Ultraboost Light", "Adidas")).toBe("Adidas");
+    expect(resolveProductBrand("Nike Air Force 1 '07", null)).toBe("Nike");
+    expect(resolveProductBrand("New Balance 550", undefined)).toBe("New Balance");
+    expect(resolveProductBrand("Custom Runner", null, "Running")).toBe("Running");
+    expect(resolveProductBrand("Classic Loafer", null, null, "SHOES4US")).toBe(
+      "SHOES4US"
+    );
   });
 });
 

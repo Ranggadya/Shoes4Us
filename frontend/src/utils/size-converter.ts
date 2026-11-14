@@ -1,5 +1,39 @@
 export type FootFitPreference = "SNUG" | "REGULAR" | "WIDE";
 
+export const EU_TO_US_MAP: Record<string, string> = {
+  "36": "US 5.5",
+  "37": "US 6",
+  "38": "US 7",
+  "39": "US 7.5",
+  "40": "US 8",
+  "41": "US 8.5",
+  "42": "US 9.5",
+  "43": "US 10",
+  "44": "US 10.5",
+  "45": "US 11",
+};
+
+export function formatShoeSizeLabel(rawSize?: string | null): string {
+  if (!rawSize) return "";
+  const trimmed = rawSize.trim();
+  if (!trimmed) return "";
+
+  const upper = trimmed.toUpperCase();
+  if (upper.startsWith("US")) {
+    return upper;
+  }
+  if (upper.startsWith("EU ")) {
+    const euCode = upper.slice(3).trim();
+    return EU_TO_US_MAP[euCode]
+      ? `${EU_TO_US_MAP[euCode]} / EU ${euCode}`
+      : `EU ${euCode}`;
+  }
+
+  return EU_TO_US_MAP[trimmed]
+    ? `${EU_TO_US_MAP[trimmed]} / EU ${trimmed}`
+    : `EU ${trimmed}`;
+}
+
 export interface ShoeSizeConversion {
   eu: number;
   usMen: number;

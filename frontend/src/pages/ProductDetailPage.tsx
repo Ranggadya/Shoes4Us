@@ -3,7 +3,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
-import { getCategoryName } from "@/utils/format";
+import {
+  formatCurrency,
+  getCategoryName,
+  resolveProductBrand,
+} from "@/utils/format";
+import { EU_TO_US_MAP, formatShoeSizeLabel } from "@/utils/size-converter";
 import { api } from "@/services/api";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
@@ -49,48 +54,6 @@ type ProductResponse = {
 
 const AVAILABLE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"];
 
-const EU_TO_US_MAP: Record<string, string> = {
-  "36": "US 5.5",
-  "37": "US 6",
-  "38": "US 7",
-  "39": "US 7.5",
-  "40": "US 8",
-  "41": "US 8.5",
-  "42": "US 9.5",
-  "43": "US 10",
-  "44": "US 10.5",
-  "45": "US 11",
-};
-
-const KNOWN_BRANDS = [
-  "New Balance",
-  "Nike",
-  "Adidas",
-  "Puma",
-  "Converse",
-  "Vans",
-  "Reebok",
-  "Asics",
-  "Skechers",
-  "Salomon",
-  "Onitsuka Tiger",
-  "Hoka",
-];
-
-function resolveBrand(product: Product): string {
-  if (product.brand && product.brand.trim().length > 0) {
-    return product.brand.trim().toUpperCase();
-  }
-  const lowerName = product.name.toLowerCase();
-  for (const brand of KNOWN_BRANDS) {
-    if (lowerName.includes(brand.toLowerCase())) {
-      return brand.toUpperCase();
-    }
-  }
-  const cat = getCategoryName(product.category);
-  return cat ? cat.toUpperCase() : "SHOES4US";
-}
-
 function resolveAudienceBreadcrumb(audience?: string | null): {
   label: string;
   categoryLabel: string;
@@ -126,7 +89,13 @@ function resolveAudienceBreadcrumb(audience?: string | null): {
 }
 
 function generateSKU(product: Product): string {
-  const brandCode = resolveBrand(product)
+  const brandCode = resolveProductBrand(
+    product.name,
+    product.brand,
+    product.category,
+    "SHOES4US"
+  )
+    .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 3)
     .padEnd(3, "X");
@@ -140,23 +109,6 @@ function generateSKU(product: Product): string {
     .slice(0, 3)
     .toUpperCase();
   return `0888-${brandCode}${modelCode}${idSuffix}`;
-}
-
-function formatDetailPrice(amount: number): string {
-  const rounded = Math.round(Number.isFinite(amount) ? amount : 0);
-  return `Rp. ${new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 0,
-  }).format(rounded)}`;
-}
-
-function formatSizeChipLabel(rawSize: string): string {
-  const trimmed = rawSize.trim();
-  if (trimmed.toUpperCase().startsWith("US")) {
-    return trimmed.toUpperCase();
-  }
-  return EU_TO_US_MAP[trimmed]
-    ? `${EU_TO_US_MAP[trimmed]} (EU ${trimmed})`
-    : `EU ${trimmed}`;
 }
 
 type GalleryView = {
@@ -305,6 +257,8 @@ export default function ProductDetailPage() {
           name: product.name,
           price: product.price,
           imageUrl: product.imageUrl,
+          brand: product.brand ?? null,
+          maxStock: currentSizeStock,
         },
       });
       return true;
@@ -431,7 +385,12 @@ export default function ProductDetailPage() {
     product.stock;
   const hasStock = product.stock > 0;
   const maxSelectableQuantity = Math.max(1, Math.min(10, selectedSizeStock));
-  const brandName = resolveBrand(product);
+  const brandName = resolveProductBrand(
+    product.name,
+    product.brand,
+    product.category,
+    "SHOES4US"
+  ).toUpperCase();
   const audienceBreadcrumb = resolveAudienceBreadcrumb(product.audience);
   const skuCode = generateSKU(product);
   const originalPrice = Math.round(product.price / 0.8);
@@ -458,7 +417,7 @@ export default function ProductDetailPage() {
         title={`${product.name} - ${brandName}`}
         description={
           product.description ||
-          `Beli ${product.name} (${brandName}) orisinal seharga ${formatDetailPrice(product.price)} di Shoes4Us.`
+          `Beli ${product.name} (${brandName}) orisinal seharga ${formatCurrency(product.price)} di Shoes4Us.`
         }
         image={product.imageUrl}
         type="product"
@@ -635,16 +594,16 @@ export default function ProductDetailPage() {
             {/* Price Block */}
             <div className="mt-4 flex items-baseline gap-3 flex-wrap">
               <span
-                className={`text-2xl sm:text-[26px] font-bold ${
+                className={`text-2xl sm:text-[26px] font-bold tabular-nums ${
                   product.isSale ? "text-[#d91e2a]" : "text-gray-900"
                 }`}
               >
-                {formatDetailPrice(product.price)}
+                {formatCurrency(product.price)}
               </span>
               {product.isSale && (
                 <>
-                  <span className="text-sm text-gray-400 line-through">
-                    {formatDetailPrice(originalPrice)}
+                  <span className="text-sm text-gray-400 line-through tabular-nums">
+                    {formatCurrency(originalPrice)}
                   </span>
                   <span className="bg-red-50 text-[#d91e2a] text-xs font-bold px-2 py-0.5">
                     20% OFF
@@ -701,7 +660,7 @@ export default function ProductDetailPage() {
                         setQuantity(1);
                       }}
                       disabled={isOut}
-                      title={formatSizeChipLabel(option.size)}
+                      title={formatShoeSizeLabel(option.size)}
                       className={`h-11 px-2 border text-xs font-bold transition flex flex-col items-center justify-center ${
                         isSelected
                           ? "border-gray-900 bg-gray-900 text-white"
@@ -719,7 +678,7 @@ export default function ProductDetailPage() {
                 <p className="text-[11px] text-gray-500 mt-1.5">
                   Ukuran dipilih:{" "}
                   <strong className="text-gray-800">
-                    {formatSizeChipLabel(size)}
+                    {formatShoeSizeLabel(size)}
                   </strong>{" "}
                   • Stok tersedia: {selectedSizeStock} pasang
                 </p>
@@ -844,7 +803,7 @@ export default function ProductDetailPage() {
                 Ketersediaan di Toko
               </h3>
               <p className="text-xs text-gray-500 mb-4">
-                {product.name} {size ? `(${formatSizeChipLabel(size)})` : ""}
+                {product.name} {size ? `(${formatShoeSizeLabel(size)})` : ""}
               </p>
               <div className="space-y-3 text-sm">
                 {[

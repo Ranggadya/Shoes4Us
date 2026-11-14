@@ -80,15 +80,18 @@ export default function Navbar() {
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between gap-6">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
+          <Link
+            to="/"
+            className="flex items-center space-x-2.5 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+          >
             <img
               src="/logo.jpg"
-              alt="Logo"
-              className="w-12 h-12 rounded-md object-cover"
+              alt="Logo Shoes4Us"
+              className="w-11 h-11 object-cover border border-neutral-200"
             />
-            <h1 className="text-xl font-bold text-black hidden lg:block">
-              Shoes Commerce
-            </h1>
+            <span className="text-xl font-extrabold uppercase tracking-tight text-black hidden lg:block">
+              Shoes4Us
+            </span>
           </Link>
 
           {/* Global Search - Always visible */}
@@ -98,8 +101,9 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="lg:hidden p-2 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Open menu"
           >
             <Menu size={24} />
@@ -110,12 +114,12 @@ export default function Navbar() {
             {!isAdmin && (
               <Link
                 to="/cart"
-                className="relative flex items-center space-x-1 hover:text-blue-600 transition"
+                className="relative flex items-center space-x-1.5 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition"
               >
                 <ShoppingCart size={18} />
                 <span>Keranjang</span>
                 {totalCartItems > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-black rounded-full">
+                  <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-black tabular-nums">
                     {totalCartItems}
                   </span>
                 )}
@@ -125,7 +129,7 @@ export default function Navbar() {
             {user && !isAdmin && (
               <Link
                 to="/wishlist"
-                className="flex items-center space-x-1 hover:text-red-600 transition"
+                className="flex items-center space-x-1.5 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition"
               >
                 <Heart size={18} />
                 <span>Wishlist</span>
@@ -135,7 +139,7 @@ export default function Navbar() {
             {isAdmin && (
               <Link
                 to="/admin/dashboard"
-                className="flex items-center space-x-1 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+                className="flex items-center space-x-1.5 px-3 py-2 bg-black text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition"
               >
                 <Package size={18} />
                 <span>Dashboard Admin</span>
@@ -145,18 +149,19 @@ export default function Navbar() {
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Menu profil pengguna"
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition text-black flex items-center space-x-2"
+                className="min-h-[44px] px-4 py-2 bg-neutral-100 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition text-black flex items-center space-x-2"
               >
                 <User size={18} />
                 <span className="hidden xl:inline">Profile</span>
               </button>
 
               {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border rounded-lg shadow-lg text-black z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-neutral-900 shadow-lg text-black z-50">
                   {user ? (
                     <>
                       <Link

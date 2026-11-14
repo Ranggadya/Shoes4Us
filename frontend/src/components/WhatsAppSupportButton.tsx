@@ -84,6 +84,7 @@ export default function WhatsAppSupportButton() {
   const pageUrl =
     typeof window !== "undefined" ? window.location.href : undefined;
   const href = buildWhatsAppSupportUrl(productContext, pageUrl);
+  const hideOnMobileCart = pathname === "/cart";
   const ariaLabel = productContext
     ? `Chat Bantuan WhatsApp Shoes4Us mengenai ${productContext} (buka di tab baru)`
     : "Chat Bantuan WhatsApp Shoes4Us (buka di tab baru)";
@@ -94,7 +95,9 @@ export default function WhatsAppSupportButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={ariaLabel}
-      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 print:hidden inline-flex items-center justify-center gap-2.5 min-w-[44px] min-h-[44px] px-3 sm:px-4 bg-black text-white border border-white/20 shadow-[0_4px_14px_rgba(0,0,0,0.18)] hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-colors"
+      className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 print:hidden ${
+        hideOnMobileCart ? "hidden lg:inline-flex" : "inline-flex"
+      } items-center justify-center gap-2.5 min-w-[44px] min-h-[44px] px-3 sm:px-4 bg-black text-white border border-white/20 shadow-[0_4px_14px_rgba(0,0,0,0.18)] hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-colors`}
     >
       <svg
         viewBox="0 0 24 24"

@@ -71,8 +71,8 @@ export default function CourierSelector({
 
   return (
     <div className="space-y-2.5">
-      <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
-        <Truck size={16} className="text-blue-600" />
+      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-900">
+        <Truck size={16} className="text-black" aria-hidden="true" />
         <span>Pilih Kurir & Ekspedisi Pengiriman</span>
       </label>
 
@@ -86,36 +86,38 @@ export default function CourierSelector({
               key={courier.code}
               type="button"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => onSelect(courier)}
-              className={`text-left p-3 rounded-xl border transition flex flex-col justify-between ${
+              className={`text-left p-3 border transition-colors flex flex-col justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${
                 isSelected
-                  ? "border-blue-600 bg-blue-50/50 ring-1 ring-blue-600"
-                  : "border-slate-200 bg-white hover:border-slate-400"
+                  ? "border-black bg-neutral-100 ring-1 ring-black"
+                  : "border-neutral-300 bg-white hover:border-black"
               } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-xs font-extrabold text-slate-900 block">
+                  <span className="text-xs font-extrabold text-neutral-950 block">
                     {courier.name}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
-                    <Clock size={11} />
+                  <span className="inline-flex items-center gap-1 text-[11px] text-neutral-600 mt-0.5">
+                    <Clock size={11} aria-hidden="true" />
                     Estimasi {courier.estimatedDays}
                   </span>
                 </div>
                 {isSelected && (
                   <CheckCircle2
                     size={16}
-                    className="text-blue-600 flex-shrink-0"
+                    className="text-black flex-shrink-0"
+                    aria-hidden="true"
                   />
                 )}
               </div>
 
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+              <div className="mt-2 pt-2 border-t border-neutral-200 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-neutral-200 text-neutral-800">
                   {courier.service}
                 </span>
-                <span className="text-xs font-bold text-blue-700">
+                <span className="text-xs font-bold text-black tabular-nums">
                   {formatCurrency(courier.cost)}
                 </span>
               </div>

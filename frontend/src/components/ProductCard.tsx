@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import WishlistButton from "./WishlistButton";
+import { formatCurrency, resolveProductBrand } from "@/utils/format";
 
 type Product = {
   id: string;
@@ -14,43 +15,6 @@ type Product = {
   averageRating?: number;
   reviewCount?: number;
 };
-
-const KNOWN_BRANDS = [
-  "New Balance",
-  "Nike",
-  "Adidas",
-  "Puma",
-  "Converse",
-  "Vans",
-  "Reebok",
-  "Asics",
-];
-
-function resolveBrand(product: Product): string {
-  if (product.brand && product.brand.trim().length > 0) {
-    return product.brand.trim();
-  }
-
-  const lowerName = product.name.toLowerCase();
-  for (const brand of KNOWN_BRANDS) {
-    if (lowerName.includes(brand.toLowerCase())) {
-      return brand;
-    }
-  }
-
-  if (typeof product.category === "string" && product.category.trim().length > 0) {
-    return product.category.trim();
-  }
-  if (
-    product.category &&
-    typeof product.category === "object" &&
-    product.category.name
-  ) {
-    return product.category.name;
-  }
-
-  return "SHOES4US";
-}
 
 function resolveAudienceLabel(audience?: string | null): string {
   switch (audience?.toUpperCase()) {
@@ -88,13 +52,6 @@ function resolveColorLabel(name: string, description?: string | null): string {
   return "Multiwarna";
 }
 
-function formatCatalogPrice(amount: number): string {
-  const formattedNumber = new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 0,
-  }).format(Math.round(amount));
-  return `Rp. ${formattedNumber}`;
-}
-
 function resolveRatingAndCount(product: Product): {
   rating: number;
   count: number;
@@ -130,7 +87,12 @@ export default function ProductCard({ product }: { product: Product }) {
       ? product.imageUrl
       : "/sepatu1.jpeg";
 
-  const brandLabel = resolveBrand(product);
+  const brandLabel = resolveProductBrand(
+    product.name,
+    product.brand,
+    product.category,
+    "SHOES4US"
+  );
   const audienceLabel = resolveAudienceLabel(product.audience);
   const colorLabel = resolveColorLabel(product.name, product.description);
   const { rating, count } = resolveRatingAndCount(product);
@@ -185,19 +147,19 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="mt-3">
           {product.isSale ? (
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-[15px] font-bold text-[#d91e2a]">
-                {formatCatalogPrice(product.price)}
+              <span className="text-[15px] font-bold text-[#d91e2a] tabular-nums">
+                {formatCurrency(product.price)}
               </span>
-              <span className="text-xs text-gray-500 line-through">
-                {formatCatalogPrice(originalPrice)}
+              <span className="text-xs text-gray-500 line-through tabular-nums">
+                {formatCurrency(originalPrice)}
               </span>
               <span className="bg-red-50 text-[#d91e2a] text-[11px] font-semibold px-1.5 py-0.5">
                 20% OFF
               </span>
             </div>
           ) : (
-            <p className="text-[15px] font-bold text-gray-900">
-              {formatCatalogPrice(product.price)}
+            <p className="text-[15px] font-bold text-gray-900 tabular-nums">
+              {formatCurrency(product.price)}
             </p>
           )}
 

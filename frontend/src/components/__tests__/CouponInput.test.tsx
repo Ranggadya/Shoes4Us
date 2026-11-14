@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CouponInput from "../CouponInput";
 import { api } from "@/services/api";
+import toast from "react-hot-toast";
 
 vi.mock("@/services/api", () => ({
   api: {
@@ -84,6 +85,7 @@ describe("CouponInput component", () => {
     expect(
       await screen.findByText("Kode voucher kadaluarsa")
     ).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
     expect(onApply).not.toHaveBeenCalled();
   });
 
@@ -139,6 +141,55 @@ describe("CouponInput component", () => {
     for (const chip of chipButtons) {
       expect(chip.className).toContain("min-h-[44px]");
     }
+  });
+
+  it("supports progressive disclosure via collapsible prop and disables vouchers below minimum spend", async () => {
+    render(
+      <CouponInput
+        subtotal={120000}
+        appliedCoupon={null}
+        onApply={vi.fn()}
+        collapsible
+      />
+    );
+
+    const toggle = screen.getByRole("button", {
+      name: /Punya kode voucher\? \(3 tersedia\)/i,
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByPlaceholderText(/Masukkan kode/i)).not.toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByPlaceholderText(/Masukkan kode/i)).toBeInTheDocument();
+
+    // At Rp 120.000, DISKON10 (min Rp 100rb) is enabled; HEMAT50RB (min Rp 300rb) and GRATISONGKIR (min Rp 150rb) are disabled
+    expect(screen.getByRole("button", { name: /DISKON10/i })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /HEMAT50RB/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /GRATISONGKIR/i })).toBeDisabled();
+  });
+
+  it("clears stale code input when appliedCoupon transitions from truthy to null", async () => {
+    const applied = {
+      code: "DISKON10",
+      description: "Diskon 10%",
+      discountType: "PERCENTAGE" as const,
+      discountAmount: 20000,
+      minOrderAmount: 100000,
+    };
+
+    const { rerender } = render(
+      <CouponInput subtotal={200000} appliedCoupon={applied} onApply={vi.fn()} />
+    );
+
+    expect(screen.getByText("DISKON10")).toBeInTheDocument();
+
+    rerender(
+      <CouponInput subtotal={50000} appliedCoupon={null} onApply={vi.fn()} />
+    );
+
+    const input = screen.getByPlaceholderText(/Masukkan kode/i);
+    expect(input).toHaveValue("");
   });
 });
 

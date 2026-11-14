@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "./AuthContext";
 import { api } from "@/services/api";
 
@@ -16,6 +17,8 @@ export type CartProduct = {
   name: string;
   price: number;
   imageUrl?: string | null;
+  brand?: string | null;
+  maxStock?: number;
 };
 
 export type CartItem = {
@@ -48,6 +51,8 @@ type CartContextValue = {
   cart: CartSummary | null;
   isLoading: boolean;
   error: string | null;
+  syncWarnings: string[];
+  clearSyncWarnings: () => void;
   addItem: (payload: AddCartPayload) => Promise<void>;
   updateItemQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -133,10 +138,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartSummary | null>(() => loadGuestCart());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncWarnings, setSyncWarnings] = useState<string[]>([]);
+
+  const clearSyncWarnings = useCallback(() => {
+    setSyncWarnings([]);
+  }, []);
 
   const syncGuestCartToBackend = useCallback(async () => {
     const guest = loadGuestCart();
     if (guest.items.length === 0) return;
+
+    const failedItems: string[] = [];
 
     for (const item of guest.items) {
       try {
@@ -145,8 +157,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
           quantity: item.quantity,
           size: item.size ?? undefined,
         });
-      } catch {
-        // Continue syncing remaining items even if one fails stock check
+      } catch (err) {
+        const reason =
+          err instanceof Error && err.message
+            ? err.message
+            : "Stok tidak mencukupi";
+        const sizeLabel = item.size ? ` (${item.size})` : "";
+        failedItems.push(`${item.product.name}${sizeLabel}: ${reason}`);
       }
     }
 
@@ -155,6 +172,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore storage errors
     }
+
+    if (failedItems.length > 0) {
+      setSyncWarnings(failedItems);
+      toast.error(
+        `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`,
+        { duration: 6000 }
+      );
+    }
   }, []);
 
   const loadCart = useCallback(
@@ -162,6 +187,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!user || !token) {
         setCart(loadGuestCart());
         setError(null);
+        setSyncWarnings([]);
         setIsLoading(false);
         return;
       }
@@ -223,6 +249,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 name: string;
                 price: number;
                 imageUrl?: string | null;
+                brand?: string | null;
+                stock?: number;
+                sizes?: Array<{ size: string; stock: number }>;
               };
             };
           }>(`/products/${encodeURIComponent(productId)}`);
@@ -230,11 +259,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
           if (!p) {
             throw new Error("Produk tidak ditemukan.");
           }
+          const matchedSizeStock =
+            size && Array.isArray(p.sizes)
+              ? p.sizes.find((entry) => entry.size === size)?.stock
+              : undefined;
+          const resolvedMaxStock =
+            typeof matchedSizeStock === "number" ? matchedSizeStock : p.stock;
+
           resolvedProduct = {
             id: p.id,
             name: p.name,
             price: p.price,
             imageUrl: p.imageUrl ?? null,
+            brand: p.brand ?? null,
+            maxStock:
+              typeof resolvedMaxStock === "number"
+                ? resolvedMaxStock
+                : undefined,
           };
         }
 
@@ -247,21 +288,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
 
         const nextItems = [...currentGuest.items];
-        if (existingIndex >= 0) {
-          const existing = nextItems[existingIndex];
-          const updatedQty = existing.quantity + quantity;
+        const existing = existingIndex >= 0 ? nextItems[existingIndex] : undefined;
+        const mergedProduct: CartProduct = existing
+          ? { ...existing.product, ...resolvedProduct }
+          : resolvedProduct;
+        const updatedQty = existing ? existing.quantity + quantity : quantity;
+
+        if (
+          typeof mergedProduct.maxStock === "number" &&
+          updatedQty > mergedProduct.maxStock
+        ) {
+          throw new Error(
+            mergedProduct.maxStock <= 0
+              ? `Stok ${mergedProduct.name} sudah habis.`
+              : `Stok tersisa ${mergedProduct.maxStock} pasang untuk ukuran ini.`
+          );
+        }
+
+        if (existing) {
           nextItems[existingIndex] = {
             ...existing,
+            product: mergedProduct,
             quantity: updatedQty,
-            lineTotal: existing.product.price * updatedQty,
+            lineTotal: mergedProduct.price * updatedQty,
           };
         } else {
           nextItems.push({
             id: itemKey,
-            product: resolvedProduct,
+            product: mergedProduct,
             quantity,
             size: normalizedSize,
-            lineTotal: resolvedProduct.price * quantity,
+            lineTotal: mergedProduct.price * quantity,
           });
         }
 
@@ -279,6 +336,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async (itemId: string, quantity: number) => {
       if (!token || !user) {
         const currentGuest = loadGuestCart();
+        const target = currentGuest.items.find((item) => item.id === itemId);
+        if (
+          target &&
+          typeof target.product.maxStock === "number" &&
+          quantity > target.product.maxStock
+        ) {
+          throw new Error(
+            target.product.maxStock <= 0
+              ? `Stok ${target.product.name} sudah habis.`
+              : `Stok tersisa ${target.product.maxStock} pasang untuk ukuran ini.`
+          );
+        }
+
         const nextItems = currentGuest.items
           .map((item) =>
             item.id === itemId
@@ -332,6 +402,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       isLoading,
       error,
+      syncWarnings,
+      clearSyncWarnings,
       addItem,
       updateItemQuantity,
       removeItem,
@@ -342,6 +414,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       isLoading,
       error,
+      syncWarnings,
+      clearSyncWarnings,
       addItem,
       updateItemQuantity,
       removeItem,

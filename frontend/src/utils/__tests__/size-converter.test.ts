@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { convertFootLengthToSize } from "../size-converter";
+import {
+  convertFootLengthToSize,
+  formatShoeSizeLabel,
+} from "../size-converter";
 
 describe("convertFootLengthToSize", () => {
   it("converts 26.0 cm foot length to EU 41 / US Men 8 / US Women 9.5 / UK 7.5", () => {
@@ -24,5 +27,12 @@ describe("convertFootLengthToSize", () => {
   it("steps up one EU size when WIDE foot fit is selected", () => {
     expect(convertFootLengthToSize(26.0, "WIDE").eu).toBe(42);
   });
-});
 
+  it("formats EU/US shoe size labels consistently across storefront", () => {
+    expect(formatShoeSizeLabel("42")).toBe("US 9.5 / EU 42");
+    expect(formatShoeSizeLabel("EU 41")).toBe("US 8.5 / EU 41");
+    expect(formatShoeSizeLabel("US 10")).toBe("US 10");
+    expect(formatShoeSizeLabel("47")).toBe("EU 47");
+    expect(formatShoeSizeLabel(null)).toBe("");
+  });
+});

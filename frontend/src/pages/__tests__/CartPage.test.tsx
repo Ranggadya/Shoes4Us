@@ -1,11 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { ReactElement } from "react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import toast from "react-hot-toast";
 import CartPage from "../CartPage";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { api } from "@/services/api";
 import { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
 
 const mockNavigate = vi.fn();
@@ -24,6 +27,16 @@ vi.mock("@/context/AuthContext", () => ({
 
 vi.mock("@/context/CartContext", () => ({
   useCart: vi.fn(),
+}));
+
+vi.mock("@/context/WishlistContext", () => ({
+  useWishlist: vi.fn(),
+}));
+
+vi.mock("@/services/api", () => ({
+  api: {
+    post: vi.fn(),
+  },
 }));
 
 vi.mock("react-hot-toast", () => {
@@ -63,6 +76,8 @@ function mockCartState(overrides?: Partial<ReturnType<typeof useCart>>) {
     },
     isLoading: false,
     error: null,
+    syncWarnings: [],
+    clearSyncWarnings: vi.fn(),
     addItem: vi.fn().mockResolvedValue(undefined),
     updateItemQuantity: vi.fn().mockResolvedValue(undefined),
     removeItem: vi.fn().mockResolvedValue(undefined),
@@ -79,6 +94,7 @@ describe("CartPage", () => {
     vi.clearAllMocks();
     sessionStorage.clear();
     document.title = "";
+    document.body.style.overflow = "";
     vi.mocked(useAuth).mockReturnValue({
       user: {
         id: "user-1",
@@ -95,6 +111,18 @@ describe("CartPage", () => {
       logout: vi.fn(),
       refresh: vi.fn(),
     });
+    vi.mocked(useWishlist).mockReturnValue({
+      isLoading: false,
+      productIds: new Set<string>(),
+      isWishlisted: vi.fn().mockReturnValue(false),
+      toggleProduct: vi.fn().mockResolvedValue(undefined),
+      refresh: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.style.overflow = "";
   });
 
   it("sets page title via SEO and renders error recovery with retry button calling refresh()", async () => {
@@ -152,12 +180,22 @@ describe("CartPage", () => {
     const productLink = screen.getByRole("link", { name: /Nike Dunk Low Panda/i });
     expect(productLink).toHaveAttribute("href", "/product/prod-1");
 
-    // Image attributes & fallback
-    const img = screen.getByAltText("Nike Dunk Low Panda") as HTMLImageElement;
+    // Image attributes & fallback (decorative thumbnail inside aria-hidden link + object-contain)
+    const img = container.querySelector("img") as HTMLImageElement;
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("alt", "");
+    expect(img.className).toContain("object-contain");
     expect(img).toHaveAttribute("loading", "lazy");
     expect(img).toHaveAttribute("decoding", "async");
     fireEvent.error(img);
     expect(img.getAttribute("src")).toBe("/sepatu1.jpeg");
+
+    // Brand, US / EU shoe size, and exit path link
+    expect(screen.getByText(/US 9\.5 \/ EU 42/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Lanjut Belanja/i })).toHaveAttribute(
+      "href",
+      "/product"
+    );
 
     // Stepper controls have product-specific aria-label, type="button", and minus disabled at qty 1
     const decBtn = screen.getByRole("button", {
@@ -320,5 +358,214 @@ describe("CartPage", () => {
 
     expect(screen.getByRole("status", { name: /Memuat keranjang belanja/i })).toBeInTheDocument();
     expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toBe(saved);
+  });
+
+  it("re-validates percentage coupon when subtotal changes above minOrderAmount", async () => {
+    vi.useFakeTimers();
+    sessionStorage.setItem(
+      SAVED_COUPON_STORAGE_KEY,
+      JSON.stringify({
+        code: "DISKON10",
+        description: "Diskon 10%",
+        discountType: "PERCENTAGE",
+        discountAmount: 20000,
+        minOrderAmount: 100000,
+      })
+    );
+
+    vi.mocked(api.post).mockResolvedValueOnce({
+      success: true,
+      data: {
+        code: "DISKON10",
+        description: "Diskon 10%",
+        discountType: "PERCENTAGE",
+        discountAmount: 40000,
+        minOrderAmount: 100000,
+      },
+    });
+
+    mockCartState({
+      cart: {
+        id: "cart-1",
+        items: [createMockCartItem({ quantity: 1, price: 200000 })],
+        totals: { subtotal: 200000, totalItems: 1 },
+      },
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    mockCartState({
+      cart: {
+        id: "cart-1",
+        items: [createMockCartItem({ quantity: 2, price: 200000 })],
+        totals: { subtotal: 400000, totalItems: 2 },
+      },
+    });
+
+    rerender(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/coupons/validate", {
+        code: "DISKON10",
+        subtotal: 400000,
+        shippingFee: 0,
+      });
+    });
+    expect(await screen.findByText(/- Rp\s*40\.000/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rp\s*360\.000/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("displays guest cart syncWarnings banner and allows saving items to wishlist", async () => {
+    const clearSyncWarnings = vi.fn();
+    const removeItem = vi.fn().mockResolvedValue(undefined);
+    const toggleProduct = vi.fn().mockResolvedValue(undefined);
+    mockCartState({
+      syncWarnings: ["Adidas Samba OG (42): Stok habis"],
+      clearSyncWarnings,
+      removeItem,
+    });
+    vi.mocked(useWishlist).mockReturnValue({
+      isLoading: false,
+      productIds: new Set<string>(),
+      isWishlisted: vi.fn().mockReturnValue(false),
+      toggleProduct,
+      refresh: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /Adidas Samba OG \(42\): Stok habis/
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Tutup peringatan sinkronisasi/i })
+    );
+    expect(clearSyncWarnings).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Simpan Nike Dunk Low Panda ke Wishlist/i })
+    );
+    expect(toggleProduct).toHaveBeenCalledWith("prod-1");
+    expect(removeItem).toHaveBeenCalledWith("item-1");
+
+    // Sticky mobile checkout bar should not carry WhatsApp dead-zone padding
+    const mobileBar = container.querySelector(".fixed.bottom-0");
+    expect(mobileBar?.className).not.toContain("pr-20");
+    expect(mobileBar?.className).not.toContain("sm:pr-44");
+  });
+
+  it("restores auto-cleared coupon when user clicks Urungkan after removing item and traps focus in alertdialog", async () => {
+    sessionStorage.setItem(
+      SAVED_COUPON_STORAGE_KEY,
+      JSON.stringify({
+        code: "DISKON10",
+        description: "Diskon 10%",
+        discountType: "PERCENTAGE",
+        discountAmount: 25000,
+        minOrderAmount: 100000,
+      })
+    );
+
+    const removeItem = vi.fn().mockResolvedValue(undefined);
+    const rerenderRef: { fn?: (ui: ReactElement) => void } = {};
+    const addItem = vi.fn(async () => {
+      mockCartState({
+        cart: {
+          id: "cart-1",
+          items: [createMockCartItem({ quantity: 1, price: 250000 })],
+          totals: { subtotal: 250000, totalItems: 1 },
+        },
+        addItem,
+        removeItem,
+      });
+      rerenderRef.fn?.(
+        <MemoryRouter initialEntries={["/cart"]}>
+          <CartPage />
+        </MemoryRouter>
+      );
+    });
+    mockCartState({
+      cart: {
+        id: "cart-1",
+        items: [createMockCartItem({ quantity: 1, price: 250000 })],
+        totals: { subtotal: 250000, totalItems: 1 },
+      },
+      addItem,
+      removeItem,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+    rerenderRef.fn = rerender;
+
+    // Trigger clearCart dialog focus trap and scroll lock
+    await userEvent.click(
+      screen.getByRole("button", { name: /Kosongkan Keranjang/i })
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+    const cancelBtn = screen.getByRole("button", { name: /Batalkan/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /Ya, Kosongkan Keranjang/i,
+    });
+    expect(document.activeElement).toBe(cancelBtn);
+
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(confirmBtn);
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(cancelBtn);
+
+    await userEvent.click(cancelBtn);
+    expect(document.body.style.overflow).toBe("");
+
+    // Now remove item, simulating cart dropping to 0 (coupon cleared), then click Urungkan
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Hapus Nike Dunk Low Panda ukuran 42/i,
+      })
+    );
+
+    mockCartState({
+      cart: { id: "cart-1", items: [], totals: { subtotal: 0, totalItems: 0 } },
+      addItem,
+      removeItem,
+    });
+    rerender(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+    expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toBeNull();
+
+    const toastRenderer = vi.mocked(toast).mock.calls[0]?.[0];
+    if (typeof toastRenderer === "function") {
+      const undoView = render(toastRenderer({ id: "toast-undo-coupon" } as never));
+      await userEvent.click(undoView.getByRole("button", { name: /Urungkan/i }));
+      undoView.unmount();
+    }
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toContain("DISKON10");
+    });
+    expect(screen.getByText(/Diskon \(DISKON10\)/i)).toBeInTheDocument();
   });
 });

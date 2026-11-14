@@ -25,9 +25,26 @@ export default function EmptyCart() {
         <span>Mulai Belanja</span>
       </Link>
 
-      <p className="mt-8 text-xs sm:text-sm text-neutral-600">
-        Tips: Cari sepatu berdasarkan kategori atau gunakan fitur pencarian di bagian atas.
-      </p>
+      <div className="mt-8 w-full max-w-md border-t border-neutral-200 pt-6">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-700 mb-3">
+          Jelajahi Kategori Populer
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          {[
+            { label: "Running", to: "/product?category=running" },
+            { label: "Casual", to: "/product?category=casual" },
+            { label: "Sneakers", to: "/product?category=sneakers" },
+          ].map((cat) => (
+            <Link
+              key={cat.to}
+              to={cat.to}
+              className="min-h-[44px] min-w-[44px] px-4 py-2 border border-neutral-300 bg-white text-xs font-bold uppercase tracking-wider text-neutral-900 hover:border-black hover:bg-neutral-100 transition-colors inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+            >
+              {cat.label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

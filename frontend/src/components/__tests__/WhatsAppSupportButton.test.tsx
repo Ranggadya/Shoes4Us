@@ -86,4 +86,18 @@ describe("WhatsAppSupportButton", () => {
       encodeURIComponent("Air Jordan 1 Low - NIKE")
     );
   });
+
+  it("hides floating button below lg breakpoint on /cart so it never overlaps sticky checkout bar", () => {
+    render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <WhatsAppSupportButton />
+      </MemoryRouter>
+    );
+
+    const link = screen.getByRole("link", {
+      name: /WhatsApp.*buka di tab baru/i,
+    });
+    expect(link.className).toContain("hidden");
+    expect(link.className).toContain("lg:inline-flex");
+  });
 });
