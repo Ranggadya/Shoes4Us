@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Facebook, Instagram } from "lucide-react";
+import { SUPPORT_CONTACT } from "@/constants/contact";
 
 export default function Footer() {
   return (
@@ -17,8 +18,8 @@ export default function Footer() {
               </div>
               <div>
                 <h4 className="font-semibold mb-1">Layanan Pelanggan</h4>
-                <p className="text-gray-600">Email: connect@shoes4us.id</p>
-                <p className="text-gray-600">WhatsApp: +6281574577583</p>
+                <p className="text-gray-600">Email: {SUPPORT_CONTACT.email}</p>
+                <p className="text-gray-600">WhatsApp: {SUPPORT_CONTACT.whatsappDisplayCompact}</p>
               </div>
             </div>
           </div>

@@ -15,6 +15,7 @@ import {
   Send,
   ExternalLink,
 } from "lucide-react";
+import { SUPPORT_CONTACT } from "@/constants/contact";
 
 export type InfoPageSlug =
   | "tentang-kami"
@@ -680,7 +681,7 @@ export default function InfoPages({ page }: { page: InfoPageSlug }) {
                         Email Resmi
                       </h3>
                       <p className="text-sm font-semibold text-slate-800 mt-1">
-                        connect@shoes4us.id
+                        {SUPPORT_CONTACT.email}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         Respon cepat dalam &lt; 2 jam kerja
@@ -693,7 +694,7 @@ export default function InfoPages({ page }: { page: InfoPageSlug }) {
                         WhatsApp Layanan Pelanggan
                       </h3>
                       <p className="text-sm font-semibold text-slate-800 mt-1">
-                        +62 815-7457-7583
+                        {SUPPORT_CONTACT.whatsappDisplayFormatted}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         Tersedia untuk chat & konfirmasi resi
