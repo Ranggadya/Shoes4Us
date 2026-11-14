@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useId, useState, useRef } from "react";
 import { UploadCloud, Link as LinkIcon, X, Loader2, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { uploadImage } from "@/services/api";
@@ -14,6 +14,8 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const fileInputId = useId();
+  const urlInputId = useId();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mode, setMode] = useState<"upload" | "url">("upload");
@@ -73,34 +75,38 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   return (
     <div className="w-full space-y-3">
       {/* Tab Switcher */}
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-gray-700">
-          Foto Produk <span className="text-xs text-gray-500">(Cloudflare R2 / URL)</span>
+      <div className="flex items-center justify-between gap-2">
+        <label
+          htmlFor={mode === "upload" ? fileInputId : urlInputId}
+          className="block text-sm font-medium text-gray-800"
+        >
+          Foto Produk{" "}
+          <span className="text-xs text-gray-500">(Cloudflare R2 / URL)</span>
         </label>
         <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs font-medium">
           <button
             type="button"
             onClick={() => setMode("upload")}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === "upload"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-white text-gray-950 font-semibold shadow-sm"
+                : "text-gray-600 hover:text-gray-950"
             }`}
           >
-            <UploadCloud className="w-3.5 h-3.5" />
-            Upload File
+            <UploadCloud className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Upload File</span>
           </button>
           <button
             type="button"
             onClick={() => setMode("url")}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 ${
+            className={`min-h-[36px] px-2.5 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === "url"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-white text-gray-950 font-semibold shadow-sm"
+                : "text-gray-600 hover:text-gray-950"
             }`}
           >
-            <LinkIcon className="w-3.5 h-3.5" />
-            Input URL
+            <LinkIcon className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Input URL</span>
           </button>
         </div>
       </div>
@@ -108,6 +114,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
       {mode === "upload" ? (
         <div>
           <input
+            id={fileInputId}
             type="file"
             ref={fileInputRef}
             onChange={(e) => {
@@ -121,31 +128,44 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           />
 
           <div
+            role="button"
+            tabIndex={disabled || uploading ? -1 : 0}
+            aria-label="Unggah gambar produk"
+            aria-disabled={disabled || uploading}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onClick={() => {
               if (!disabled && !uploading) fileInputRef.current?.click();
             }}
-            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+            onKeyDown={(e) => {
+              if (disabled || uploading) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 ${
               isDragging
-                ? "border-blue-500 bg-blue-50/50"
-                : "border-gray-300 hover:border-gray-400 bg-gray-50/50 hover:bg-gray-50"
+                ? "border-gray-900 bg-gray-100/70"
+                : "border-gray-300 hover:border-gray-500 bg-gray-50/50 hover:bg-gray-50"
             } ${disabled || uploading ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             {uploading ? (
               <div className="py-4 flex flex-col items-center justify-center space-y-2">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                <p className="text-sm font-medium text-gray-700">Mengunggah gambar ke cloud...</p>
+                <Loader2 className="w-8 h-8 text-gray-900 animate-spin" aria-hidden="true" />
+                <p className="text-sm font-medium text-gray-700">
+                  Mengunggah gambar ke cloud...
+                </p>
                 <p className="text-xs text-gray-500">Mohon tunggu beberapa saat</p>
               </div>
             ) : (
               <div className="py-2 flex flex-col items-center justify-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-1">
-                  <UploadCloud className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 mb-1">
+                  <UploadCloud className="w-6 h-6" aria-hidden="true" />
                 </div>
                 <div>
-                  <span className="font-semibold text-blue-600 hover:text-blue-700">
+                  <span className="font-semibold text-gray-950 underline underline-offset-2">
                     Klik untuk memilih file
                   </span>{" "}
                   <span className="text-gray-600">atau drag and drop ke sini</span>
@@ -158,19 +178,29 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative">
-          <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="url"
-            value={value}
-            onChange={(e) => {
-              onChange(e.target.value);
-              setPreviewError(false);
-            }}
-            placeholder="https://example.com/sepatu.jpg atau /sepatu1.jpeg"
-            disabled={disabled}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-          />
+        <div className="space-y-1.5">
+          <div className="relative">
+            <LinkIcon
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+              aria-hidden="true"
+            />
+            <input
+              id={urlInputId}
+              type="text"
+              inputMode="url"
+              value={value}
+              onChange={(e) => {
+                onChange(e.target.value);
+                setPreviewError(false);
+              }}
+              placeholder="https://example.com/sepatu.jpg atau /sepatu1.jpeg"
+              disabled={disabled}
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100"
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Mendukung URL penuh (https://...) atau path aset lokal (/sepatu1.jpeg).
+          </p>
         </div>
       )}
 
@@ -181,18 +211,18 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
             {!previewError ? (
               <img
                 src={value}
-                alt="Preview"
+                alt="Preview produk"
                 className="w-full h-full object-contain"
                 onError={() => setPreviewError(true)}
               />
             ) : (
-              <ImageIcon className="w-6 h-6 text-gray-400" />
+              <ImageIcon className="w-6 h-6 text-gray-500" aria-hidden="true" />
             )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Gambar Siap Digunakan</span>
             </div>
             <p className="text-xs text-gray-500 truncate mt-0.5" title={value}>
@@ -207,10 +237,11 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
                 onChange("");
                 setPreviewError(false);
               }}
-              className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-500 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
+              aria-label="Hapus gambar"
               title="Hapus gambar"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>

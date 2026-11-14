@@ -19,9 +19,15 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     <div className="flex flex-col min-h-screen">
       {!isAdminPage && !isAuthPage && <Navbar />}
       {isAuthPage && <AuthNavbar />}
-      <main className="flex-grow">
-        <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
-      </main>
+      {isAdminPage ? (
+        <div className="flex-grow">
+          <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+        </div>
+      ) : (
+        <main className="flex-grow">
+          <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+        </main>
+      )}
       {!isAdminPage && !isAuthPage && <Footer />}
       {!isAdminPage && !isAuthPage && <WhatsAppSupportButton />}
     </div>

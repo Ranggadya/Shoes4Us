@@ -177,5 +177,15 @@ export interface ApiResponse<T = unknown> {
     page?: number;
     limit?: number;
     total?: number;
+    totalPages?: number;
   };
+}
+
+export interface AdminUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive?: boolean;
+  createdAt?: string;
 }

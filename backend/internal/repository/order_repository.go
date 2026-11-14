@@ -418,14 +418,24 @@ func (r *PostgresOrderRepository) FindAll(ctx context.Context, filter domain.Ord
 
 	if len(orderIDs) > 0 {
 		itemsMap, err := r.loadItemsForOrderIDs(ctx, orderIDs)
-		if err == nil {
-			for i := range orders {
-				orders[i].Items = itemsMap[orders[i].ID]
-			}
+		if err != nil {
+			return nil, 0, err
 		}
+		assignOrderItems(orders, itemsMap)
 	}
 
 	return orders, total, nil
+}
+
+// assignOrderItems attaches loaded order items and guarantees a non-nil slice so JSON never emits null.
+func assignOrderItems(orders []domain.Order, itemsMap map[string][]domain.OrderItem) {
+	for i := range orders {
+		if items := itemsMap[orders[i].ID]; items != nil {
+			orders[i].Items = items
+			continue
+		}
+		orders[i].Items = make([]domain.OrderItem, 0)
+	}
 }
 
 // UpdateStatusWithTx performs an atomic state update and optional restock in a transaction.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -7,25 +7,23 @@ import {
   FileText,
   Save,
   X,
-  Plus,
-  Minus,
   ArrowLeft,
   Tag,
   Box,
 } from "lucide-react";
 import { ImageUploadDropzone } from "@/components/admin/ImageUploadDropzone";
 import AdminLayout from "@/components/admin/AdminLayout";
+import SizeStockEditor from "@/components/admin/SizeStockEditor";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
 import {
   CATALOG_CATEGORIES,
   PRODUCT_AUDIENCES,
   PRODUCT_SEGMENTS,
+  buildEditableSizeStocks,
   createDefaultSizeStocks,
 } from "@/constants/product";
-import type { ProductAudience, ProductSegment } from "@/types";
-
-const DEFAULT_SIZE_STOCKS = createDefaultSizeStocks();
+import type { ProductAudience, ProductSegment, ProductSizeStock } from "@/types";
 
 export default function AdminAddProductPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -36,7 +34,6 @@ export default function AdminAddProductPage() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("0");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [brand, setBrand] = useState("");
@@ -46,10 +43,20 @@ export default function AdminAddProductPage() {
   const [isExclusive, setIsExclusive] = useState(false);
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isSale, setIsSale] = useState(false);
-  const [sizeStocks, setSizeStocks] = useState(DEFAULT_SIZE_STOCKS);
+  const [sizeStocks, setSizeStocks] = useState<ProductSizeStock[]>(() =>
+    createDefaultSizeStocks("SHOES")
+  );
 
   // UI state
   const [currentStep, setCurrentStep] = useState(1);
+
+  const nameId = useId();
+  const brandId = useId();
+  const audienceId = useId();
+  const segmentId = useId();
+  const priceId = useId();
+  const totalStockId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "ADMIN")) {
@@ -64,37 +71,37 @@ export default function AdminAddProductPage() {
 
   const formatPrice = (value: string) => {
     if (!value) return "";
-    return new Intl.NumberFormat("id-ID").format(parseInt(value, 10));
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return "";
+    return new Intl.NumberFormat("id-ID").format(parsed);
   };
 
-  const handleStockChange = (delta: number) => {
-    const currentStock = parseInt(stock, 10) || 0;
-    const newStock = Math.max(0, currentStock + delta);
-    setStock(newStock.toString());
-  };
-
-  const handleSizeStockChange = (size: string, value: string) => {
-    const nextStock = Math.max(0, Number(value) || 0);
-    setSizeStocks((current) =>
-      current.map((item) =>
-        item.size === size ? { ...item, stock: nextStock } : item
+  const handleSegmentChange = (nextSegment: ProductSegment) => {
+    setSegment(nextSegment);
+    setSizeStocks((prev) =>
+      buildEditableSizeStocks(
+        nextSegment,
+        prev.filter((item) => item.stock > 0)
       )
     );
-    setStock(
-      sizeStocks
-        .map((item) => (item.size === size ? nextStock : item.stock))
-        .reduce((sum, val) => sum + val, 0)
-        .toString()
-    );
   };
 
-  const totalSizeStock = sizeStocks.reduce((sum, item) => sum + item.stock, 0);
+  const totalSizeStock = sizeStocks.reduce(
+    (sum, item) => sum + Math.max(0, Number(item.stock) || 0),
+    0
+  );
+  const parsedPrice = price ? parseInt(price, 10) : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !category || !price) {
-      toast.error("Nama, kategori, dan harga wajib diisi");
+    if (!name.trim() || !category) {
+      toast.error("Nama dan kategori wajib diisi");
+      return;
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      toast.error("Harga produk harus lebih dari Rp 0");
       return;
     }
 
@@ -104,8 +111,8 @@ export default function AdminAddProductPage() {
       const formData = new FormData();
       formData.append("name", name.trim());
       formData.append("category", category);
-      formData.append("price", price);
-      formData.append("stock", String(totalSizeStock || Number(stock) || 0));
+      formData.append("price", String(parsedPrice));
+      formData.append("stock", String(totalSizeStock));
       formData.append("description", description || "");
       formData.append("brand", brand.trim());
       formData.append("audience", audience);
@@ -115,8 +122,8 @@ export default function AdminAddProductPage() {
       formData.append("isComingSoon", String(isComingSoon));
       formData.append("isSale", String(isSale));
       formData.append("sizes", JSON.stringify(sizeStocks));
-      if (imageUrl) {
-        formData.append("imageUrl", imageUrl);
+      if (imageUrl.trim()) {
+        formData.append("imageUrl", imageUrl.trim());
       }
 
       await api.post("/products", formData);
@@ -152,13 +159,15 @@ export default function AdminAddProductPage() {
         <div className="mb-6">
           <Link
             to="/admin/product"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-gray-900 mb-3"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-950 mb-3 min-h-[36px]"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             <span>Kembali ke Katalog Produk</span>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950">Tambah Produk Baru</h1>
-          <p className="text-xs text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-950">
+            Tambah Produk Baru
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
             Isi form di bawah untuk menambahkan sepatu atau koleksi baru ke katalog.
           </p>
         </div>
@@ -166,68 +175,114 @@ export default function AdminAddProductPage() {
         {/* Progress Steps */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-3 ${currentStep >= 1 ? "text-blue-600" : "text-gray-400"}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 1 ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+            <div
+              className={`flex items-center gap-3 ${
+                currentStep >= 1 ? "text-gray-950" : "text-gray-500"
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  currentStep >= 1
+                    ? "bg-gray-950 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
                 1
               </div>
               <div className="hidden sm:block">
                 <p className="font-semibold">Info Dasar</p>
-                <p className="text-xs">Nama & kategori</p>
+                <p className="text-xs text-gray-600">Nama & kategori</p>
               </div>
             </div>
 
-            <div className="flex-1 h-1 mx-4 bg-gray-200">
-              <div className={`h-full transition-all ${currentStep >= 2 ? "bg-blue-600 w-full" : "w-0"}`}></div>
+            <div className="flex-1 h-1 mx-4 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  currentStep >= 2 ? "bg-gray-950 w-full" : "w-0"
+                }`}
+              />
             </div>
 
-            <div className={`flex items-center gap-3 ${currentStep >= 2 ? "text-blue-600" : "text-gray-400"}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 2 ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+            <div
+              className={`flex items-center gap-3 ${
+                currentStep >= 2 ? "text-gray-950" : "text-gray-500"
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  currentStep >= 2
+                    ? "bg-gray-950 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
                 2
               </div>
               <div className="hidden sm:block">
                 <p className="font-semibold">Harga & Stok</p>
-                <p className="text-xs">Pricing info</p>
+                <p className="text-xs text-gray-600">Pricing info</p>
               </div>
             </div>
 
-            <div className="flex-1 h-1 mx-4 bg-gray-200">
-              <div className={`h-full transition-all ${currentStep >= 3 ? "bg-blue-600 w-full" : "w-0"}`}></div>
+            <div className="flex-1 h-1 mx-4 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  currentStep >= 3 ? "bg-gray-950 w-full" : "w-0"
+                }`}
+              />
             </div>
 
-            <div className={`flex items-center gap-3 ${currentStep >= 3 ? "text-blue-600" : "text-gray-400"}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentStep >= 3 ? "bg-blue-600 text-white" : "bg-gray-200"}`}>
+            <div
+              className={`flex items-center gap-3 ${
+                currentStep >= 3 ? "text-gray-950" : "text-gray-500"
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  currentStep >= 3
+                    ? "bg-gray-950 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
                 3
               </div>
               <div className="hidden sm:block">
                 <p className="font-semibold">Detail</p>
-                <p className="text-xs">Gambar & deskripsi</p>
+                <p className="text-xs text-gray-600">Gambar & deskripsi</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* Step 1: Basic Info */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-gray-100 rounded-xl">
+                <Package className="w-6 h-6 text-gray-950" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Informasi Dasar</h2>
+                <h2 className="text-xl font-semibold text-gray-950">
+                  Informasi Dasar
+                </h2>
                 <p className="text-sm text-gray-600">Nama produk dan kategori</p>
               </div>
             </div>
 
-            {/* Product Name */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nama Produk <span className="text-red-600">*</span>
+              <label
+                htmlFor={nameId}
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Nama Produk <span className="text-rose-700">*</span>
               </label>
               <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Tag
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
+                  aria-hidden="true"
+                />
                 <input
+                  id={nameId}
                   type="text"
                   value={name}
                   onChange={(e) => {
@@ -236,7 +291,7 @@ export default function AdminAddProductPage() {
                   }}
                   onFocus={() => setCurrentStep(1)}
                   placeholder="Contoh: Nike Air Max 270"
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   disabled={loading}
                   required
                 />
@@ -246,36 +301,50 @@ export default function AdminAddProductPage() {
               </p>
             </div>
 
-            {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Kategori Produk <span className="text-red-600">*</span>
-              </label>
+              <p className="block text-sm font-medium text-gray-700 mb-3">
+                Kategori Produk <span className="text-rose-700">*</span>
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {CATALOG_CATEGORIES.map((cat) => (
                   <button
                     key={cat.value}
                     type="button"
+                    aria-pressed={category === cat.value}
                     onClick={() => {
                       setCategory(cat.value);
                       if (currentStep < 2) setCurrentStep(2);
                     }}
-                    className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    className={`p-4 border-2 rounded-xl text-left transition-all ${
                       category === cat.value
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300 bg-white"
+                        ? "border-gray-950 bg-gray-50"
+                        : "border-gray-200 hover:border-gray-400 bg-white"
                     } ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     disabled={loading}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-3xl">{cat.icon}</span>
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 font-bold text-sm text-gray-900 shrink-0"
+                      >
+                        {cat.icon}
+                      </span>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{cat.label}</p>
-                        <p className="text-xs text-gray-600 mt-1">{cat.description}</p>
+                        <p className="font-semibold text-gray-950">{cat.label}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {cat.description}
+                        </p>
                       </div>
                       {category === cat.value && (
-                        <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div
+                          aria-hidden="true"
+                          className="w-5 h-5 bg-gray-950 rounded-full flex items-center justify-center shrink-0"
+                        >
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
                             <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
                           </svg>
                         </div>
@@ -287,40 +356,52 @@ export default function AdminAddProductPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-indigo-50 rounded-lg">
-                <Box className="w-6 h-6 text-indigo-600" />
+              <div className="p-3 bg-gray-100 rounded-xl">
+                <Box className="w-6 h-6 text-gray-950" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Klasifikasi Katalog</h2>
-                <p className="text-sm text-gray-600">Dipakai oleh filter navbar dan mega menu</p>
+                <h2 className="text-xl font-semibold text-gray-950">
+                  Klasifikasi Katalog
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Dipakai oleh filter navbar dan mega menu
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor={brandId}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Brand
                 </label>
                 <input
+                  id={brandId}
                   type="text"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
                   placeholder="Nike, Adidas, New Balance"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100"
                   disabled={loading}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor={audienceId}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Target
                 </label>
                 <select
+                  id={audienceId}
                   value={audience}
                   onChange={(e) => setAudience(e.target.value as ProductAudience)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100"
                   disabled={loading}
                 >
                   {PRODUCT_AUDIENCES.map((item) => (
@@ -332,13 +413,19 @@ export default function AdminAddProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor={segmentId}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Segment
                 </label>
                 <select
+                  id={segmentId}
                   value={segment}
-                  onChange={(e) => setSegment(e.target.value as ProductSegment)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  onChange={(e) =>
+                    handleSegmentChange(e.target.value as ProductSegment)
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100"
                   disabled={loading}
                 >
                   {PRODUCT_SEGMENTS.map((item) => (
@@ -359,51 +446,57 @@ export default function AdminAddProductPage() {
               ].map((item) => (
                 <label
                   key={item.label}
-                  className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700"
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 min-h-[44px]"
                 >
                   <input
                     type="checkbox"
                     checked={item.checked}
                     onChange={(e) => item.onChange(e.target.checked)}
                     disabled={loading}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-gray-300 accent-black"
                   />
-                  {item.label}
+                  <span>{item.label}</span>
                 </label>
               ))}
             </div>
 
             {selectedCategory && (
-              <p className="mt-4 text-xs text-gray-500">
+              <p className="mt-4 text-xs text-gray-600">
                 Kategori aktif: {selectedCategory.label}
               </p>
             )}
           </div>
 
           {/* Step 2: Price & Stock */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-green-50 rounded-lg">
-                <DollarSign className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-gray-100 rounded-xl">
+                <DollarSign className="w-6 h-6 text-gray-950" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Harga & Stok</h2>
-                <p className="text-sm text-gray-600">Tentukan harga dan ketersediaan</p>
+                <h2 className="text-xl font-semibold text-gray-950">Harga & Stok</h2>
+                <p className="text-sm text-gray-600">
+                  Tentukan harga dan ketersediaan
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Price */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Harga (Rp) <span className="text-red-600">*</span>
+                <label
+                  htmlFor={priceId}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Harga (Rp) <span className="text-rose-700">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-medium">
                     Rp
                   </span>
                   <input
+                    id={priceId}
                     type="text"
+                    inputMode="numeric"
                     value={formatPrice(price)}
                     onChange={(e) => {
                       handlePriceChange(e.target.value);
@@ -411,55 +504,33 @@ export default function AdminAddProductPage() {
                     }}
                     onFocus={() => setCurrentStep(2)}
                     placeholder="0"
-                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-lg font-semibold"
+                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-lg font-semibold tabular-nums"
                     disabled={loading}
                     required
                   />
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  {price && parseInt(price, 10) > 0
-                    ? `= ${formatPrice(price)} Rupiah`
-                    : "Masukkan harga dalam Rupiah"}
+                  {parsedPrice > 0
+                    ? `= Rp ${formatPrice(price)} Rupiah`
+                    : "Masukkan harga lebih dari Rp 0"}
                 </p>
               </div>
 
-              {/* Stock */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Stok
+                <label
+                  htmlFor={totalStockId}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Total Stok Otomatis
                 </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleStockChange(-1)}
-                    disabled
-                    className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    <Minus className="w-5 h-5" />
-                  </button>
-                  <input
-                    type="number"
-                    value={stock}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === "" || parseInt(value, 10) >= 0) {
-                        setStock(value);
-                      }
-                    }}
-                    onFocus={() => setCurrentStep(2)}
-                    min="0"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-semibold disabled:bg-gray-100"
-                    disabled
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleStockChange(1)}
-                    disabled
-                    className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
+                <input
+                  id={totalStockId}
+                  type="number"
+                  value={totalSizeStock}
+                  readOnly
+                  disabled
+                  className="w-full px-4 py-3 border border-gray-200 bg-gray-100 text-gray-700 rounded-xl text-center text-lg font-semibold tabular-nums cursor-not-allowed"
+                />
                 <p className="mt-1 text-xs text-gray-500">
                   Total dihitung otomatis dari stok per ukuran
                 </p>
@@ -467,45 +538,36 @@ export default function AdminAddProductPage() {
             </div>
 
             <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <p className="block text-sm font-medium text-gray-700 mb-3">
                 Stok Per Ukuran
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {sizeStocks.map((item) => (
-                  <label key={item.size} className="rounded-lg border border-gray-200 p-3">
-                    <span className="block text-xs font-semibold text-gray-500 mb-1">
-                      EU {item.size}
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={item.stock}
-                      onChange={(e) => handleSizeStockChange(item.size, e.target.value)}
-                      disabled={loading}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Total stok dari ukuran: {totalSizeStock} unit
               </p>
+              <SizeStockEditor
+                segment={segment}
+                sizeStocks={sizeStocks}
+                onChange={setSizeStocks}
+                disabled={loading}
+              />
             </div>
 
-            {/* Price Preview */}
-            {price && parseInt(price, 10) > 0 && (
-              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            {parsedPrice > 0 && (
+              <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-green-800 font-medium">Preview Harga</p>
-                    <p className="text-2xl font-bold text-green-900 mt-1">
+                    <p className="text-xs uppercase tracking-wider text-gray-600 font-semibold">
+                      Preview Harga
+                    </p>
+                    <p className="text-2xl font-bold text-gray-950 mt-1 tabular-nums">
                       Rp {formatPrice(price)}
                     </p>
                   </div>
-                  {stock && parseInt(stock, 10) > 0 && (
+                  {totalSizeStock > 0 && (
                     <div className="text-right">
-                      <p className="text-sm text-green-800">Stok tersedia</p>
-                      <p className="text-xl font-bold text-green-900">{stock} unit</p>
+                      <p className="text-xs uppercase tracking-wider text-gray-600 font-semibold">
+                        Stok tersedia
+                      </p>
+                      <p className="text-xl font-bold text-gray-950 tabular-nums">
+                        {totalSizeStock} unit
+                      </p>
                     </div>
                   )}
                 </div>
@@ -514,18 +576,19 @@ export default function AdminAddProductPage() {
           </div>
 
           {/* Step 3: Details */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <FileText className="w-6 h-6 text-purple-600" />
+              <div className="p-3 bg-gray-100 rounded-xl">
+                <FileText className="w-6 h-6 text-gray-950" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Detail Produk</h2>
-                <p className="text-sm text-gray-600">Gambar dan deskripsi (opsional)</p>
+                <h2 className="text-xl font-semibold text-gray-950">Detail Produk</h2>
+                <p className="text-sm text-gray-600">
+                  Gambar dan deskripsi (opsional)
+                </p>
               </div>
             </div>
 
-            {/* Image Upload Dropzone */}
             <div className="mb-6">
               <ImageUploadDropzone
                 value={imageUrl}
@@ -537,12 +600,15 @@ export default function AdminAddProductPage() {
               />
             </div>
 
-            {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor={descriptionId}
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Deskripsi Produk
               </label>
               <textarea
+                id={descriptionId}
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -552,14 +618,20 @@ export default function AdminAddProductPage() {
                 placeholder="Deskripsi detail produk, fitur, material, dll..."
                 rows={5}
                 maxLength={500}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-950 focus:border-transparent disabled:bg-gray-100 resize-none"
                 disabled={loading}
               />
               <div className="mt-1 flex items-center justify-between">
                 <p className="text-xs text-gray-500">
                   Tips: Jelaskan keunggulan dan detail produk
                 </p>
-                <p className={`text-xs ${description.length > 450 ? "text-red-600 font-medium" : "text-gray-500"}`}>
+                <p
+                  className={`text-xs tabular-nums ${
+                    description.length > 450
+                      ? "text-rose-700 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
                   {description.length}/500 karakter
                 </p>
               </div>
@@ -567,57 +639,91 @@ export default function AdminAddProductPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 to="/admin/product"
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] border border-gray-300 text-gray-800 rounded-xl hover:bg-gray-50 transition font-semibold text-sm"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
                 <span>Batal</span>
               </Link>
               <button
                 type="submit"
-                disabled={loading || !name || !category || !price}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+                disabled={loading || !name.trim() || !category || parsedPrice <= 0}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-gray-950 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div
+                      aria-hidden="true"
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
+                    />
                     <span>Menyimpan...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="w-5 h-5" />
+                    <Save className="w-5 h-5" aria-hidden="true" />
                     <span>Simpan Produk</span>
                   </>
                 )}
               </button>
             </div>
 
-            {/* Validation Summary */}
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mt-4 p-3 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-600 mb-2">
                 <span className="font-medium">Status Form:</span>
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                <div className={`flex items-center gap-1 ${name ? "text-green-600" : "text-gray-400"}`}>
-                  {name ? "✓" : "○"} Nama produk
+                <div
+                  className={`flex items-center gap-1 ${
+                    name.trim() ? "text-emerald-700 font-medium" : "text-gray-500"
+                  }`}
+                >
+                  {name.trim() ? "✓" : "○"} Nama produk
                 </div>
-                <div className={`flex items-center gap-1 ${category ? "text-green-600" : "text-gray-400"}`}>
+                <div
+                  className={`flex items-center gap-1 ${
+                    category ? "text-emerald-700 font-medium" : "text-gray-500"
+                  }`}
+                >
                   {category ? "✓" : "○"} Kategori
                 </div>
-                <div className={`flex items-center gap-1 ${price && parseInt(price, 10) > 0 ? "text-green-600" : "text-gray-400"}`}>
-                  {price && parseInt(price, 10) > 0 ? "✓" : "○"} Harga
+                <div
+                  className={`flex items-center gap-1 ${
+                    parsedPrice > 0
+                      ? "text-emerald-700 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {parsedPrice > 0 ? "✓" : "○"} Harga (&gt; 0)
                 </div>
-                <div className={`flex items-center gap-1 ${stock ? "text-green-600" : "text-gray-400"}`}>
-                  {stock ? "✓" : "○"} Stok
+                <div
+                  className={`flex items-center gap-1 ${
+                    totalSizeStock > 0
+                      ? "text-emerald-700 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {totalSizeStock > 0 ? "✓" : "○"} Stok
                 </div>
-                <div className={`flex items-center gap-1 ${imageUrl ? "text-green-600" : "text-gray-400"}`}>
-                  {imageUrl ? "✓" : "○"} Gambar
+                <div
+                  className={`flex items-center gap-1 ${
+                    imageUrl.trim()
+                      ? "text-emerald-700 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {imageUrl.trim() ? "✓" : "○"} Gambar
                 </div>
-                <div className={`flex items-center gap-1 ${description ? "text-green-600" : "text-gray-400"}`}>
-                  {description ? "✓" : "○"} Deskripsi
+                <div
+                  className={`flex items-center gap-1 ${
+                    description.trim()
+                      ? "text-emerald-700 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {description.trim() ? "✓" : "○"} Deskripsi
                 </div>
               </div>
             </div>
@@ -627,4 +733,3 @@ export default function AdminAddProductPage() {
     </AdminLayout>
   );
 }
-

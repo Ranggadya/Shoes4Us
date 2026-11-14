@@ -123,7 +123,9 @@ export const api = {
   get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
     const url = buildUrl(endpoint);
     const hasAbortSignal = Boolean(options?.signal);
-    const canCache = isCacheablePublicGet(url);
+    const bypassCache =
+      options?.cache === "no-store" || options?.cache === "reload";
+    const canCache = isCacheablePublicGet(url) && !bypassCache;
 
     if (canCache) {
       const cached = getResponseCache.get(url);

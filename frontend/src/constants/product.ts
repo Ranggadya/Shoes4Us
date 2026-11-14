@@ -36,10 +36,70 @@ export const PRODUCT_SEGMENTS: Array<{ value: ProductSegment; label: string }> =
 ];
 
 export const DEFAULT_SHOE_SIZES = ["38", "39", "40", "41", "42", "43", "44", "45"] as const;
+export const DEFAULT_APPAREL_SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+export const DEFAULT_ACCESSORIES_SIZES = ["One Size"] as const;
 
-export const createDefaultSizeStocks = (): ProductSizeStock[] =>
-  DEFAULT_SHOE_SIZES.map((size) => ({
+export function getDefaultSizesForSegment(
+  segment: ProductSegment | string = "SHOES"
+): readonly string[] {
+  const normalized = String(segment || "SHOES").toUpperCase();
+  if (normalized === "APPAREL") return DEFAULT_APPAREL_SIZES;
+  if (normalized === "ACCESSORIES") return DEFAULT_ACCESSORIES_SIZES;
+  return DEFAULT_SHOE_SIZES;
+}
+
+export const createDefaultSizeStocks = (
+  segment: ProductSegment | string = "SHOES"
+): ProductSizeStock[] =>
+  getDefaultSizesForSegment(segment).map((size) => ({
     size,
     stock: 0,
   }));
+
+/**
+ * Merges default segment sizes with existing product_sizes so non-EU sizes
+ * (e.g. "42.5", "S", "M", "One Size") are preserved intact across edits.
+ */
+export function buildEditableSizeStocks(
+  segment: ProductSegment | string = "SHOES",
+  existingSizes?: ProductSizeStock[] | null
+): ProductSizeStock[] {
+  const existingMap = new Map<string, ProductSizeStock>();
+  const extraSizes: ProductSizeStock[] = [];
+  const defaults = getDefaultSizesForSegment(segment);
+  const defaultSet = new Set(defaults);
+
+  for (const entry of existingSizes ?? []) {
+    const cleanSize = String(entry.size ?? "").trim();
+    if (!cleanSize) continue;
+    const normalizedEntry: ProductSizeStock = {
+      ...(entry.id ? { id: entry.id } : {}),
+      size: cleanSize,
+      stock: Number(entry.stock ?? 0),
+    };
+    existingMap.set(cleanSize, normalizedEntry);
+    if (!defaultSet.has(cleanSize)) {
+      extraSizes.push(normalizedEntry);
+    }
+  }
+
+  const baseSizes: ProductSizeStock[] = defaults.map((size) => {
+    const match = existingMap.get(size);
+    return match ? match : { size, stock: 0 };
+  });
+
+  return [...baseSizes, ...extraSizes];
+}
+
+export function formatSizeLabel(
+  size: string,
+  segment: ProductSegment | string = "SHOES"
+): string {
+  const clean = String(size).trim();
+  const normalizedSegment = String(segment || "SHOES").toUpperCase();
+  if (normalizedSegment === "SHOES" && /^\d+(\.\d+)?$/.test(clean)) {
+    return `EU ${clean}`;
+  }
+  return clean;
+}
 
