@@ -46,4 +46,4 @@ yarn-error.log*
 .superpowers/
 skills-lock.json
 docs/
-./impeccable/
+.impeccable/

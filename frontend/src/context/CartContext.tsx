@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -139,47 +140,61 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncWarnings, setSyncWarnings] = useState<string[]>([]);
+  const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const lastAuthKeyRef = useRef<string | null>(null);
+  const lastPathRef = useRef<string>(location.pathname);
 
   const clearSyncWarnings = useCallback(() => {
     setSyncWarnings([]);
   }, []);
 
   const syncGuestCartToBackend = useCallback(async () => {
+    if (syncPromiseRef.current) {
+      return syncPromiseRef.current;
+    }
+
     const guest = loadGuestCart();
     if (guest.items.length === 0) return;
 
-    const failedItems: string[] = [];
+    const promise = (async () => {
+      const failedItems: string[] = [];
 
-    for (const item of guest.items) {
-      try {
-        await api.post("/cart", {
-          productId: item.product.id,
-          quantity: item.quantity,
-          size: item.size ?? undefined,
-        });
-      } catch (err) {
-        const reason =
-          err instanceof Error && err.message
-            ? err.message
-            : "Stok tidak mencukupi";
-        const sizeLabel = item.size ? ` (${item.size})` : "";
-        failedItems.push(`${item.product.name}${sizeLabel}: ${reason}`);
+      for (const item of guest.items) {
+        try {
+          await api.post("/cart", {
+            productId: item.product.id,
+            quantity: item.quantity,
+            size: item.size ?? undefined,
+          });
+        } catch (err) {
+          const reason =
+            err instanceof Error && err.message
+              ? err.message
+              : "Stok tidak mencukupi";
+          const sizeLabel = item.size ? ` (${item.size})` : "";
+          failedItems.push(`${item.product.name}${sizeLabel}: ${reason}`);
+        }
       }
-    }
 
-    try {
-      localStorage.removeItem(GUEST_CART_STORAGE_KEY);
-    } catch {
-      // Ignore storage errors
-    }
+      try {
+        localStorage.removeItem(GUEST_CART_STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
 
-    if (failedItems.length > 0) {
-      setSyncWarnings(failedItems);
-      toast.error(
-        `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`,
-        { duration: 6000 }
-      );
-    }
+      if (failedItems.length > 0) {
+        setSyncWarnings(failedItems);
+        toast.error(
+          `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`,
+          { duration: 6000 }
+        );
+      }
+    })().finally(() => {
+      syncPromiseRef.current = null;
+    });
+
+    syncPromiseRef.current = promise;
+    return promise;
   }, []);
 
   const loadCart = useCallback(
@@ -219,18 +234,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authLoading) return;
-    void loadCart();
-  }, [authLoading, user, token, loadCart]);
 
-  useEffect(() => {
-    const pathname = location.pathname;
+    const authKey = user && token ? `${user.id}:${token}` : "guest";
+    const authChanged = lastAuthKeyRef.current !== authKey;
+    const pathChanged = lastPathRef.current !== location.pathname;
+
+    lastAuthKeyRef.current = authKey;
+    lastPathRef.current = location.pathname;
+
+    if (authChanged) {
+      void loadCart(false);
+      return;
+    }
+
     const shouldRefreshCart =
-      pathname === "/cart" ||
-      pathname === "/payment" ||
-      pathname === "/checkout";
+      location.pathname === "/cart" ||
+      location.pathname === "/payment" ||
+      location.pathname === "/checkout";
 
-    if (authLoading) return;
-    if (shouldRefreshCart) {
+    if (pathChanged && shouldRefreshCart) {
       void loadCart(true);
     }
   }, [authLoading, user, token, location.pathname, loadCart]);

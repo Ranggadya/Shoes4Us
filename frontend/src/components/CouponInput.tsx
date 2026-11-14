@@ -2,10 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Ticket, CheckCircle2, X, Loader2, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/services/api";
+import {
+  SAVED_COUPON_STORAGE_KEY,
+  savePersistedCoupon,
+} from "@/hooks/useCartCouponSync";
 import { formatCurrency } from "@/utils/format";
 import type { CouponValidationResult } from "@/types";
 
-export const SAVED_COUPON_STORAGE_KEY = "shoes4us_applied_coupon";
+export { SAVED_COUPON_STORAGE_KEY };
 
 const QUICK_VOUCHERS = [
   {
@@ -85,15 +89,8 @@ export default function CouponInput({
 
       if (res.data) {
         setCode(res.data.code);
+        savePersistedCoupon(res.data, subtotal, shippingFee);
         onApply(res.data);
-        try {
-          sessionStorage.setItem(
-            SAVED_COUPON_STORAGE_KEY,
-            JSON.stringify(res.data)
-          );
-        } catch {
-          // ignore storage errors
-        }
         toast.success(`Voucher ${res.data.code} berhasil dipasang!`);
       }
     } catch (err) {
@@ -108,12 +105,8 @@ export default function CouponInput({
   const handleRemove = () => {
     setCode("");
     setErrorMsg(null);
+    savePersistedCoupon(null);
     onApply(null);
-    try {
-      sessionStorage.removeItem(SAVED_COUPON_STORAGE_KEY);
-    } catch {
-      // ignore storage errors
-    }
   };
 
   const appliedBenefitLabel = (() => {

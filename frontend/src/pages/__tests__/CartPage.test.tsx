@@ -8,8 +8,11 @@ import CartPage from "../CartPage";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { api } from "@/services/api";
-import { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
+import { ApiError, api } from "@/services/api";
+import {
+  SAVED_COUPON_META_KEY,
+  SAVED_COUPON_STORAGE_KEY,
+} from "@/hooks/useCartCouponSync";
 
 const mockNavigate = vi.fn();
 
@@ -33,11 +36,15 @@ vi.mock("@/context/WishlistContext", () => ({
   useWishlist: vi.fn(),
 }));
 
-vi.mock("@/services/api", () => ({
-  api: {
-    post: vi.fn(),
-  },
-}));
+vi.mock("@/services/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/api")>();
+  return {
+    ...actual,
+    api: {
+      post: vi.fn(),
+    },
+  };
+});
 
 vi.mock("react-hot-toast", () => {
   const fn = vi.fn();
@@ -191,7 +198,7 @@ describe("CartPage", () => {
     expect(img.getAttribute("src")).toBe("/sepatu1.jpeg");
 
     // Brand, US / EU shoe size, and exit path link
-    expect(screen.getByText(/US 9\.5 \/ EU 42/)).toBeInTheDocument();
+    expect(screen.getByText(/US 8\.5 \/ EU 42/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Lanjut Belanja/i })).toHaveAttribute(
       "href",
       "/product"
@@ -460,7 +467,9 @@ describe("CartPage", () => {
     expect(clearSyncWarnings).toHaveBeenCalledTimes(1);
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Simpan Nike Dunk Low Panda ke Wishlist/i })
+      screen.getByRole("button", {
+        name: /Simpan Nike Dunk Low Panda ukuran 42 ke Wishlist/i,
+      })
     );
     expect(toggleProduct).toHaveBeenCalledWith("prod-1");
     expect(removeItem).toHaveBeenCalledWith("item-1");
@@ -567,5 +576,190 @@ describe("CartPage", () => {
       expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toContain("DISKON10");
     });
     expect(screen.getByText(/Diskon \(DISKON10\)/i)).toBeInTheDocument();
+  });
+
+  it("re-validates stale sessionStorage coupon on mount when subtotal changed outside /cart", async () => {
+    vi.useFakeTimers();
+    sessionStorage.setItem(
+      SAVED_COUPON_STORAGE_KEY,
+      JSON.stringify({
+        code: "DISKON10",
+        description: "Diskon 10%",
+        discountType: "PERCENTAGE",
+        discountAmount: 20000,
+        minOrderAmount: 100000,
+      })
+    );
+    sessionStorage.setItem(
+      SAVED_COUPON_META_KEY,
+      JSON.stringify({
+        code: "DISKON10",
+        subtotal: 200000,
+        shippingFee: 0,
+      })
+    );
+
+    vi.mocked(api.post).mockResolvedValueOnce({
+      success: true,
+      data: {
+        code: "DISKON10",
+        description: "Diskon 10%",
+        discountType: "PERCENTAGE",
+        discountAmount: 40000,
+        minOrderAmount: 100000,
+      },
+    });
+
+    mockCartState({
+      cart: {
+        id: "cart-1",
+        items: [createMockCartItem({ quantity: 2, price: 200000 })],
+        totals: { subtotal: 400000, totalItems: 2 },
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/coupons/validate", {
+        code: "DISKON10",
+        subtotal: 400000,
+        shippingFee: 0,
+      });
+    });
+    expect(await screen.findByText(/- Rp\s*40\.000/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rp\s*360\.000/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("preserves active coupon across 5xx and Safari Load failed errors, clearing only on 4xx rejection", async () => {
+    vi.useFakeTimers();
+    const saved = JSON.stringify({
+      code: "DISKON10",
+      description: "Diskon 10%",
+      discountType: "PERCENTAGE",
+      discountAmount: 20000,
+      minOrderAmount: 100000,
+    });
+    sessionStorage.setItem(SAVED_COUPON_STORAGE_KEY, saved);
+
+    mockCartState({
+      cart: {
+        id: "cart-1",
+        items: [createMockCartItem({ quantity: 1, price: 250000 })],
+        totals: { subtotal: 250000, totalItems: 1 },
+      },
+    });
+
+    vi.mocked(api.post).mockRejectedValueOnce(new ApiError("Bad Gateway", 502));
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toBe(saved);
+    expect(toast.error).not.toHaveBeenCalled();
+    unmount();
+
+    // Browser-specific fetch failure (e.g. Safari "Load failed") also preserves coupon
+    vi.clearAllMocks();
+    sessionStorage.setItem(SAVED_COUPON_STORAGE_KEY, saved);
+    vi.mocked(api.post).mockRejectedValueOnce(new Error("Load failed"));
+
+    const view2 = render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toBe(saved);
+    expect(toast.error).not.toHaveBeenCalled();
+    view2.unmount();
+
+    // Explicit 4xx rejection removes invalid coupon and notifies user
+    vi.clearAllMocks();
+    sessionStorage.setItem(SAVED_COUPON_STORAGE_KEY, saved);
+    vi.mocked(api.post).mockRejectedValueOnce(new ApiError("Voucher kadaluarsa", 400));
+
+    render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY)).toBeNull();
+    });
+    expect(toast.error).toHaveBeenCalledWith("Voucher kadaluarsa");
+  });
+
+  it("keeps body scroll lock and focus stable when clearCart is pending async execution", async () => {
+    let rejectClear!: (err: Error) => void;
+    const clearCart = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectClear = reject;
+        })
+    );
+    mockCartState({ clearCart });
+
+    render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartPage />
+      </MemoryRouter>
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Kosongkan Keranjang/i })
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+
+    const cancelBtn = screen.getByRole("button", { name: /Batalkan/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /Ya, Kosongkan Keranjang/i,
+    });
+    expect(document.activeElement).toBe(cancelBtn);
+
+    await userEvent.click(confirmBtn);
+    expect(clearCart).toHaveBeenCalledTimes(1);
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(cancelBtn).toBeDisabled();
+    // Focus should not be forced back onto the disabled Batalkan button
+    expect(document.activeElement).not.toBe(cancelBtn);
+
+    await act(async () => {
+      rejectClear(new Error("Gagal mengosongkan keranjang"));
+    });
+
+    await waitFor(() => {
+      expect(cancelBtn).not.toBeDisabled();
+    });
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await userEvent.click(cancelBtn);
+    expect(document.body.style.overflow).toBe("");
   });
 });

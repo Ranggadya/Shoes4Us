@@ -4,15 +4,18 @@ import { MemoryRouter } from "react-router-dom";
 import WhatsAppSupportButton, {
   buildWhatsAppSupportUrl,
 } from "../WhatsAppSupportButton";
+import { SUPPORT_CONTACT } from "@/constants/contact";
 
 describe("WhatsAppSupportButton", () => {
   beforeEach(() => {
     document.title = "Shoes4Us - E-Commerce Sepatu Stylish";
   });
 
-  it("uses the official Shoes4Us WhatsApp number (6281574577583)", () => {
+  it("uses the centralized official Shoes4Us WhatsApp number", () => {
     const url = buildWhatsAppSupportUrl();
-    expect(url).toMatch(/^https:\/\/wa\.me\/6281574577583\?text=/);
+    expect(url).toMatch(
+      new RegExp(`^https:\\/\\/wa\\.me\\/${SUPPORT_CONTACT.whatsappNumber}\\?text=`)
+    );
     expect(url).not.toContain("6281234567890");
   });
 

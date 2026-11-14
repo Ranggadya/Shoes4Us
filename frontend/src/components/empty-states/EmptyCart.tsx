@@ -32,8 +32,8 @@ export default function EmptyCart() {
         <div className="flex flex-wrap items-center justify-center gap-2.5">
           {[
             { label: "Running", to: "/product?category=running" },
-            { label: "Casual", to: "/product?category=casual" },
             { label: "Sneakers", to: "/product?category=sneakers" },
+            { label: "Lifestyle", to: "/product?category=lifestyle" },
           ].map((cat) => (
             <Link
               key={cat.to}

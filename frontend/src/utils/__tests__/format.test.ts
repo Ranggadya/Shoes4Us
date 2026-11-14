@@ -27,6 +27,10 @@ describe("format utilities", () => {
   it("resolves product brand from explicit field, known name match, category, or fallback", () => {
     expect(resolveProductBrand("Ultraboost Light", "Adidas")).toBe("Adidas");
     expect(resolveProductBrand("Nike Air Force 1 '07", null)).toBe("Nike");
+    expect(resolveProductBrand("Nike Air Jordan 1 Retro High OG", null)).toBe(
+      "Nike"
+    );
+    expect(resolveProductBrand("Air Jordan 1 Low", null)).toBe("Air Jordan");
     expect(resolveProductBrand("New Balance 550", undefined)).toBe("New Balance");
     expect(resolveProductBrand("Custom Runner", null, "Running")).toBe("Running");
     expect(resolveProductBrand("Classic Loafer", null, null, "SHOES4US")).toBe(

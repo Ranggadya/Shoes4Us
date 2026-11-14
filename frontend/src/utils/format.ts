@@ -45,10 +45,24 @@ export function resolveProductBrand(
   }
 
   const lowerName = (name || "").toLowerCase();
+  let matchedBrand: string | null = null;
+  let earliestIndex = Number.POSITIVE_INFINITY;
+
   for (const known of KNOWN_SHOE_BRANDS) {
-    if (lowerName.includes(known.toLowerCase())) {
-      return known;
+    const idx = lowerName.indexOf(known.toLowerCase());
+    if (
+      idx !== -1 &&
+      (idx < earliestIndex ||
+        (idx === earliestIndex &&
+          matchedBrand !== null &&
+          known.length > matchedBrand.length))
+    ) {
+      earliestIndex = idx;
+      matchedBrand = known;
     }
+  }
+  if (matchedBrand) {
+    return matchedBrand;
   }
 
   const resolvedCategory = getCategoryName(category, "");

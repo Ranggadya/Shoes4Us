@@ -295,8 +295,9 @@ export default function Navbar() {
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-xl font-bold text-gray-900">Menu</h2>
               <button
+                type="button"
                 onClick={closeMobileMenu}
-                className="p-2 hover:bg-gray-100 rounded-lg transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="p-2 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Close menu"
               >
                 <X size={24} />
@@ -376,7 +377,7 @@ export default function Navbar() {
                       <span className="font-medium">Keranjang</span>
                     </div>
                     {totalCartItems > 0 && (
-                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold text-white bg-black rounded-full">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-black tabular-nums">
                         {totalCartItems}
                       </span>
                     )}
@@ -398,7 +399,7 @@ export default function Navbar() {
               {isAdmin && (
                 <Link
                   to="/admin/dashboard"
-                  className="flex items-center gap-3 px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition min-h-[44px] mx-4 rounded-lg"
+                  className="flex items-center gap-3 px-6 py-3 bg-black text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-h-[44px] mx-4"
                   onClick={closeMobileMenu}
                 >
                   <Package size={20} />

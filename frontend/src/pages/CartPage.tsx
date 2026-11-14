@@ -1,10 +1,4 @@
-import {
-  SyntheticEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -16,36 +10,22 @@ import {
   RotateCcw,
   ShieldCheck,
   Trash2,
-  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart, type CartItem } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { api } from "@/services/api";
+import { useCartCouponSync } from "@/hooks/useCartCouponSync";
 import { formatCurrency, resolveProductBrand } from "@/utils/format";
 import { formatShoeSizeLabel } from "@/utils/size-converter";
 import SEO from "@/components/SEO";
 import CartSkeleton from "@/components/skeletons/CartSkeleton";
 import EmptyCart from "@/components/empty-states/EmptyCart";
-import CouponInput, { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
+import CouponInput from "@/components/CouponInput";
+import CartSyncWarningsBanner from "@/components/CartSyncWarningsBanner";
 import { buildWhatsAppSupportUrl } from "@/components/WhatsAppSupportButton";
-import type { CouponValidationResult } from "@/types";
 
 const FALLBACK_SHOE_IMAGE = "/sepatu1.jpeg";
-const COUPON_REVALIDATE_DEBOUNCE_MS = 300;
 const ESTIMATED_MIN_SHIPPING_FEE = 16000;
-
-function persistCoupon(coupon: CouponValidationResult | null) {
-  try {
-    if (coupon) {
-      sessionStorage.setItem(SAVED_COUPON_STORAGE_KEY, JSON.stringify(coupon));
-    } else {
-      sessionStorage.removeItem(SAVED_COUPON_STORAGE_KEY);
-    }
-  } catch {
-    // ignore storage errors
-  }
-}
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -64,22 +44,15 @@ export default function CartPage() {
   } = useCart();
   const { isWishlisted, toggleProduct } = useWishlist();
 
-  const [appliedCoupon, setAppliedCoupon] =
-    useState<CouponValidationResult | null>(() => {
-      try {
-        const raw = sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY);
-        return raw ? (JSON.parse(raw) as CouponValidationResult) : null;
-      } catch {
-        return null;
-      }
-    });
-
   const [pendingItemIds, setPendingItemIds] = useState<Record<string, boolean>>(
     {}
   );
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+
+  const isClearingRef = useRef(false);
+  isClearingRef.current = isClearing;
 
   const clearTriggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -89,105 +62,19 @@ export default function CartPage() {
   const subtotal = cart?.totals?.subtotal ?? 0;
   const totalItems = cart?.totals?.totalItems ?? 0;
   const items = cart?.items ?? [];
+  const hasPendingItemMutation = Object.keys(pendingItemIds).length > 0;
 
-  const appliedCouponRef = useRef<CouponValidationResult | null>(appliedCoupon);
-  appliedCouponRef.current = appliedCoupon;
-
-  const lastValidatedKeyRef = useRef<string | null>(
-    appliedCoupon ? `${appliedCoupon.code}:${subtotal}` : null
-  );
-
-  const handleApplyCoupon = useCallback(
-    (nextCoupon: CouponValidationResult | null) => {
-      lastValidatedKeyRef.current = nextCoupon
-        ? `${nextCoupon.code}:${subtotal}`
-        : null;
-      persistCoupon(nextCoupon);
-      setAppliedCoupon(nextCoupon);
-    },
-    [subtotal]
-  );
-
-  useEffect(() => {
-    if (isLoading || error || !cart || !appliedCoupon) return;
-
-    if (subtotal === 0) {
-      lastValidatedKeyRef.current = null;
-      persistCoupon(null);
-      setAppliedCoupon(null);
-      return;
-    }
-
-    if (subtotal < appliedCoupon.minOrderAmount) {
-      const droppedCode = appliedCoupon.code;
-      const minSpend = appliedCoupon.minOrderAmount;
-      lastValidatedKeyRef.current = null;
-      persistCoupon(null);
-      setAppliedCoupon(null);
-      toast.error(
-        `Voucher ${droppedCode} dilepas karena minimal belanja ${formatCurrency(
-          minSpend
-        )} belum terpenuhi.`
-      );
-      return;
-    }
-
-    const validationKey = `${appliedCoupon.code}:${subtotal}`;
-    if (lastValidatedKeyRef.current === validationKey) {
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      try {
-        const res = await api.post<{
-          success: boolean;
-          data: CouponValidationResult;
-        }>("/coupons/validate", {
-          code: appliedCoupon.code,
-          subtotal,
-          shippingFee: 0,
-        });
-
-        if (cancelled) return;
-        lastValidatedKeyRef.current = validationKey;
-        if (res?.data) {
-          persistCoupon(res.data);
-          setAppliedCoupon((prev) => {
-            if (
-              prev &&
-              prev.code === res.data.code &&
-              prev.discountAmount === res.data.discountAmount &&
-              prev.description === res.data.description
-            ) {
-              return prev;
-            }
-            return res.data;
-          });
-        }
-      } catch (err) {
-        if (cancelled) return;
-        const msg = err instanceof Error ? err.message : "";
-        const lowerMsg = msg.toLowerCase();
-        // Only invalidate voucher on explicit server rejection, preserve on transient network errors.
-        if (
-          msg &&
-          !lowerMsg.includes("network") &&
-          !lowerMsg.includes("failed to fetch")
-        ) {
-          lastValidatedKeyRef.current = null;
-          persistCoupon(null);
-          setAppliedCoupon(null);
-          toast.error(msg);
-        }
-      }
-    }, COUPON_REVALIDATE_DEBOUNCE_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [isLoading, error, cart, subtotal, appliedCoupon]);
+  const {
+    appliedCoupon,
+    appliedCouponRef,
+    isCouponEligible,
+    applyCoupon,
+    restoreCouponSnapshot,
+    clearCoupon,
+  } = useCartCouponSync({
+    subtotal,
+    isReady: !isLoading && !error && Boolean(cart),
+  });
 
   useEffect(() => {
     if (showClearConfirm) {
@@ -205,7 +92,7 @@ export default function CartPage() {
       };
 
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape" && !isClearing) {
+        if (event.key === "Escape" && !isClearingRef.current) {
           setShowClearConfirm(false);
           return;
         }
@@ -241,11 +128,8 @@ export default function CartPage() {
       wasConfirmOpenRef.current = false;
       clearTriggerRef.current?.focus();
     }
-  }, [showClearConfirm, isClearing]);
+  }, [showClearConfirm]);
 
-  const isCouponEligible = Boolean(
-    appliedCoupon && subtotal >= appliedCoupon.minOrderAmount
-  );
   const isFreeShippingCoupon =
     isCouponEligible && appliedCoupon?.discountType === "FREE_SHIPPING";
   const productDiscountAmount =
@@ -310,7 +194,7 @@ export default function CartPage() {
       await removeItem(item.id);
       toast.success(
         alreadyWishlisted
-          ? `${item.product.name} sudah ada di Wishlist Anda.`
+          ? `${item.product.name} sudah ada di Wishlist dan dihapus dari keranjang.`
           : `${item.product.name} dipindahkan ke Wishlist.`
       );
     } catch (err) {
@@ -350,11 +234,7 @@ export default function CartPage() {
                 toast.dismiss(t.id);
                 try {
                   await addItem(snapshot);
-                  if (couponBeforeRemove && !appliedCouponRef.current) {
-                    lastValidatedKeyRef.current = null;
-                    persistCoupon(couponBeforeRemove);
-                    setAppliedCoupon(couponBeforeRemove);
-                  }
+                  restoreCouponSnapshot(couponBeforeRemove);
                   toast.success("Produk dikembalikan ke keranjang.");
                 } catch (restoreErr) {
                   toast.error(
@@ -387,9 +267,7 @@ export default function CartPage() {
     setIsClearing(true);
     try {
       await clearCart();
-      lastValidatedKeyRef.current = null;
-      persistCoupon(null);
-      setAppliedCoupon(null);
+      clearCoupon();
       setShowClearConfirm(false);
       toast.success("Keranjang berhasil dikosongkan");
     } catch (err) {
@@ -437,10 +315,7 @@ export default function CartPage() {
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2";
 
   const hasItems = !isLoading && !error && items.length > 0;
-  const whatsappHelpUrl = buildWhatsAppSupportUrl(
-    undefined,
-    typeof window !== "undefined" ? window.location.href : undefined
-  );
+  const whatsappHelpUrl = buildWhatsAppSupportUrl();
 
   return (
     <section
@@ -480,37 +355,10 @@ export default function CartPage() {
         )}
       </div>
 
-      {syncWarnings.length > 0 && (
-        <div
-          role="alert"
-          className="border border-amber-700 bg-amber-50 p-4 mb-6 flex items-start justify-between gap-3 text-amber-950"
-        >
-          <div className="flex items-start gap-2.5 min-w-0">
-            <AlertCircle
-              className="w-5 h-5 text-amber-800 shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
-            <div className="text-sm space-y-1">
-              <p className="font-bold">
-                Sebagian item keranjang tamu tidak dapat disinkronkan:
-              </p>
-              <ul className="list-disc pl-4 space-y-0.5 text-xs sm:text-sm">
-                {syncWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={clearSyncWarnings}
-            aria-label="Tutup peringatan sinkronisasi"
-            className={`min-w-[44px] min-h-[44px] -my-1.5 -mr-1.5 inline-flex items-center justify-center text-amber-900 hover:text-black shrink-0 ${focusRing}`}
-          >
-            <X className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      <CartSyncWarningsBanner
+        warnings={syncWarnings}
+        onDismiss={clearSyncWarnings}
+      />
 
       {isLoading ? (
         <CartSkeleton />
@@ -648,7 +496,7 @@ export default function CartPage() {
                           className={`min-w-[44px] min-h-[44px] px-2.5 py-2 inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-700 hover:text-black hover:underline underline-offset-4 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${focusRing}`}
                           onClick={() => void handleMoveToWishlist(item)}
                           disabled={isItemBusy}
-                          aria-label={`Simpan ${item.product.name} ke Wishlist`}
+                          aria-label={`Simpan ${itemLabel} ke Wishlist`}
                         >
                           <Bookmark className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           <span>
@@ -678,7 +526,7 @@ export default function CartPage() {
                 ref={clearTriggerRef}
                 type="button"
                 onClick={() => setShowClearConfirm(true)}
-                disabled={isClearing}
+                disabled={isClearing || hasPendingItemMutation}
                 className={`min-h-[44px] px-3 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 hover:text-red-700 hover:underline underline-offset-4 transition-colors disabled:opacity-45 ${focusRing}`}
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
@@ -733,7 +581,7 @@ export default function CartPage() {
               <CouponInput
                 subtotal={subtotal}
                 appliedCoupon={appliedCoupon}
-                onApply={handleApplyCoupon}
+                onApply={applyCoupon}
                 collapsible
               />
 

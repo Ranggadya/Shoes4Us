@@ -8,10 +8,12 @@ import {
   saveShippingAddress,
 } from "@/utils/shipping-address";
 import { api } from "@/services/api";
-import CouponInput, { SAVED_COUPON_STORAGE_KEY } from "@/components/CouponInput";
+import { useCartCouponSync } from "@/hooks/useCartCouponSync";
+import CouponInput from "@/components/CouponInput";
+import CartSyncWarningsBanner from "@/components/CartSyncWarningsBanner";
 import CourierSelector from "@/components/CourierSelector";
 import AddressBookModal from "@/components/AddressBookModal";
-import type { CouponValidationResult, CourierOption } from "@/types";
+import type { CourierOption } from "@/types";
 
 const DEFAULT_COURIER: CourierOption = {
   code: "JNE-REG",
@@ -25,7 +27,14 @@ const DEFAULT_COURIER: CourierOption = {
 export default function PaymentPage() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { cart, isLoading: cartLoading, error, refresh } = useCart();
+  const {
+    cart,
+    isLoading: cartLoading,
+    error,
+    syncWarnings,
+    clearSyncWarnings,
+    refresh,
+  } = useCart();
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -34,14 +43,6 @@ export default function PaymentPage() {
   const [phone, setPhone] = useState("");
   const [method, setMethod] = useState("Kartu Kredit");
   const [selectedCourier, setSelectedCourier] = useState<CourierOption>(DEFAULT_COURIER);
-  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(() => {
-    try {
-      const saved = sessionStorage.getItem(SAVED_COUPON_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as CouponValidationResult) : null;
-    } catch {
-      return null;
-    }
-  });
   const [showPopup, setShowPopup] = useState(false);
   const [showAddressBook, setShowAddressBook] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -61,8 +62,20 @@ export default function PaymentPage() {
 
   const subtotal = cart?.totals.subtotal ?? 0;
   const shippingFee = subtotal === 0 ? 0 : selectedCourier.cost;
+  const {
+    appliedCoupon,
+    isCouponEligible,
+    applyCoupon,
+    clearCoupon,
+  } = useCartCouponSync({
+    subtotal,
+    shippingFee,
+    isReady: !authLoading && !cartLoading && !error && Boolean(cart),
+    frozen: Boolean(createdOrderId),
+  });
+
   const discountAmount =
-    appliedCoupon && subtotal >= appliedCoupon.minOrderAmount
+    isCouponEligible && appliedCoupon
       ? appliedCoupon.discountType === "FREE_SHIPPING"
         ? Math.min(shippingFee, appliedCoupon.discountAmount)
         : appliedCoupon.discountAmount
@@ -121,7 +134,8 @@ export default function PaymentPage() {
               shippingPhone: phone,
               shippingCourier: selectedCourier.name,
               shippingCost: shippingFee,
-              couponCode: appliedCoupon?.code || "",
+              couponCode:
+                isCouponEligible && appliedCoupon ? appliedCoupon.code : "",
               paymentMethod: method,
             },
             {
@@ -155,11 +169,7 @@ export default function PaymentPage() {
         { headers: { "Idempotency-Key": `pay-${orderIdToPay}` } }
       );
 
-      try {
-        sessionStorage.removeItem(SAVED_COUPON_STORAGE_KEY);
-      } catch {
-        // Ignore storage errors
-      }
+      clearCoupon();
 
       await refresh();
       navigate("/status-pesanan");
@@ -211,6 +221,11 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-white text-black p-6 max-w-5xl mx-auto relative">
       <h1 className="text-3xl font-bold mb-6">Pembayaran & Pengiriman</h1>
 
+      <CartSyncWarningsBanner
+        warnings={syncWarnings}
+        onDismiss={clearSyncWarnings}
+      />
+
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -240,7 +255,7 @@ export default function PaymentPage() {
           />
           <form onSubmit={handlePay} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">Nama Lengkap</label>
               <input
                 type="text"
                 value={name}
@@ -345,7 +360,7 @@ export default function PaymentPage() {
               subtotal={subtotal}
               shippingFee={shippingFee}
               appliedCoupon={appliedCoupon}
-              onApply={setAppliedCoupon}
+              onApply={applyCoupon}
               disabled={Boolean(createdOrderId)}
             />
           </div>
@@ -369,7 +384,7 @@ export default function PaymentPage() {
               </span>
             </div>
             {discountAmount > 0 && appliedCoupon && (
-              <div className="flex justify-between text-emerald-700 font-semibold">
+              <div className="flex justify-between text-emerald-800 font-semibold">
                 <span>Diskon Voucher ({appliedCoupon.code})</span>
                 <span className="tabular-nums">-{formatCurrency(discountAmount)}</span>
               </div>
@@ -410,7 +425,7 @@ export default function PaymentPage() {
                   <span className="font-semibold text-neutral-900">{selectedCourier.name}</span>
                 </div>
                 {appliedCoupon && discountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-700">
+                  <div className="flex justify-between text-emerald-800">
                     <span>Voucher ({appliedCoupon.code}):</span>
                     <span className="font-semibold tabular-nums">-{formatCurrency(discountAmount)}</span>
                   </div>

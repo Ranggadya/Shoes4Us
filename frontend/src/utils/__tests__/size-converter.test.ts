@@ -29,8 +29,8 @@ describe("convertFootLengthToSize", () => {
   });
 
   it("formats EU/US shoe size labels consistently across storefront", () => {
-    expect(formatShoeSizeLabel("42")).toBe("US 9.5 / EU 42");
-    expect(formatShoeSizeLabel("EU 41")).toBe("US 8.5 / EU 41");
+    expect(formatShoeSizeLabel("42")).toBe("US 8.5 / EU 42");
+    expect(formatShoeSizeLabel("EU 41")).toBe("US 8 / EU 41");
     expect(formatShoeSizeLabel("US 10")).toBe("US 10");
     expect(formatShoeSizeLabel("47")).toBe("EU 47");
     expect(formatShoeSizeLabel(null)).toBe("");

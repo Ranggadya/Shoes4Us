@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 import { CartProvider, useCart } from "../CartContext";
 import { api } from "@/services/api";
 import toast from "react-hot-toast";
@@ -36,6 +36,7 @@ vi.mock("@/services/api", () => ({
 }));
 
 function CartTestHarness() {
+  const navigate = useNavigate();
   const {
     cart,
     addItem,
@@ -126,6 +127,9 @@ function CartTestHarness() {
       </button>
       <button type="button" onClick={() => void clearCart()}>
         Clear Cart
+      </button>
+      <button type="button" onClick={() => navigate("/payment")}>
+        Go Payment
       </button>
     </div>
   );
@@ -268,6 +272,171 @@ describe("CartContext guest cart management", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Clear Sync Warnings" }));
     expect(screen.getByTestId("sync-warnings")).toHaveTextContent("");
+  });
+
+  it("deduplicates concurrent guest cart sync on /cart mount and rapid /login -> /payment navigation", async () => {
+    localStorage.setItem(
+      "shoes4us_guest_cart_v1",
+      JSON.stringify([
+        {
+          id: "shoe-a__41",
+          productId: "shoe-a",
+          size: "41",
+          quantity: 1,
+          product: {
+            id: "shoe-a",
+            name: "Nike Vomero 5",
+            price: 2100000,
+            imageUrl: null,
+            maxStock: 5,
+          },
+        },
+        {
+          id: "shoe-b__42",
+          productId: "shoe-b",
+          size: "42",
+          quantity: 2,
+          product: {
+            id: "shoe-b",
+            name: "ASICS Gel-Kayano",
+            price: 2400000,
+            imageUrl: null,
+            maxStock: 5,
+          },
+        },
+      ])
+    );
+
+    let resolveFirstPost!: () => void;
+    const firstPostGate = new Promise<void>((resolve) => {
+      resolveFirstPost = resolve;
+    });
+
+    vi.mocked(api.post).mockImplementationOnce(async () => {
+      await firstPostGate;
+      return { success: true, data: {} };
+    });
+    vi.mocked(api.post).mockResolvedValue({ success: true, data: {} });
+    vi.mocked(api.get).mockResolvedValue({
+      success: true,
+      data: {
+        id: "cart-1",
+        items: [],
+        totals: { subtotal: 0, totalItems: 0 },
+      },
+    });
+
+    mockAuthState.user = { id: "user-1", email: "user@shoes4us.id" };
+    mockAuthState.token = "jwt-token";
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <CartProvider>
+          <CartTestHarness />
+        </CartProvider>
+      </MemoryRouter>
+    );
+
+    // Wait until first guest item sync starts and stays in-flight
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledTimes(1);
+    });
+
+    // Navigate rapidly to /payment while the initial sync is still in-flight
+    await userEvent.click(screen.getByRole("button", { name: "Go Payment" }));
+    rerender(
+      <MemoryRouter initialEntries={["/payment"]}>
+        <CartProvider>
+          <CartTestHarness />
+        </CartProvider>
+      </MemoryRouter>
+    );
+
+    // Release first POST so remaining items finish syncing
+    resolveFirstPost();
+
+    await waitFor(() => {
+      expect(localStorage.getItem("shoes4us_guest_cart_v1")).toBeNull();
+    });
+
+    // Only 1 POST per guest item despite mount + /payment navigation
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.post).toHaveBeenNthCalledWith(1, "/cart", {
+      productId: "shoe-a",
+      quantity: 1,
+      size: "41",
+    });
+    expect(api.post).toHaveBeenNthCalledWith(2, "/cart", {
+      productId: "shoe-b",
+      quantity: 2,
+      size: "42",
+    });
+  });
+
+  it("triggers guest cart sync only once per item on /cart initial auth hydration", async () => {
+    localStorage.setItem(
+      "shoes4us_guest_cart_v1",
+      JSON.stringify([
+        {
+          id: "shoe-c__42",
+          productId: "shoe-c",
+          size: "42",
+          quantity: 1,
+          product: {
+            id: "shoe-c",
+            name: "New Balance 990v6",
+            price: 3200000,
+            imageUrl: null,
+            maxStock: 4,
+          },
+        },
+      ])
+    );
+
+    vi.mocked(api.post).mockResolvedValue({ success: true, data: {} });
+    vi.mocked(api.get).mockResolvedValue({
+      success: true,
+      data: {
+        id: "cart-1",
+        items: [
+          {
+            id: "server-1",
+            product: {
+              id: "shoe-c",
+              name: "New Balance 990v6",
+              price: 3200000,
+              imageUrl: null,
+            },
+            quantity: 1,
+            lineTotal: 3200000,
+            size: "42",
+          },
+        ],
+        totals: { subtotal: 3200000, totalItems: 1 },
+      },
+    });
+
+    mockAuthState.user = { id: "user-1", email: "user@shoes4us.id" };
+    mockAuthState.token = "jwt-token";
+
+    render(
+      <MemoryRouter initialEntries={["/cart"]}>
+        <CartProvider>
+          <CartTestHarness />
+        </CartProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("total-items")).toHaveTextContent("1");
+    });
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith("/cart", {
+      productId: "shoe-c",
+      quantity: 1,
+      size: "42",
+    });
   });
 });
 
