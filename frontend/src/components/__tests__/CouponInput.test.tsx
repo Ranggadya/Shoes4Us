@@ -105,9 +105,40 @@ describe("CouponInput component", () => {
 
     expect(screen.getByText("HEMAT50RB")).toBeInTheDocument();
     const removeBtn = screen.getByRole("button", { name: /Hapus voucher/i });
+    expect(removeBtn.className).toContain("min-h-[44px]");
+    expect(removeBtn.className).toContain("min-w-[44px]");
     await userEvent.click(removeBtn);
 
     expect(onApply).toHaveBeenCalledWith(null);
+  });
+
+  it("clarifies FREE_SHIPPING benefit text when shippingFee is 0 and ensures 44px quick-voucher targets", () => {
+    render(
+      <CouponInput
+        subtotal={200000}
+        appliedCoupon={{
+          code: "GRATISONGKIR",
+          description: "Gratis Ongkir hingga Rp 25.000",
+          discountType: "FREE_SHIPPING",
+          discountAmount: 25000,
+          minOrderAmount: 150000,
+        }}
+        onApply={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/dihitung di checkout/i)).toBeInTheDocument();
+
+    const { container } = render(
+      <CouponInput subtotal={200000} appliedCoupon={null} onApply={vi.fn()} />
+    );
+    const chipButtons = Array.from(container.querySelectorAll("button")).filter(
+      (btn) => btn.textContent !== "Pakai"
+    );
+    expect(chipButtons.length).toBeGreaterThanOrEqual(3);
+    for (const chip of chipButtons) {
+      expect(chip.className).toContain("min-h-[44px]");
+    }
   });
 });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Ticket, CheckCircle2, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "@/services/api";
@@ -28,6 +28,8 @@ export default function CouponInput({
   onApply,
   disabled = false,
 }: CouponInputProps) {
+  const inputId = useId();
+  const errorId = useId();
   const [code, setCode] = useState(appliedCoupon?.code || "");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -85,32 +87,59 @@ export default function CouponInput({
     }
   };
 
+  const appliedBenefitLabel = (() => {
+    if (!appliedCoupon) return "";
+    if (appliedCoupon.discountType === "FREE_SHIPPING") {
+      if (shippingFee > 0) {
+        return `Hemat ongkir ${formatCurrency(
+          Math.min(shippingFee, appliedCoupon.discountAmount)
+        )}`;
+      }
+      return `Gratis ongkir s.d. ${formatCurrency(
+        appliedCoupon.discountAmount
+      )} (dihitung di checkout)`;
+    }
+    return `Hemat ${formatCurrency(appliedCoupon.discountAmount)}`;
+  })();
+
+  const focusRing =
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2";
+
   return (
-    <div className="border border-slate-200 bg-white rounded-xl p-4 my-4">
-      <div className="flex items-center gap-2 mb-2.5">
-        <Ticket size={16} className="text-blue-600" />
-        <span className="text-sm font-bold text-slate-800">
-          Kupon Promo / Voucher Diskon
-        </span>
+    <div className="border border-neutral-200 bg-white p-4 my-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Ticket className="w-4 h-4 text-neutral-900 shrink-0" aria-hidden="true" />
+        {appliedCoupon ? (
+          <span className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-900">
+            Kupon Promo / Voucher Diskon
+          </span>
+        ) : (
+          <label
+            htmlFor={inputId}
+            className="text-xs font-bold uppercase tracking-[0.08em] text-neutral-900 cursor-pointer"
+          >
+            Kupon Promo / Voucher Diskon
+          </label>
+        )}
       </div>
 
       {appliedCoupon ? (
-        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3.5 py-2.5">
-          <div className="flex items-start gap-2.5">
+        <div className="flex items-start justify-between gap-2 bg-emerald-50 border border-emerald-700 px-3.5 py-2.5">
+          <div className="flex items-start gap-2.5 min-w-0">
             <CheckCircle2
-              size={18}
-              className="text-emerald-600 flex-shrink-0 mt-0.5"
+              className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5"
+              aria-hidden="true"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold tracking-wide bg-emerald-600 text-white px-2 py-0.5 rounded">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-extrabold tracking-[0.08em] bg-emerald-800 text-white px-2 py-0.5">
                   {appliedCoupon.code}
                 </span>
-                <span className="text-xs font-bold text-emerald-700">
-                  Hemat {formatCurrency(appliedCoupon.discountAmount)}
+                <span className="text-xs font-bold text-emerald-900 tabular-nums">
+                  {appliedBenefitLabel}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-700 mt-0.5">
+              <p className="text-xs text-emerald-800 mt-1">
                 {appliedCoupon.description}
               </p>
             </div>
@@ -120,35 +149,44 @@ export default function CouponInput({
             <button
               type="button"
               onClick={handleRemove}
-              className="text-slate-400 hover:text-red-600 p-1 transition"
-              aria-label="Hapus voucher"
+              className={`text-neutral-700 hover:text-red-700 min-w-[44px] min-h-[44px] -my-1.5 -mr-2 inline-flex items-center justify-center shrink-0 transition-colors ${focusRing}`}
+              aria-label={`Hapus voucher ${appliedCoupon.code}`}
             >
-              <X size={16} />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>
       ) : (
         <>
-          <div className="flex gap-2">
+          <div className="flex items-stretch gap-2">
             <input
+              id={inputId}
               type="text"
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.toUpperCase());
                 if (errorMsg) setErrorMsg(null);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void validateCode(code);
+                }
+              }}
+              aria-invalid={Boolean(errorMsg)}
+              aria-describedby={errorMsg ? errorId : undefined}
               disabled={disabled || loading}
               placeholder="Masukkan kode (cth: DISKON10)"
-              className="flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+              className="flex-1 min-w-0 min-h-[44px] px-3 py-2 text-base sm:text-xs font-semibold uppercase tracking-wider text-neutral-900 placeholder:normal-case placeholder:tracking-normal placeholder:font-normal placeholder:text-neutral-500 border border-neutral-300 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 disabled:bg-neutral-100"
             />
             <button
               type="button"
               onClick={() => void validateCode(code)}
               disabled={disabled || loading || !code.trim()}
-              className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50 transition flex items-center gap-1.5"
+              className={`min-h-[44px] min-w-[72px] px-4 py-2 bg-black text-white text-xs font-bold uppercase tracking-[0.08em] hover:bg-neutral-800 disabled:opacity-45 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-1.5 shrink-0 ${focusRing}`}
             >
               {loading ? (
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Pakai"
               )}
@@ -156,14 +194,19 @@ export default function CouponInput({
           </div>
 
           {errorMsg && (
-            <p className="text-xs text-red-600 mt-1.5 font-medium">
+            <p
+              id={errorId}
+              role="alert"
+              className="text-xs text-red-700 mt-2 font-medium"
+            >
               {errorMsg}
             </p>
           )}
 
-          {/* Quick Voucher Suggestions */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Tersedia:</span>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-neutral-600 w-full sm:w-auto">
+              Tersedia:
+            </span>
             {QUICK_VOUCHERS.map((v) => (
               <button
                 key={v.code}
@@ -173,7 +216,7 @@ export default function CouponInput({
                   setCode(v.code);
                   void validateCode(v.code);
                 }}
-                className="text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition"
+                className={`min-h-[44px] min-w-[44px] px-3 py-2 text-xs font-semibold tabular-nums bg-neutral-50 text-neutral-900 hover:bg-neutral-100 hover:border-black border border-neutral-300 transition-colors disabled:opacity-45 disabled:cursor-not-allowed inline-flex items-center justify-center ${focusRing}`}
               >
                 {v.label}
               </button>
@@ -184,4 +227,3 @@ export default function CouponInput({
     </div>
   );
 }
-
