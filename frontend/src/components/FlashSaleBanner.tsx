@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Zap, ArrowRight } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
+
+export const FLASH_BANNER_DISMISS_KEY = "shoes4us_flash_banner_dismissed";
+const COUPON_CODE = "DISKON10";
 
 export interface CountdownState {
   hours: string;
@@ -33,6 +36,16 @@ export function calculateCountdown(
   };
 }
 
+function readDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(FLASH_BANNER_DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+type CopyStatus = "idle" | "copied" | "failed";
+
 type FlashSaleBannerProps = {
   targetTimeMs?: number;
 };
@@ -46,8 +59,12 @@ export default function FlashSaleBanner({
   const [countdown, setCountdown] = useState<CountdownState>(() =>
     calculateCountdown(endTimestamp)
   );
+  const [dismissed, setDismissed] = useState<boolean>(readDismissed);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (dismissed) return;
     const timer = setInterval(() => {
       const next = calculateCountdown(endTimestamp);
       setCountdown(next);
@@ -56,55 +73,119 @@ export default function FlashSaleBanner({
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [endTimestamp]);
+  }, [endTimestamp, dismissed]);
 
-  if (countdown.expired) return null;
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    };
+  }, []);
+
+  if (dismissed || countdown.expired) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(COUPON_CODE);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+    if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => setCopyStatus("idle"), 2000);
+  };
+
+  const handleDismiss = () => {
+    try {
+      sessionStorage.setItem(FLASH_BANNER_DISMISS_KEY, "1");
+    } catch {
+      // storage unavailable: still hide for this render cycle
+    }
+    setDismissed(true);
+  };
+
+  const spokenTime = `Sisa waktu promo ${Number(countdown.hours)} jam ${Number(
+    countdown.minutes
+  )} menit ${Number(countdown.seconds)} detik`;
+
+  const focusRing =
+    "focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-white";
 
   return (
     <section
-      aria-label="Promo Flash Sale"
-      className="bg-gray-950 text-white border-b border-gray-800"
+      aria-label="Promo Flash Drop"
+      className="bg-black text-white border-b border-white/10 selection:bg-white selection:text-black"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#bbf7d0] text-gray-950 text-xs font-extrabold tracking-wide uppercase">
-            <Zap className="w-3.5 h-3.5 fill-current" />
-            LIMITED SNEAKER DROP
+      <div className="max-w-7xl mx-auto h-10 pl-4 sm:pl-6 lg:pl-8 flex items-center gap-4 text-[11px] sm:text-xs uppercase tracking-[0.08em]">
+        <Link
+          to="/product?sale=true"
+          className={`flex items-center gap-2 shrink-0 font-extrabold hover:underline underline-offset-4 decoration-1 ${focusRing}`}
+        >
+          <span aria-hidden="true" className="w-1.5 h-1.5 bg-[#d91e2a]" />
+          <span>Flash Drop</span>
+          <span className="font-semibold text-white/70">s/d 20%</span>
+        </Link>
+
+        <div className="hidden md:flex items-center gap-2.5 min-w-0">
+          <span aria-hidden="true" className="h-3 w-px bg-white/25" />
+          <span className="normal-case tracking-normal text-white/70 truncate">
+            Ekstra 10% dengan kode
           </span>
-          <p className="text-xs sm:text-sm font-medium text-gray-200">
-            Diskon s/d <span className="font-bold text-white">20% OFF</span> +
-            Voucher <span className="font-mono font-bold text-[#bbf7d0]">DISKON10</span>
-          </p>
+          <button
+            type="button"
+            onClick={() => void handleCopy()}
+            aria-label={`Salin kode voucher ${COUPON_CODE}`}
+            className={`group inline-flex items-center gap-1.5 h-6 px-2 border border-white/40 font-bold tracking-[0.14em] transition-colors hover:bg-white hover:text-black ${focusRing}`}
+          >
+            {COUPON_CODE}
+            {copyStatus === "copied" ? (
+              <Check className="w-3 h-3" aria-hidden="true" />
+            ) : (
+              <Copy
+                className="w-3 h-3 text-white/60 group-hover:text-black"
+                aria-hidden="true"
+              />
+            )}
+          </button>
+          <span
+            role="status"
+            className="normal-case tracking-normal text-white/70 min-w-[4.5rem]"
+          >
+            {copyStatus === "copied" && "Tersalin"}
+            {copyStatus === "failed" && "Salin manual"}
+          </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="ml-auto flex items-center h-full">
           <div
-            className="flex items-center gap-1.5 text-xs font-mono font-bold"
-            aria-label="Waktu tersisa promo"
+            role="timer"
+            aria-live="off"
+            aria-label={spokenTime}
+            className="flex items-baseline gap-2"
           >
-            <span className="bg-white/10 px-2 py-1 rounded-lg">
-              {countdown.hours}j
+            <span
+              aria-hidden="true"
+              className="hidden sm:inline normal-case tracking-normal text-white/60"
+            >
+              Berakhir dalam
             </span>
-            <span>:</span>
-            <span className="bg-white/10 px-2 py-1 rounded-lg">
-              {countdown.minutes}m
-            </span>
-            <span>:</span>
-            <span className="bg-white/10 px-2 py-1 rounded-lg">
-              {countdown.seconds}d
+            <span
+              aria-hidden="true"
+              className="font-semibold tabular-nums tracking-[0.04em]"
+            >
+              {countdown.hours}:{countdown.minutes}:{countdown.seconds}
             </span>
           </div>
 
-          <Link
-            to="/product?sale=true"
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-white text-gray-950 px-3.5 py-1.5 rounded-full hover:bg-gray-200 transition"
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label="Tutup promo"
+            className={`ml-2 sm:ml-3 h-10 w-10 flex items-center justify-center text-white/60 hover:text-white border-l border-white/10 transition-colors ${focusRing} focus-visible:outline-offset-[-4px]`}
           >
-            Belanja Drop
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </section>
   );
 }
-
