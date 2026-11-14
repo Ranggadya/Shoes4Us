@@ -17,11 +17,13 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { megaMenuSections } from "@/constants/navigation";
+import BrandLogoMark from "./BrandLogoMark";
 import GlobalSearch from "./GlobalSearch";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dismissedMenu, setDismissedMenu] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
@@ -236,48 +238,125 @@ export default function Navbar() {
         <div className="hidden lg:block border-t border-gray-100 bg-white">
           <div className="mx-auto max-w-[1440px] px-8">
             <div className="flex h-12 items-center justify-center gap-12 xl:gap-16">
-              {megaMenuSections.map((section) => (
-                <div key={section.label} className="group h-full">
-                  <Link
-                    to={section.href}
-                    className={`relative inline-flex h-full items-center text-[15px] font-extrabold uppercase tracking-normal transition ${
-                      section.accent
-                        ? "text-red-600 hover:text-red-700"
-                        : "text-black hover:text-gray-700"
-                    }`}
-                  >
-                    {section.label}
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-black opacity-0 transition-opacity group-hover:opacity-100"
-                    />
-                  </Link>
+              {megaMenuSections.map((section) => {
+                const isDismissed = dismissedMenu === section.label;
+                const isBrandMegaMenu =
+                  section.layout === "brands" &&
+                  Array.isArray(section.brandColumns);
 
-                  <div className="invisible absolute left-0 right-0 top-full z-40 border-y border-gray-100 bg-white opacity-0 shadow-[0_18px_30px_rgba(15,23,42,0.06)] transition group-hover:visible group-hover:opacity-100">
-                    <div className="mx-auto max-w-[1440px] px-8 py-8">
-                      <div className="grid min-h-[270px] grid-cols-4 gap-x-20">
-                        {section.columns.map((column) => (
-                          <div key={column.title}>
-                            <h3 className="mb-6 text-[16px] font-extrabold uppercase text-black">
-                              {column.title}
-                            </h3>
-                            <div className="space-y-4">
-                              {column.links.map((item) => (
-                                <Link
-                                  key={`${column.title}-${item.label}`}
-                                  to={item.href}
-                                  className="block text-[19px] leading-5 text-gray-600 transition hover:text-black"
-                                >
-                                  {item.label}
-                                </Link>
-                              ))}
-                            </div>
+                return (
+                  <div
+                    key={section.label}
+                    className="group h-full"
+                    onMouseEnter={() => {
+                      if (dismissedMenu !== null) {
+                        setDismissedMenu(null);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (dismissedMenu === section.label) {
+                        setDismissedMenu(null);
+                      }
+                    }}
+                  >
+                    <Link
+                      to={section.href}
+                      className={`relative inline-flex h-full items-center text-[15px] font-extrabold uppercase tracking-normal transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 ${
+                        section.accent
+                          ? "text-red-600 hover:text-red-700"
+                          : "text-black hover:text-gray-700"
+                      }`}
+                    >
+                      {section.label}
+                      {isBrandMegaMenu ? (
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-0 w-0 border-x-[6px] border-b-[7px] border-x-transparent border-b-black opacity-0 transition-opacity ${
+                            isDismissed
+                              ? ""
+                              : "group-hover:opacity-100 group-focus-within:opacity-100"
+                          }`}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className={`absolute bottom-0 left-0 right-0 h-[3px] bg-black opacity-0 transition-opacity ${
+                            isDismissed
+                              ? ""
+                              : "group-hover:opacity-100 group-focus-within:opacity-100"
+                          }`}
+                        />
+                      )}
+                    </Link>
+
+                    <div
+                      className={`invisible pointer-events-none absolute left-0 right-0 top-full z-40 border-y border-neutral-200 bg-white opacity-0 shadow-[0_18px_30px_rgba(15,23,42,0.06)] transition-all duration-150 ${
+                        isDismissed
+                          ? ""
+                          : "group-hover:visible group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+                      }`}
+                    >
+                      <div className="mx-auto max-w-[1440px] px-8 py-8">
+                        {isBrandMegaMenu && section.brandColumns ? (
+                          <div className="grid grid-cols-3 divide-x divide-neutral-200">
+                            {section.brandColumns.map((brandColumn, colIdx) => (
+                              <ul
+                                key={`${section.label}-col-${colIdx}`}
+                                className="space-y-1.5 px-6 xl:px-10"
+                              >
+                                {brandColumn.map((brand) => (
+                                  <li key={brand.id}>
+                                    <Link
+                                      to={brand.href}
+                                      onClick={(e) => {
+                                        e.currentTarget.blur();
+                                        setDismissedMenu(section.label);
+                                      }}
+                                      className="group/brand flex min-h-[44px] items-center gap-5 px-3 py-1.5 text-[15px] font-medium text-neutral-800 hover:bg-neutral-50 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition-colors"
+                                    >
+                                      <span className="flex h-8 w-20 shrink-0 items-center justify-center text-neutral-900 group-hover/brand:text-black">
+                                        <BrandLogoMark id={brand.id} />
+                                      </span>
+                                      <span className="group-hover/brand:underline underline-offset-4">
+                                        {brand.label}
+                                      </span>
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            ))}
                           </div>
-                        ))}
+                        ) : (
+                          <div className="grid min-h-[270px] grid-cols-4 gap-x-20">
+                            {section.columns.map((column) => (
+                              <div key={column.title}>
+                                <h3 className="mb-6 text-[16px] font-extrabold uppercase text-black">
+                                  {column.title}
+                                </h3>
+                                <div className="space-y-4">
+                                  {column.links.map((item) => (
+                                    <Link
+                                      key={`${column.title}-${item.label}`}
+                                      to={item.href}
+                                      onClick={(e) => {
+                                        e.currentTarget.blur();
+                                        setDismissedMenu(section.label);
+                                      }}
+                                      className="block text-[19px] leading-5 text-gray-600 transition hover:text-black focus-visible:outline-none focus-visible:underline"
+                                    >
+                                      {item.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -342,27 +421,48 @@ export default function Navbar() {
                         >
                           Lihat Semua {section.label}
                         </Link>
-                        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
-                          {section.columns.slice(0, 2).map((column) => (
-                            <div key={column.title}>
-                              <p className="text-xs font-bold text-gray-900 mb-2">
-                                {column.title}
-                              </p>
-                              <div className="space-y-2">
-                                {column.links.slice(0, 4).map((item) => (
-                                  <Link
-                                    key={`${section.label}-${item.label}`}
-                                    to={item.href}
-                                    onClick={closeMobileMenu}
-                                    className="block text-sm text-gray-600"
-                                  >
-                                    {item.label}
-                                  </Link>
-                                ))}
+                        {section.layout === "brands" && section.brandColumns ? (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {section.brandColumns.flat().map((brand) => (
+                              <Link
+                                key={brand.id}
+                                to={brand.href}
+                                onClick={closeMobileMenu}
+                                className="flex min-h-[44px] items-center gap-2.5 bg-white px-2.5 py-2 text-xs font-medium text-neutral-800 hover:bg-neutral-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition-colors"
+                              >
+                                <span className="flex h-6 w-10 shrink-0 items-center justify-center text-black">
+                                  <BrandLogoMark
+                                    id={brand.id}
+                                    className="h-5 w-auto max-w-[38px]"
+                                  />
+                                </span>
+                                <span className="truncate">{brand.label}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+                            {section.columns.slice(0, 2).map((column) => (
+                              <div key={column.title}>
+                                <p className="text-xs font-bold text-gray-900 mb-2">
+                                  {column.title}
+                                </p>
+                                <div className="space-y-2">
+                                  {column.links.slice(0, 4).map((item) => (
+                                    <Link
+                                      key={`${section.label}-${item.label}`}
+                                      to={item.href}
+                                      onClick={closeMobileMenu}
+                                      className="block text-sm text-gray-600"
+                                    >
+                                      {item.label}
+                                    </Link>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </details>
                   ))}

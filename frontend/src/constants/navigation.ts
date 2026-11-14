@@ -1,3 +1,11 @@
+import type { BrandLogoId } from "@/components/BrandLogoMark";
+
+export type MegaMenuBrandItem = {
+  id: BrandLogoId;
+  label: string;
+  href: string;
+};
+
 export type MegaMenuColumn = {
   title: string;
   links: Array<{ label: string; href: string }>;
@@ -7,7 +15,9 @@ export type MegaMenuSection = {
   label: string;
   href: string;
   accent?: boolean;
+  layout?: "columns" | "brands";
   columns: MegaMenuColumn[];
+  brandColumns?: MegaMenuBrandItem[][];
 };
 
 export const megaMenuSections: MegaMenuSection[] = [
@@ -293,47 +303,60 @@ export const megaMenuSections: MegaMenuSection[] = [
   {
     label: "Brands",
     href: "/product",
-    columns: [
-      {
-        title: "Sepatu",
-        links: [
-          { label: "Semua Sepatu Brand", href: "/product" },
-          { label: "Nike", href: "/product?brand=Nike" },
-          { label: "Adidas", href: "/product?brand=Adidas" },
-          { label: "New Balance", href: "/product?brand=New%20Balance" },
-          { label: "Puma", href: "/product?brand=Puma" },
-          { label: "Vans", href: "/product?brand=Vans" },
-        ],
-      },
-      {
-        title: "Pakaian",
-        links: [
-          { label: "Semua Pakaian Brand", href: "/product?search=pakaian%20brand" },
-          { label: "Nike Apparel", href: "/product?brand=Nike&segment=APPAREL" },
-          { label: "Adidas Apparel", href: "/product?brand=Adidas&segment=APPAREL" },
-          { label: "Puma Apparel", href: "/product?brand=Puma&segment=APPAREL" },
-          { label: "Jordan Apparel", href: "/product?brand=Jordan&segment=APPAREL" },
-        ],
-      },
-      {
-        title: "Aksesoris",
-        links: [
-          { label: "Semua Aksesoris Brand", href: "/product?search=aksesoris%20brand" },
-          { label: "Asics", href: "/product?brand=Asics" },
-          { label: "Reebok", href: "/product?brand=Reebok" },
-          { label: "Converse", href: "/product?brand=Converse" },
-          { label: "Skechers", href: "/product?brand=Skechers" },
-        ],
-      },
-      {
-        title: "Brand Icons",
-        links: [
-          { label: "Air Jordan", href: "/product?search=Air%20Jordan" },
-          { label: "Nike Dunk", href: "/product?search=Nike%20Dunk" },
-          { label: "Adidas Originals", href: "/product?search=Adidas%20Originals" },
-          { label: "Converse Chuck", href: "/product?search=Converse%20Chuck" },
-        ],
-      },
+    layout: "brands",
+    columns: [],
+    brandColumns: [
+      [
+        { id: "adidas", label: "adidas", href: "/product?brand=Adidas" },
+        {
+          id: "adidas-originals",
+          label: "adidas Originals",
+          href: "/product?search=Adidas%20Originals",
+        },
+        { id: "asics", label: "Asics", href: "/product?brand=Asics" },
+        {
+          id: "birkenstock",
+          label: "Birkenstock",
+          href: "/product?brand=Birkenstock",
+        },
+        { id: "converse", label: "Converse", href: "/product?brand=Converse" },
+        {
+          id: "crep-protect",
+          label: "Crep Protect",
+          href: "/product?brand=Crep%20Protect",
+        },
+        { id: "crocs", label: "Crocs", href: "/product?brand=Crocs" },
+      ],
+      [
+        { id: "hoka", label: "Hoka", href: "/product?brand=Hoka" },
+        { id: "jordan", label: "Jordan", href: "/product?brand=Jordan" },
+        { id: "lacoste", label: "Lacoste", href: "/product?brand=Lacoste" },
+        { id: "mizuno", label: "Mizuno", href: "/product?brand=Mizuno" },
+        {
+          id: "new-balance",
+          label: "New Balance",
+          href: "/product?brand=New%20Balance",
+        },
+        { id: "nike", label: "Nike", href: "/product?brand=Nike" },
+        { id: "on", label: "On", href: "/product?brand=On" },
+      ],
+      [
+        {
+          id: "onitsuka-tiger",
+          label: "Onitsuka Tiger",
+          href: "/product?brand=Onitsuka%20Tiger",
+        },
+        { id: "puma", label: "Puma", href: "/product?brand=Puma" },
+        { id: "reebok", label: "Reebok", href: "/product?brand=Reebok" },
+        { id: "salomon", label: "Salomon", href: "/product?brand=Salomon" },
+        { id: "skechers", label: "Skechers", href: "/product?brand=Skechers" },
+        {
+          id: "under-armour",
+          label: "Under Armour",
+          href: "/product?brand=Under%20Armour",
+        },
+        { id: "vans", label: "Vans", href: "/product?brand=Vans" },
+      ],
     ],
   },
   {
