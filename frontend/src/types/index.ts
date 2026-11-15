@@ -1,4 +1,4 @@
-export type UserRole = "CUSTOMER" | "ADMIN" | "USER";
+export type UserRole = "ADMIN" | "USER";
 
 export interface UserPayload {
   userId: string;

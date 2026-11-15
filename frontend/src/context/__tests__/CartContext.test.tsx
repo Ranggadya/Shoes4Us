@@ -438,5 +438,57 @@ describe("CartContext guest cart management", () => {
       size: "42",
     });
   });
+
+  it("retains guest cart items in localStorage when sync fails due to transient 5xx/network error", async () => {
+    localStorage.setItem(
+      "shoes4us_guest_cart_v1",
+      JSON.stringify([
+        {
+          id: "shoe-net__43",
+          productId: "shoe-net",
+          size: "43",
+          quantity: 2,
+          product: {
+            id: "shoe-net",
+            name: "Puma Suede Classic",
+            price: 1500000,
+            imageUrl: null,
+            maxStock: 5,
+          },
+        },
+      ])
+    );
+
+    mockAuthState.user = { id: "user-1", email: "user@shoes4us.id" };
+    mockAuthState.token = "jwt-token";
+
+    const transientErr = Object.assign(new Error("Server unavailable"), { status: 503 });
+    vi.mocked(api.post).mockRejectedValueOnce(transientErr);
+    vi.mocked(api.get).mockResolvedValue({
+      success: true,
+      data: {
+        id: "cart-1",
+        items: [],
+        totals: { subtotal: 0, totalItems: 0 },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <CartProvider>
+          <CartTestHarness />
+        </CartProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("sync-warnings")).toHaveTextContent(/Puma Suede Classic/i);
+    });
+
+    const persisted = localStorage.getItem("shoes4us_guest_cart_v1");
+    expect(persisted).not.toBeNull();
+    expect(JSON.parse(persisted!)).toHaveLength(1);
+    expect(toast.error).toHaveBeenCalled();
+  });
 });
 

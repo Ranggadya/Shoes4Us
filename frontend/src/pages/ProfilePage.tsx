@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { api } from "@/services/api";
+import { validatePasswordField } from "@/utils/auth-validation";
 import {
   emptyShippingAddress,
   loadSavedShippingAddress,
@@ -160,8 +161,11 @@ export default function ProfilePage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      toast.error("Password baru minimal 8 karakter");
+    const passwordError = validatePasswordField(newPassword, {
+      label: "Password baru",
+    });
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 

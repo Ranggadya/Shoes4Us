@@ -5,6 +5,34 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
+}
+
+html {
+  scrollbar-color: #a3a3a3 #fafafa;
+  scrollbar-width: thin;
+}
+
+::selection {
+  background: #000000;
+  color: #ffffff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fafafa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #a3a3a3;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
 }
 
 body {

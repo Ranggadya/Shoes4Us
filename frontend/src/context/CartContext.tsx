@@ -110,6 +110,20 @@ function loadGuestCart(): CartSummary {
   }
 }
 
+function isTransientCartSyncError(err: unknown): boolean {
+  const status = (err as { status?: unknown })?.status;
+  if (typeof status === "number") {
+    return status === 401 || status === 408 || status === 429 || status >= 500;
+  }
+  if (err instanceof TypeError) {
+    return true;
+  }
+  if (err instanceof Error && err.name === "AbortError") {
+    return true;
+  }
+  return false;
+}
+
 function saveGuestCartItems(items: CartItem[]): CartSummary {
   const normalized = items.map((item) => ({
     ...item,
@@ -158,6 +172,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const promise = (async () => {
       const failedItems: string[] = [];
+      const remainingItems: CartItem[] = [];
 
       for (const item of guest.items) {
         try {
@@ -172,22 +187,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
               ? err.message
               : "Stok tidak mencukupi";
           const sizeLabel = item.size ? ` (${item.size})` : "";
-          failedItems.push(`${item.product.name}${sizeLabel}: ${reason}`);
+          if (isTransientCartSyncError(err)) {
+            remainingItems.push(item);
+            failedItems.push(
+              `${item.product.name}${sizeLabel}: ${reason} (disimpan untuk dicoba ulang)`
+            );
+          } else {
+            failedItems.push(`${item.product.name}${sizeLabel}: ${reason}`);
+          }
         }
       }
 
-      try {
-        localStorage.removeItem(GUEST_CART_STORAGE_KEY);
-      } catch {
-        // Ignore storage errors
-      }
+      saveGuestCartItems(remainingItems);
 
       if (failedItems.length > 0) {
         setSyncWarnings(failedItems);
-        toast.error(
-          `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`,
-          { duration: 6000 }
-        );
+        const toastMsg =
+          remainingItems.length > 0
+            ? `${remainingItems.length} item keranjang tamu belum tersinkron karena gangguan koneksi/server dan tetap disimpan.`
+            : `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`;
+        toast.error(toastMsg, { duration: 6000 });
       }
     })().finally(() => {
       syncPromiseRef.current = null;

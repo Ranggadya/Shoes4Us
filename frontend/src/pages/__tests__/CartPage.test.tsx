@@ -107,7 +107,7 @@ describe("CartPage", () => {
         id: "user-1",
         name: "Budi",
         email: "budi@example.com",
-        role: "CUSTOMER",
+        role: "USER",
       },
       token: "token-123",
       isAdmin: false,

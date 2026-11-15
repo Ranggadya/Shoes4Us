@@ -5,6 +5,14 @@ const GET_CACHE_TTL_MS = 30_000;
 const getResponseCache = new Map<string, { data: unknown; expiresAt: number }>();
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/** Register a global callback invoked when an authenticated non-login request gets 401. */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler;
+}
+
 function isCacheablePublicGet(url: string): boolean {
   return (
     url.includes("/products") ||
@@ -86,7 +94,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  const hadAuthToken = Boolean(headers["Authorization"]);
   const url = buildUrl(endpoint);
+  const cleanUrlPath = url.split("?")[0];
+  const isAuthCredentialOrLogout =
+    cleanUrlPath.endsWith("/auth/login") ||
+    cleanUrlPath.endsWith("/auth/register") ||
+    cleanUrlPath.endsWith("/auth/logout");
 
   const response = await fetch(url, {
     ...options,
@@ -99,6 +113,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const data = isJson ? await response.json().catch(() => ({})) : await response.text();
 
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      hadAuthToken &&
+      !isAuthCredentialOrLogout
+    ) {
+      unauthorizedHandler?.();
+    }
     const jsonBody = isJson ? (data as Record<string, unknown>) : undefined;
     const nestedError = jsonBody?.error as Record<string, unknown> | string | undefined;
     const errorMessage =

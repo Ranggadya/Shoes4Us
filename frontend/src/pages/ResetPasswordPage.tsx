@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import toast from "react-hot-toast";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { api } from "@/services/api";
+import { validatePasswordField } from "@/utils/auth-validation";
 
 export default function ResetPasswordPage() {
   const { token: paramToken } = useParams<{ token: string }>();
@@ -26,8 +27,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 8) {
-      toast.error("Password minimal 8 karakter");
+    const passwordError = validatePasswordField(password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 

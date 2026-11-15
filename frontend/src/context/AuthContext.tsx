@@ -7,7 +7,14 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { api, ApiError, getToken, setToken, removeToken } from "@/services/api";
+import {
+  api,
+  clearApiCache,
+  getToken,
+  setToken,
+  removeToken,
+  setUnauthorizedHandler,
+} from "@/services/api";
 import { UserRole } from "@/types";
 
 export type User = {
@@ -41,69 +48,136 @@ type AuthResponse = {
   data: { user: User; token: string };
 };
 
+function safeGetToken(): string | null {
+  try {
+    return getToken();
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(() =>
+    safeGetToken()
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(() =>
+    Boolean(safeGetToken())
+  );
   const [error, setError] = useState<string | null>(null);
 
   const clearAuthStorage = useCallback(() => {
     setUser(null);
     setAuthToken(null);
-    localStorage.removeItem("user");
+    try {
+      localStorage.removeItem("user");
+    } catch {
+      // ignore storage errors
+    }
     removeToken();
+    if (typeof clearApiCache === "function") {
+      clearApiCache();
+    }
   }, []);
 
-  const loadProfile = useCallback(async () => {
-    const currentToken = getToken();
-    if (!currentToken) {
-      clearAuthStorage();
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await api.get<{ success: boolean; data: { user: User } }>(
-        "/auth/me"
-      );
-      if (result.data?.user) {
-        setUser(result.data.user);
-        setAuthToken(currentToken);
-        localStorage.setItem("user", JSON.stringify(result.data.user));
-      }
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+  const fetchProfile = useCallback(
+    async (options: { showLoading?: boolean } = {}) => {
+      const showLoading = options.showLoading ?? false;
+      const currentToken = safeGetToken();
+      if (!currentToken) {
         clearAuthStorage();
+        if (showLoading) {
+          setIsLoading(false);
+        }
+        return;
       }
-      setError(err instanceof Error ? err.message : "Gagal memuat profil");
-    } finally {
-      setIsLoading(false);
-    }
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
+      try {
+        const result = await api.get<{
+          success: boolean;
+          data: { user: User };
+        }>("/auth/me", { cache: "no-store" });
+        if (result.data?.user) {
+          setUser(result.data.user);
+          setAuthToken(currentToken);
+          try {
+            localStorage.setItem("user", JSON.stringify(result.data.user));
+          } catch {
+            // ignore storage errors
+          }
+        }
+      } catch (err) {
+        const status = (err as { status?: unknown })?.status;
+        if (status === 401 || status === 403 || status === 404) {
+          clearAuthStorage();
+        }
+        setError(err instanceof Error ? err.message : "Gagal memuat profil");
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [clearAuthStorage]
+  );
+
+  const refreshProfile = useCallback(async () => {
+    await fetchProfile({ showLoading: false });
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    if (typeof setUnauthorizedHandler !== "function") return;
+    setUnauthorizedHandler(() => {
+      clearAuthStorage();
+    });
+    return () => {
+      setUnauthorizedHandler(null);
+    };
   }, [clearAuthStorage]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    const savedToken = getToken();
+    const savedToken = safeGetToken();
+    if (!savedToken) {
+      try {
+        localStorage.removeItem("user");
+      } catch {
+        // ignore storage errors
+      }
+      setUser(null);
+      setAuthToken(null);
+      setIsLoading(false);
+      return;
+    }
 
-    if (savedUser && savedToken) {
+    let savedUser: string | null = null;
+    try {
+      savedUser = localStorage.getItem("user");
+    } catch {
+      savedUser = null;
+    }
+
+    if (savedUser) {
       try {
         setUser(JSON.parse(savedUser) as User);
-        setAuthToken(savedToken);
-        void loadProfile();
-        return;
-      } catch (e) {
-        console.error("Failed to parse saved user", e);
-        clearAuthStorage();
+      } catch {
+        try {
+          localStorage.removeItem("user");
+        } catch {
+          // ignore storage errors
+        }
       }
     }
-    setIsLoading(false);
-  }, [clearAuthStorage, loadProfile]);
+
+    setAuthToken(savedToken);
+    void fetchProfile({ showLoading: true });
+  }, [fetchProfile]);
 
   const loginRequest = useCallback(
     async (payload: { email: string; password: string }) => {
       setError(null);
-      setIsLoading(true);
       try {
         const result = await api.post<AuthResponse>("/auth/login", payload);
 
@@ -116,8 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Gagal login");
         throw err;
-      } finally {
-        setIsLoading(false);
       }
     },
     []
@@ -126,7 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerRequest = useCallback(
     async (payload: { name: string; email: string; password: string }) => {
       setError(null);
-      setIsLoading(true);
       try {
         const result = await api.post<AuthResponse>("/auth/register", payload);
 
@@ -139,8 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Gagal registrasi");
         throw err;
-      } finally {
-        setIsLoading(false);
       }
     },
     []
@@ -148,7 +217,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutRequest = useCallback(async () => {
     setError(null);
-    clearAuthStorage();
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Still clear client storage even if backend cookie revoke call fails
+    } finally {
+      clearAuthStorage();
+    }
   }, [clearAuthStorage]);
 
   const value = useMemo<AuthContextValue>(
@@ -161,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: loginRequest,
       register: registerRequest,
       logout: logoutRequest,
-      refresh: loadProfile,
+      refresh: refreshProfile,
     }),
     [
       user,
@@ -171,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginRequest,
       registerRequest,
       logoutRequest,
-      loadProfile,
+      refreshProfile,
     ]
   );
 

@@ -43,25 +43,44 @@ export default function App() {
           <WishlistProvider>
             <CartProvider>
               <Toaster
-                position="top-right"
+                position="bottom-right"
+                containerStyle={{
+                  bottom: 16,
+                  right: 16,
+                }}
                 toastOptions={{
                   duration: 3000,
+                  className: "!rounded-none !shadow-none",
                   style: {
-                    background: "#363636",
-                    color: "#fff",
+                    background: "#0a0a0a",
+                    color: "#ffffff",
+                    border: "1px solid #262626",
+                    borderRadius: "0px",
+                    boxShadow: "none",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    maxWidth: "min(360px, calc(100vw - 32px))",
                   },
                   success: {
                     duration: 3000,
                     iconTheme: {
-                      primary: "#10b981",
-                      secondary: "#fff",
+                      primary: "#ffffff",
+                      secondary: "#0a0a0a",
                     },
                   },
                   error: {
                     duration: 4000,
+                    style: {
+                      background: "#0a0a0a",
+                      color: "#ffffff",
+                      border: "1px solid #dc2626",
+                      borderRadius: "0px",
+                      boxShadow: "none",
+                    },
                     iconTheme: {
-                      primary: "#ef4444",
-                      secondary: "#fff",
+                      primary: "#dc2626",
+                      secondary: "#ffffff",
                     },
                   },
                 }}

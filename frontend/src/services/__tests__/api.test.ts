@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { api } from "../api";
+import { api, ApiError, setUnauthorizedHandler, setToken, removeToken } from "../api";
 
 describe("api.get public GET cache behavior", () => {
   const originalFetch = global.fetch;
@@ -47,5 +47,30 @@ describe("api.get public GET cache behavior", () => {
     );
     expect(fresh.data.items).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("invokes unauthorizedHandler on 401 for authenticated requests but skips login failures", async () => {
+    const onUnauthorized = vi.fn();
+    setUnauthorizedHandler(onUnauthorized);
+    setToken("expired-jwt");
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ message: "Sesi berakhir" }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(api.post("/auth/login", { email: "a@b.com", password: "wrong" })).rejects.toBeInstanceOf(
+      ApiError
+    );
+    expect(onUnauthorized).not.toHaveBeenCalled();
+
+    await expect(api.get("/orders", { cache: "no-store" })).rejects.toBeInstanceOf(ApiError);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+
+    setUnauthorizedHandler(null);
+    removeToken();
   });
 });

@@ -33,5 +33,12 @@ describe("checkPasswordStrength", () => {
     expect(res.percentage).toBe(100);
     expect(res.feedback).toHaveLength(0);
   });
+
+  it("requires both uppercase and lowercase characters to count case complexity", () => {
+    const res = checkPasswordStrength("ABCDEFGH");
+    expect(res.label).toBe("Lemah");
+    expect(res.percentage).toBe(25);
+    expect(res.feedback).toContain("Gunakan huruf besar & kecil");
+  });
 });
 

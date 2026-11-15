@@ -21,8 +21,8 @@ export function checkPasswordStrength(password: string): PasswordStrength {
   if (password.length >= 8) score++;
   else feedback.push("Minimal 8 karakter");
 
-  if (/[A-Z]/.test(password)) score++;
-  else feedback.push("Tambahkan huruf besar (A-Z)");
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+  else feedback.push("Gunakan huruf besar & kecil");
 
   if (/[0-9]/.test(password)) score++;
   else feedback.push("Tambahkan angka (0-9)");
