@@ -52,13 +52,13 @@ func (s *UserService) UpdateProfile(ctx context.Context, caller *token.UserClaim
 		return nil, domain.NewForbidden("Anda tidak memiliki akses untuk mengubah profil user lain")
 	}
 
-	cleanName := strings.TrimSpace(name)
-	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	if len(cleanName) < 2 {
-		return nil, domain.NewBadRequest("Nama minimal 2 karakter")
+	cleanName, err := validatePersonName(name)
+	if err != nil {
+		return nil, err
 	}
-	if cleanEmail == "" || !strings.Contains(cleanEmail, "@") {
-		return nil, domain.NewBadRequest("Format email tidak valid")
+	cleanEmail, err := validateEmailAddress(email)
+	if err != nil {
+		return nil, err
 	}
 
 	user, err := s.userRepo.FindByID(ctx, targetID)
@@ -107,8 +107,8 @@ func (s *UserService) UpdatePassword(ctx context.Context, caller *token.UserClai
 	if currentPassword == "" || newPassword == "" {
 		return domain.NewBadRequest("Password saat ini dan password baru wajib diisi")
 	}
-	if len(newPassword) < 6 {
-		return domain.NewBadRequest("Password baru minimal 6 karakter")
+	if err := validateNewPassword(newPassword, "Password baru"); err != nil {
+		return err
 	}
 
 	user, err := s.userRepo.FindByID(ctx, targetID)
@@ -123,9 +123,9 @@ func (s *UserService) UpdatePassword(ctx context.Context, caller *token.UserClai
 		return domain.NewBadRequest("Password saat ini tidak sesuai")
 	}
 
-	hashedPassword, err := hash.HashPassword(newPassword)
+	hashedPassword, err := hashPasswordOrErr(newPassword, "Password baru")
 	if err != nil {
-		return domain.NewInternal("Gagal mengenkripsi password")
+		return err
 	}
 
 	return s.userRepo.UpdatePassword(ctx, user.ID, hashedPassword)

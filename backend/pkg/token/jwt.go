@@ -38,6 +38,14 @@ func NewJWTManager(secret string, expiryHours int) *JWTManager {
 	}
 }
 
+// ExpiryHours returns the configured token lifetime in hours.
+func (m *JWTManager) ExpiryHours() int {
+	if m == nil || m.expiryHours <= 0 {
+		return 168
+	}
+	return m.expiryHours
+}
+
 // Sign creates a signed HS256 JWT string for the given UserClaims.
 func (m *JWTManager) Sign(claims UserClaims) (string, error) {
 	now := time.Now()
@@ -54,14 +62,20 @@ func (m *JWTManager) Sign(claims UserClaims) (string, error) {
 	return tok.SignedString(m.secret)
 }
 
-// Verify parses and validates a signed JWT string, returning its UserClaims.
+// Verify parses and validates a signed HS256 JWT string with required expiration, returning its UserClaims.
 func (m *JWTManager) Verify(tokenStr string) (*UserClaims, error) {
-	parsed, err := jwt.ParseWithClaims(tokenStr, &jwtClaims{}, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return m.secret, nil
-	})
+	parsed, err := jwt.ParseWithClaims(
+		tokenStr,
+		&jwtClaims{},
+		func(t *jwt.Token) (any, error) {
+			if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return m.secret, nil
+		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
 		return nil, err
 	}

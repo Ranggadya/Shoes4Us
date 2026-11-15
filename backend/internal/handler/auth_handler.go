@@ -5,22 +5,35 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ranggadya/shoes4us/backend/internal/domain"
 	"github.com/ranggadya/shoes4us/backend/internal/middleware"
 	"github.com/ranggadya/shoes4us/backend/pkg/response"
 )
 
-const authCookieMaxAgeSeconds = 7 * 24 * 60 * 60
+const defaultAuthCookieMaxAgeSeconds = 7 * 24 * 60 * 60
 
 // AuthHandler handles HTTP requests for `/api/auth/*` endpoints.
 type AuthHandler struct {
-	authService domain.AuthService
+	authService         domain.AuthService
+	cookieMaxAgeSeconds int
 }
 
 // NewAuthHandler constructs an AuthHandler.
 func NewAuthHandler(authService domain.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+	return &AuthHandler{
+		authService:         authService,
+		cookieMaxAgeSeconds: defaultAuthCookieMaxAgeSeconds,
+	}
+}
+
+// WithCookieMaxAgeSeconds overrides the auth cookie MaxAge in seconds to stay aligned with JWT TTL.
+func (h *AuthHandler) WithCookieMaxAgeSeconds(seconds int) *AuthHandler {
+	if seconds > 0 {
+		h.cookieMaxAgeSeconds = seconds
+	}
+	return h
 }
 
 type registerRequest struct {
@@ -58,7 +71,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, r, res.Token)
+	h.setAuthCookie(w, r, res.Token)
 	response.WriteCreated(w, "Registrasi berhasil", res)
 }
 
@@ -76,8 +89,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, r, res.Token)
+	h.setAuthCookie(w, r, res.Token)
 	response.WriteSuccess(w, http.StatusOK, "Login berhasil", res, nil)
+}
+
+// Logout handles `POST /api/auth/logout` by clearing the HttpOnly auth cookie.
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	h.clearAuthCookie(w, r)
+	response.WriteSuccess(w, http.StatusOK, "Logout berhasil", nil, nil)
 }
 
 // Me handles `GET /api/auth/me`.
@@ -153,14 +172,31 @@ func isSecureRequest(r *http.Request) bool {
 	return false
 }
 
-func setAuthCookie(w http.ResponseWriter, r *http.Request, jwtToken string) {
+func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, r *http.Request, jwtToken string) {
+	maxAge := h.cookieMaxAgeSeconds
+	if maxAge <= 0 {
+		maxAge = defaultAuthCookieMaxAgeSeconds
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    jwtToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   isSecureRequest(r),
-		MaxAge:   authCookieMaxAgeSeconds,
+		MaxAge:   maxAge,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (h *AuthHandler) clearAuthCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isSecureRequest(r),
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0).UTC(),
 		SameSite: http.SameSiteLaxMode,
 	})
 }

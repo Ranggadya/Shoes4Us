@@ -26,6 +26,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
+	if err := cfg.ValidateRuntimeSecurity(); err != nil {
+		log.Fatalf("security configuration error: %v", err)
+	}
 
 	if err := os.MkdirAll(cfg.UploadDir, 0o755); err != nil {
 		log.Fatalf("failed to create upload directory %q: %v", cfg.UploadDir, err)
@@ -58,7 +61,7 @@ func main() {
 		WithResetURLBase(cfg.FrontendURL).
 		WithDevResetLinkLogging(strings.TrimSpace(cfg.SMTPHost) == "")
 	userSvc := service.NewUserService(userRepo)
-	authHandler := handler.NewAuthHandler(authSvc)
+	authHandler := handler.NewAuthHandler(authSvc).WithCookieMaxAgeSeconds(cfg.JWTExpiresHours * 3600)
 	userHandler := handler.NewUserHandler(userSvc)
 
 	categoryRepo := repository.NewCategoryRepository(pool)
@@ -119,8 +122,11 @@ func main() {
 	}
 
 	router := handler.NewRouter(handler.RouterDependencies{
-		AllowedOrigins:  cfg.AllowedOrigins,
-		UploadDir:       cfg.UploadDir,
+		AllowedOrigins:      cfg.AllowedOrigins,
+		Production:          cfg.IsProduction(),
+		AllowVercelPreviews: cfg.AllowVercelPreviews,
+		TrustedProxies:      cfg.TrustedProxies,
+		UploadDir:           cfg.UploadDir,
 		JWTSecret:       cfg.JWTSecret,
 		JWTManager:      jwtMgr,
 		HealthCheck:     healthCheckFn,

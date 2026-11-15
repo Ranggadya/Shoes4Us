@@ -2,7 +2,9 @@ package token_test
 
 import (
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/ranggadya/shoes4us/backend/pkg/token"
 )
 
@@ -40,4 +42,65 @@ func TestJWTManager_SignAndVerify(t *testing.T) {
 	if _, err := mgr.Verify("invalid.jwt.token"); err == nil {
 		t.Fatal("expected error when verifying malformed token, got nil")
 	}
+}
+
+func TestJWTManager_VerifyHardening(t *testing.T) {
+	secret := "test-secret-key-for-hardening-checks"
+	mgr := token.NewJWTManager(secret, 24)
+
+	t.Run("rejects expired token", func(t *testing.T) {
+		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"userId": "user-1",
+			"exp":    time.Now().Add(-5 * time.Minute).Unix(),
+		})
+		signed, err := tok.SignedString([]byte(secret))
+		if err != nil {
+			t.Fatalf("sign failed: %v", err)
+		}
+		if _, err := mgr.Verify(signed); err == nil {
+			t.Fatal("expected expired token to fail verification")
+		}
+	})
+
+	t.Run("rejects token missing exp claim", func(t *testing.T) {
+		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"userId": "user-1",
+			"role":   "USER",
+		})
+		signed, err := tok.SignedString([]byte(secret))
+		if err != nil {
+			t.Fatalf("sign failed: %v", err)
+		}
+		if _, err := mgr.Verify(signed); err == nil {
+			t.Fatal("expected token without exp claim to fail verification")
+		}
+	})
+
+	t.Run("rejects non-HS256 HMAC method such as HS512", func(t *testing.T) {
+		tok := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
+			"userId": "user-1",
+			"exp":    time.Now().Add(time.Hour).Unix(),
+		})
+		signed, err := tok.SignedString([]byte(secret))
+		if err != nil {
+			t.Fatalf("sign failed: %v", err)
+		}
+		if _, err := mgr.Verify(signed); err == nil {
+			t.Fatal("expected HS512 token to be rejected when HS256 is pinned")
+		}
+	})
+
+	t.Run("rejects none alg token", func(t *testing.T) {
+		tok := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
+			"userId": "user-1",
+			"exp":    time.Now().Add(time.Hour).Unix(),
+		})
+		signed, err := tok.SignedString(jwt.UnsafeAllowNoneSignatureType)
+		if err != nil {
+			t.Fatalf("sign failed: %v", err)
+		}
+		if _, err := mgr.Verify(signed); err == nil {
+			t.Fatal("expected alg=none token to be rejected")
+		}
+	})
 }

@@ -15,20 +15,23 @@ import (
 
 // RouterDependencies holds configuration and optional domain handlers to mount onto the HTTP router.
 type RouterDependencies struct {
-	AllowedOrigins  []string
-	UploadDir       string
-	JWTSecret       string
-	JWTManager      *token.JWTManager
-	HealthCheck     func(ctx context.Context) error
-	AuthHandler     *AuthHandler
-	UserHandler     *UserHandler
-	ProductHandler  *ProductHandler
-	ReviewHandler   *ReviewHandler
-	CartHandler     *CartHandler
-	WishlistHandler *WishlistHandler
-	OrderHandler    *OrderHandler
-	CouponHandler   *CouponHandler
-	ShippingHandler *ShippingHandler
+	AllowedOrigins      []string
+	Production          bool
+	AllowVercelPreviews bool
+	TrustedProxies      []string
+	UploadDir           string
+	JWTSecret           string
+	JWTManager          *token.JWTManager
+	HealthCheck         func(ctx context.Context) error
+	AuthHandler         *AuthHandler
+	UserHandler         *UserHandler
+	ProductHandler      *ProductHandler
+	ReviewHandler       *ReviewHandler
+	CartHandler         *CartHandler
+	WishlistHandler     *WishlistHandler
+	OrderHandler        *OrderHandler
+	CouponHandler       *CouponHandler
+	ShippingHandler     *ShippingHandler
 }
 
 // NewRouter constructs the root Chi HTTP router with security headers, rate limiting, CORS, compression, static uploads, and /api endpoints.
@@ -44,14 +47,17 @@ func NewRouter(deps RouterDependencies) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	})
-	r.Use(chimw.RealIP)
 	r.Use(middleware.SecurityHeaders)
 	r.Use(middleware.StructuredLogger)
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(chimw.Compress(5))
 	r.Use(middleware.MaxBodySize(2 << 20)) // 2 MB JSON payload limit
-	r.Use(middleware.NewCORSMiddleware(deps.AllowedOrigins))
+	r.Use(middleware.NewCORSMiddlewareWithConfig(middleware.CORSConfig{
+		AllowedOrigins:      deps.AllowedOrigins,
+		Production:          deps.Production,
+		AllowVercelPreviews: deps.AllowVercelPreviews,
+	}))
 
 	jwtMgr := deps.JWTManager
 	if jwtMgr == nil && strings.TrimSpace(deps.JWTSecret) != "" {
@@ -68,8 +74,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		fileServer.ServeHTTP(w, req)
 	})
 
-	apiLimiter := middleware.NewRateLimiter(600, time.Minute)
-	authStrictLimiter := middleware.NewRateLimiter(30, time.Minute)
+	apiLimiter := middleware.NewRateLimiterWithTrustedProxies(600, time.Minute, deps.TrustedProxies)
+	authStrictLimiter := middleware.NewRateLimiterWithTrustedProxies(30, time.Minute, deps.TrustedProxies)
 
 	r.Route("/api", func(api chi.Router) {
 		api.Use(apiLimiter)
@@ -112,6 +118,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 			api.Route("/auth", func(auth chi.Router) {
 				auth.With(authStrictLimiter).Post("/register", deps.AuthHandler.Register)
 				auth.With(authStrictLimiter).Post("/login", deps.AuthHandler.Login)
+				auth.Post("/logout", deps.AuthHandler.Logout)
 				auth.With(authStrictLimiter).Post("/forgot-password", deps.AuthHandler.ForgotPassword)
 				auth.With(authStrictLimiter).Post("/reset-password", deps.AuthHandler.ResetPassword)
 				if jwtMgr != nil {

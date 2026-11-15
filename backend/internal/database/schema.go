@@ -153,6 +153,8 @@ func SchemaDDL() string {
 		"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER("email"));
+	CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens ("userId");
 	CREATE INDEX IF NOT EXISTS idx_products_active_created ON products ("isActive", "createdAt" DESC);
 	CREATE INDEX IF NOT EXISTS idx_products_category ON products ("categoryId");
 	CREATE INDEX IF NOT EXISTS idx_products_category_active ON products ("categoryId", "isActive");

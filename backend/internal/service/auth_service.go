@@ -15,6 +15,16 @@ import (
 // resetTokenTTL is how long a password reset token stays valid (SPEC-backend.md §6.1: 1 hour).
 const resetTokenTTL = time.Hour
 
+// dummyBcryptHash keeps login verification latency consistent when no user row exists,
+// preventing timing-based email enumeration.
+var dummyBcryptHash string
+
+func init() {
+	if hashed, err := hash.HashPassword("shoes4us-dummy-timing-guard"); err == nil {
+		dummyBcryptHash = hashed
+	}
+}
+
 // AuthService implements domain.AuthService.
 type AuthService struct {
 	userRepo      domain.UserRepository
@@ -50,17 +60,16 @@ func (s *AuthService) WithResetURLBase(frontendURL string) *AuthService {
 }
 
 func (s *AuthService) Register(ctx context.Context, name, email, password string) (*domain.AuthResponse, error) {
-	cleanName := strings.TrimSpace(name)
-	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-
-	if len(cleanName) < 2 {
-		return nil, domain.NewBadRequest("Nama minimal 2 karakter")
+	cleanName, err := validatePersonName(name)
+	if err != nil {
+		return nil, err
 	}
-	if cleanEmail == "" || !strings.Contains(cleanEmail, "@") {
-		return nil, domain.NewBadRequest("Format email tidak valid")
+	cleanEmail, err := validateEmailAddress(email)
+	if err != nil {
+		return nil, err
 	}
-	if len(password) < 6 {
-		return nil, domain.NewBadRequest("Password minimal 6 karakter")
+	if err := validateNewPassword(password, "Password"); err != nil {
+		return nil, err
 	}
 
 	existing, err := s.userRepo.FindByEmail(ctx, cleanEmail)
@@ -71,9 +80,9 @@ func (s *AuthService) Register(ctx context.Context, name, email, password string
 		return nil, domain.NewConflict("User dengan email ini sudah terdaftar")
 	}
 
-	hashedPassword, err := hash.HashPassword(password)
+	hashedPassword, err := hashPasswordOrErr(password, "Password")
 	if err != nil {
-		return nil, domain.NewInternal("Gagal mengenkripsi password")
+		return nil, err
 	}
 
 	now := time.Now().UTC()
@@ -119,13 +128,18 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*domai
 		return nil, err
 	}
 	if user == nil || user.PasswordHash == "" {
+		if dummyBcryptHash != "" {
+			_ = hash.CheckPasswordHash(password, dummyBcryptHash)
+		}
+		return nil, domain.NewUnauthorized("Email atau password salah")
+	}
+	// Verify password before revealing account activation status so wrong-password probes
+	// only receive 401 Unauthorized.
+	if !hash.CheckPasswordHash(password, user.PasswordHash) {
 		return nil, domain.NewUnauthorized("Email atau password salah")
 	}
 	if !user.IsActive {
 		return nil, domain.NewForbidden("Akun Anda tidak aktif")
-	}
-	if !hash.CheckPasswordHash(password, user.PasswordHash) {
-		return nil, domain.NewUnauthorized("Email atau password salah")
 	}
 
 	signedToken, err := s.jwtMgr.Sign(token.UserClaims{
@@ -156,6 +170,9 @@ func (s *AuthService) GetMe(ctx context.Context, userID string) (*domain.User, e
 	if user == nil {
 		return nil, domain.NewNotFound("User tidak ditemukan")
 	}
+	if !user.IsActive {
+		return nil, domain.NewForbidden("Akun Anda tidak aktif")
+	}
 
 	return user, nil
 }
@@ -163,9 +180,9 @@ func (s *AuthService) GetMe(ctx context.Context, userID string) (*domain.User, e
 // ForgotPassword generates a single-use reset token for a registered email and stores its SHA-256 hash.
 // Returns nil when the email is not registered to prevent user enumeration.
 func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
-	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	if cleanEmail == "" || !strings.Contains(cleanEmail, "@") {
-		return domain.NewBadRequest("Format email tidak valid")
+	cleanEmail, err := validateEmailAddress(email)
+	if err != nil {
+		return err
 	}
 
 	user, err := s.userRepo.FindByEmail(ctx, cleanEmail)
@@ -177,7 +194,9 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 		return nil
 	}
 
-	_ = s.userRepo.DeleteResetTokensByUser(ctx, user.ID)
+	if err := s.userRepo.DeleteResetTokensByUser(ctx, user.ID); err != nil {
+		return err
+	}
 
 	rawToken := uuid.NewString()
 	tokenHash := hash.HashTokenSHA256(rawToken)
@@ -203,8 +222,8 @@ func (s *AuthService) ResetPassword(ctx context.Context, rawToken, newPassword s
 	if cleanToken == "" {
 		return domain.NewBadRequest("Token tidak boleh kosong")
 	}
-	if len(newPassword) < 6 {
-		return domain.NewBadRequest("Password minimal 6 karakter")
+	if err := validateNewPassword(newPassword, "Password"); err != nil {
+		return err
 	}
 
 	tokenHash := hash.HashTokenSHA256(cleanToken)
@@ -213,15 +232,14 @@ func (s *AuthService) ResetPassword(ctx context.Context, rawToken, newPassword s
 		return err
 	}
 
-	hashedPassword, err := hash.HashPassword(newPassword)
+	hashedPassword, err := hashPasswordOrErr(newPassword, "Password")
 	if err != nil {
-		return domain.NewInternal("Gagal mengenkripsi password")
+		return err
 	}
 
 	if err := s.userRepo.UpdatePassword(ctx, userID, hashedPassword); err != nil {
 		return err
 	}
 
-	_ = s.userRepo.DeleteResetTokensByUser(ctx, userID)
-	return nil
+	return s.userRepo.DeleteResetTokensByUser(ctx, userID)
 }

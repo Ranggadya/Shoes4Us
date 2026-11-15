@@ -23,6 +23,8 @@ func TestNewPostgresPool_Validation(t *testing.T) {
 func TestSchemaDDL_CompositeIndexes(t *testing.T) {
 	ddl := database.SchemaDDL()
 	requiredIndexes := []string{
+		"idx_users_email_lower",
+		"idx_password_reset_tokens_user_id",
 		"idx_products_category_active",
 		"idx_products_price",
 		"idx_order_items_product_id",

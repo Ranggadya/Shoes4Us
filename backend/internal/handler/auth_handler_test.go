@@ -509,3 +509,87 @@ func TestAuthCookie_SecureFlag(t *testing.T) {
 		t.Errorf("expected Secure=true on X-Forwarded-Proto=https, got false")
 	}
 }
+
+func TestAuthHandler_LogoutAndInputHardening(t *testing.T) {
+	repo := newFakeUserRepo()
+	jwtMgr := token.NewJWTManager("test-secret-with-at-least-32-chars", 24)
+	authSvc := service.NewAuthService(repo, jwtMgr)
+	authHandler := handler.NewAuthHandler(authSvc).WithCookieMaxAgeSeconds(3600)
+
+	router := handler.NewRouter(handler.RouterDependencies{
+		JWTManager:  jwtMgr,
+		AuthHandler: authHandler,
+	})
+
+	// 1. Injected role must be ignored and always provisioned as USER; cookie MaxAge follows config
+	regPayload, _ := json.Marshal(map[string]string{
+		"name":     "Role Probe",
+		"email":    "probe@shoes4us.com",
+		"password": "password123",
+		"role":     "ADMIN",
+	})
+	regReq := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(regPayload))
+	regReq.Header.Set("Content-Type", "application/json")
+	regRec := httptest.NewRecorder()
+	router.ServeHTTP(regRec, regReq)
+
+	if regRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created, got %d: %s", regRec.Code, regRec.Body.String())
+	}
+
+	var regResp struct {
+		Data domain.AuthResponse `json:"data"`
+	}
+	if err := json.Unmarshal(regRec.Body.Bytes(), &regResp); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if regResp.Data.User.Role != domain.RoleUser {
+		t.Fatalf("expected injected role ADMIN to be ignored and USER assigned, got %s", regResp.Data.User.Role)
+	}
+
+	var regCookie *http.Cookie
+	for _, c := range regRec.Result().Cookies() {
+		if c.Name == "token" {
+			regCookie = c
+			break
+		}
+	}
+	if regCookie == nil || regCookie.MaxAge != 3600 {
+		t.Fatalf("expected token cookie MaxAge=3600, got %+v", regCookie)
+	}
+
+	// 2. Register rejects 7-char and >72-byte passwords and malformed JSON with 400
+	badPayloads := [][]byte{
+		[]byte(`{"name":"Bad"`),
+		[]byte(`{"name":"Short Pw","email":"s@shoes4us.com","password":"1234567"}`),
+		[]byte(`{"name":"Long Pw","email":"l@shoes4us.com","password":"` + strings.Repeat("x", 73) + `"}`),
+	}
+	for _, body := range badPayloads {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for payload %s, got %d", string(body), rec.Code)
+		}
+	}
+
+	// 3. Logout endpoint clears the token cookie
+	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	logoutRec := httptest.NewRecorder()
+	router.ServeHTTP(logoutRec, logoutReq)
+
+	if logoutRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on logout, got %d: %s", logoutRec.Code, logoutRec.Body.String())
+	}
+	var cleared *http.Cookie
+	for _, c := range logoutRec.Result().Cookies() {
+		if c.Name == "token" {
+			cleared = c
+			break
+		}
+	}
+	if cleared == nil || cleared.Value != "" || cleared.MaxAge >= 0 {
+		t.Fatalf("expected token cookie to be expired on logout, got %+v", cleared)
+	}
+}

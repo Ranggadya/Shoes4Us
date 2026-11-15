@@ -7,6 +7,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ErrPasswordTooLong is returned when a password exceeds bcrypt's 72-byte limit.
+var ErrPasswordTooLong = bcrypt.ErrPasswordTooLong
+
 // HashPassword hashes a plaintext password using bcrypt with DefaultCost.
 func HashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
