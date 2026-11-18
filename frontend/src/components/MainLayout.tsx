@@ -3,8 +3,10 @@ import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import AuthNavbar from "./AuthNavbar";
+import CartDrawer from "./CartDrawer";
 import ErrorBoundary from "./ErrorBoundary";
 import WhatsAppSupportButton from "./WhatsAppSupportButton";
+import { CartDrawerProvider } from "@/context/CartDrawerContext";
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -16,20 +18,23 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     pathname.startsWith("/reset-password");
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {!isAdminPage && !isAuthPage && <Navbar />}
-      {isAuthPage && <AuthNavbar />}
-      {isAdminPage ? (
-        <div className="flex-grow">
-          <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
-        </div>
-      ) : (
-        <main className="flex-grow">
-          <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
-        </main>
-      )}
-      {!isAdminPage && !isAuthPage && <Footer />}
-      {!isAdminPage && !isAuthPage && <WhatsAppSupportButton />}
-    </div>
+    <CartDrawerProvider>
+      <div className="flex flex-col min-h-screen">
+        {!isAdminPage && !isAuthPage && <Navbar />}
+        {isAuthPage && <AuthNavbar />}
+        {isAdminPage ? (
+          <div className="flex-grow">
+            <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+          </div>
+        ) : (
+          <main className="flex-grow">
+            <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+          </main>
+        )}
+        {!isAdminPage && !isAuthPage && <Footer />}
+        {!isAdminPage && !isAuthPage && <WhatsAppSupportButton />}
+        {!isAdminPage && !isAuthPage && <CartDrawer />}
+      </div>
+    </CartDrawerProvider>
   );
 }

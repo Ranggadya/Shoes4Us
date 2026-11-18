@@ -74,3 +74,42 @@ body {
 .animate-fade-in-delay {
   animation: fade-in-delay 1s ease-out 0.3s both;
 }
+
+/* Seamless storefront marquee ticker */
+@keyframes shoes4us-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.shoes4us-marquee {
+  overflow: hidden;
+}
+
+.shoes4us-marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: shoes4us-marquee 40s linear infinite;
+}
+
+.shoes4us-marquee:hover .shoes4us-marquee-track,
+.shoes4us-marquee:focus-within .shoes4us-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shoes4us-marquee-track {
+    animation: none;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .shoes4us-marquee-duplicate {
+    display: none !important;
+  }
+}

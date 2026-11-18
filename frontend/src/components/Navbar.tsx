@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useCartDrawer } from "@/context/CartDrawerContext";
 import { megaMenuSections } from "@/constants/navigation";
 import BrandLogoMark from "./BrandLogoMark";
 import GlobalSearch from "./GlobalSearch";
@@ -28,6 +29,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
   const { cart } = useCart();
+  const cartDrawer = useCartDrawer();
   const totalCartItems = cart?.totals.totalItems ?? 0;
 
   useEffect(() => {
@@ -77,6 +79,16 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   };
 
+  const handleOpenCart = () => {
+    setIsOpen(false);
+    setMobileMenuOpen(false);
+    if (cartDrawer.isManaged) {
+      cartDrawer.openDrawer();
+    } else {
+      navigate("/cart");
+    }
+  };
+
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-6 py-4">
@@ -101,22 +113,40 @@ export default function Navbar() {
             <GlobalSearch />
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden p-2 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Open menu"
-          >
-            <Menu size={24} />
-          </button>
+          {/* Mobile Quick Actions */}
+          <div className="flex items-center gap-1 lg:hidden">
+            {!isAdmin && (
+              <button
+                type="button"
+                onClick={handleOpenCart}
+                aria-label="Buka keranjang belanja"
+                className="relative p-2 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
+                <ShoppingCart size={22} />
+                {totalCartItems > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center text-[10px] font-bold text-white bg-black tabular-nums">
+                    {totalCartItems}
+                  </span>
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Open menu"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
 
           {/* Navigation Links */}
           <div className="hidden lg:flex items-center space-x-6 text-black">
             {!isAdmin && (
-              <Link
-                to="/cart"
-                className="relative flex items-center space-x-1.5 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition"
+              <button
+                type="button"
+                onClick={handleOpenCart}
+                className="relative min-h-[44px] px-1 flex items-center space-x-1.5 hover:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 transition"
               >
                 <ShoppingCart size={18} />
                 <span>Keranjang</span>
@@ -125,7 +155,7 @@ export default function Navbar() {
                     {totalCartItems}
                   </span>
                 )}
-              </Link>
+              </button>
             )}
 
             {user && !isAdmin && (
@@ -467,10 +497,10 @@ export default function Navbar() {
                     </details>
                   ))}
 
-                  <Link
-                    to="/cart"
-                    className="flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
-                    onClick={closeMobileMenu}
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition text-gray-900 min-h-[44px]"
+                    onClick={handleOpenCart}
                   >
                     <div className="flex items-center gap-3">
                       <ShoppingCart size={20} />
@@ -481,7 +511,7 @@ export default function Navbar() {
                         {totalCartItems}
                       </span>
                     )}
-                  </Link>
+                  </button>
 
                   {user && (
                     <Link

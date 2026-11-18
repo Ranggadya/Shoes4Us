@@ -1,7 +1,13 @@
 import HeroCarousel from "@/components/HeroCarousel";
+import HomeTickerMarquee from "@/components/HomeTickerMarquee";
+import HomeQuickSizeFinder from "@/components/HomeQuickSizeFinder";
 import ShopByCategory from "@/components/ShopByCategory";
-import FeaturedProducts from "@/components/FeaturedProducts";
+import TabbedProductShowcase from "@/components/TabbedProductShowcase";
+import HomeArchiveSaleBanner from "@/components/HomeArchiveSaleBanner";
+import HomeVoucherStrip from "@/components/HomeVoucherStrip";
+import HomeBrandGrid from "@/components/HomeBrandGrid";
 import CategoryShowcase from "@/components/CategoryShowcase";
+import RecentlyViewedSection from "@/components/RecentlyViewedSection";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import SEO from "@/components/SEO";
 import FlashSaleBanner from "@/components/FlashSaleBanner";
@@ -15,9 +21,15 @@ export default function HomePage() {
       />
       <FlashSaleBanner />
       <HeroCarousel />
+      <HomeTickerMarquee />
+      <HomeQuickSizeFinder />
       <ShopByCategory />
-      <FeaturedProducts />
+      <TabbedProductShowcase />
+      <HomeArchiveSaleBanner />
+      <HomeVoucherStrip />
+      <HomeBrandGrid />
       <CategoryShowcase />
+      <RecentlyViewedSection />
       <WhyChooseUs />
     </main>
   );

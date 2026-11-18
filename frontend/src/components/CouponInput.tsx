@@ -6,31 +6,13 @@ import {
   SAVED_COUPON_STORAGE_KEY,
   savePersistedCoupon,
 } from "@/hooks/useCartCouponSync";
+import { PROMO_VOUCHERS } from "@/constants/coupons";
 import { formatCurrency } from "@/utils/format";
 import type { CouponValidationResult } from "@/types";
 
 export { SAVED_COUPON_STORAGE_KEY };
 
-const QUICK_VOUCHERS = [
-  {
-    code: "DISKON10",
-    label: "DISKON10 (10%)",
-    rule: "Min. Rp 100rb",
-    minSubtotal: 100000,
-  },
-  {
-    code: "HEMAT50RB",
-    label: "HEMAT50RB (Rp 50rb)",
-    rule: "Min. Rp 300rb",
-    minSubtotal: 300000,
-  },
-  {
-    code: "GRATISONGKIR",
-    label: "GRATISONGKIR",
-    rule: "Min. Rp 150rb",
-    minSubtotal: 150000,
-  },
-];
+const QUICK_VOUCHERS = PROMO_VOUCHERS;
 
 type CouponInputProps = {
   subtotal: number;

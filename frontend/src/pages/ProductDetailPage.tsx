@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
+import { useCartDrawer } from "@/context/CartDrawerContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -8,12 +9,14 @@ import {
   getCategoryName,
   resolveProductBrand,
 } from "@/utils/format";
+import { recordRecentlyViewed } from "@/utils/recently-viewed";
 import { EU_TO_US_MAP, formatShoeSizeLabel } from "@/utils/size-converter";
 import { api } from "@/services/api";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewList from "@/components/ReviewList";
 import RelatedProducts from "@/components/RelatedProducts";
+import RecentlyViewedSection from "@/components/RecentlyViewedSection";
 import SEO from "@/components/SEO";
 import SizeGuideModal from "@/components/SizeGuideModal";
 import toast from "react-hot-toast";
@@ -141,6 +144,7 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addItem } = useCart();
+  const cartDrawer = useCartDrawer();
   const { isWishlisted: checkIsWishlisted, toggleProduct: toggleWishlist } =
     useWishlist();
   const isWishlisted = checkIsWishlisted(productId);
@@ -193,6 +197,15 @@ export default function ProductDetailPage() {
 
         const fetched = productData.data.product;
         setProduct(fetched);
+        recordRecentlyViewed({
+          id: String(fetched.id),
+          name: fetched.name,
+          price: fetched.price,
+          imageUrl: fetched.imageUrl,
+          brand: fetched.brand ?? null,
+          audience: fetched.audience ?? null,
+          isSale: fetched.isSale,
+        });
 
         // Preselect first available size if present
         const sizesList =
@@ -241,8 +254,12 @@ export default function ProductDetailPage() {
 
     const currentSizeStock =
       product.sizes?.find((item) => item.size === size)?.stock ?? product.stock;
+    if (currentSizeStock <= 0) {
+      toast.error("Ukuran yang dipilih sedang habis");
+      return false;
+    }
     if (currentSizeStock < quantity) {
-      toast.error("Stok ukuran yang dipilih tidak mencukupi");
+      toast.error("Jumlah melebihi ketersediaan untuk ukuran ini");
       return false;
     }
 
@@ -276,6 +293,7 @@ export default function ProductDetailPage() {
     const added = await submitCartSelection("cart");
     if (added) {
       toast.success("Produk berhasil ditambahkan ke keranjang!");
+      cartDrawer.openDrawer();
     }
   };
 
@@ -384,7 +402,7 @@ export default function ProductDetailPage() {
     availableSizes.find((option) => option.size === size)?.stock ??
     product.stock;
   const hasStock = product.stock > 0;
-  const maxSelectableQuantity = Math.max(1, Math.min(10, selectedSizeStock));
+  const maxSelectableQuantity = 10;
   const brandName = resolveProductBrand(
     product.name,
     product.brand,
@@ -545,7 +563,7 @@ export default function ProductDetailPage() {
               {!hasStock && (
                 <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
                   <span className="bg-red-600 text-white px-6 py-3 text-base font-bold uppercase tracking-wider">
-                    STOK HABIS
+                    HABIS
                   </span>
                 </div>
               )}
@@ -679,8 +697,7 @@ export default function ProductDetailPage() {
                   Ukuran dipilih:{" "}
                   <strong className="text-gray-800">
                     {formatShoeSizeLabel(size)}
-                  </strong>{" "}
-                  • Stok tersedia: {selectedSizeStock} pasang
+                  </strong>
                 </p>
               )}
             </div>
@@ -817,7 +834,7 @@ export default function ProductDetailPage() {
                   },
                   {
                     store: "Shoes4Us Paris Van Java, Bandung",
-                    status: hasStock ? "Stok Terbatas" : "Habis",
+                    status: hasStock ? "Tersedia" : "Habis",
                   },
                   {
                     store: "Shoes4Us Tunjungan Plaza, Surabaya",
@@ -835,8 +852,6 @@ export default function ProductDetailPage() {
                       className={`text-xs font-bold px-2 py-0.5 ${
                         item.status === "Tersedia"
                           ? "bg-emerald-50 text-emerald-700"
-                          : item.status === "Stok Terbatas"
-                          ? "bg-amber-50 text-amber-700"
                           : "bg-red-50 text-red-600"
                       }`}
                     >
@@ -1128,6 +1143,9 @@ export default function ProductDetailPage() {
         {/* Related Products Recommendation */}
         <RelatedProducts productId={product.id} />
       </div>
+
+      {/* Recently Viewed Products */}
+      <RecentlyViewedSection excludeProductId={product.id} />
     </div>
   );
 }
