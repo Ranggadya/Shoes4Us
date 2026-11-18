@@ -194,11 +194,6 @@ export default function WishlistPage() {
                       HABIS
                     </div>
                   )}
-                  {item.product.stock > 0 && item.product.stock <= 5 && (
-                    <div className="absolute top-2 right-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      Sisa {item.product.stock}
-                    </div>
-                  )}
                 </div>
               </Link>
 

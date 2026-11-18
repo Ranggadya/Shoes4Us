@@ -14,7 +14,7 @@ const STORE_PILLARS = [
   },
   {
     icon: Ruler,
-    text: "Stok Real-Time per Ukuran (US / EU)",
+    text: "Pilihan Ukuran Lengkap (US / EU)",
   },
   {
     icon: RefreshCw,

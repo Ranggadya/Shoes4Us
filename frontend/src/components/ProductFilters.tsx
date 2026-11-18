@@ -43,7 +43,6 @@ export type FilterValues = {
   size: string;
   collection: string;
   isSale: boolean;
-  inStock: boolean;
   minPrice: number;
   maxPrice: number;
   sortBy: string;
@@ -127,7 +126,6 @@ function ProductFilters({
     size: initialFilters?.size ?? "",
     collection: initialFilters?.collection ?? "",
     isSale: initialFilters?.isSale ?? false,
-    inStock: initialFilters?.inStock ?? false,
     minPrice: initialFilters?.minPrice ?? 0,
     maxPrice: initialFilters?.maxPrice ?? DEFAULT_MAX_PRICE,
     sortBy: initialFilters?.sortBy ?? "newest",
@@ -203,7 +201,6 @@ function ProductFilters({
         size: "",
         collection: "",
         isSale: false,
-        inStock: false,
         minPrice: 0,
         maxPrice: DEFAULT_MAX_PRICE,
         sortBy: "newest",
@@ -271,13 +268,6 @@ function ProductFilters({
       key: "collection",
       label: colMap[currentFilters.collection] || currentFilters.collection,
       onRemove: () => emitChange({ collection: "" }),
-    });
-  }
-  if (currentFilters.inStock) {
-    activeTags.push({
-      key: "inStock",
-      label: "Stok Tersedia",
-      onRemove: () => emitChange({ inStock: false }),
     });
   }
   if (
@@ -629,7 +619,7 @@ function ProductFilters({
             )}
           </div>
 
-          {/* 6. Collection & Stock Availability — Sharp Rectangular Boxes */}
+          {/* 6. Collection & Promo — Sharp Rectangular Boxes */}
           <div className="py-4">
             <button
               type="button"
@@ -637,7 +627,7 @@ function ProductFilters({
               className="flex items-center justify-between w-full text-left"
             >
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Koleksi & Status
+                Koleksi &amp; Promo
               </span>
               <ChevronDown
                 size={15}
@@ -649,32 +639,6 @@ function ProductFilters({
 
             {openSections.collection && (
               <div className="space-y-2.5 mt-3">
-                {/* Ready Stock Switch — Square Track & Thumb */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    emitChange({ inStock: !currentFilters.inStock })
-                  }
-                  className="flex items-center justify-between w-full px-3 py-2.5 border border-slate-300 bg-slate-50 hover:border-slate-900 transition"
-                >
-                  <span className="text-xs font-semibold text-slate-800">
-                    Hanya Stok Tersedia
-                  </span>
-                  <span
-                    className={`w-9 h-5 transition-colors relative inline-flex items-center ${
-                      currentFilters.inStock ? "bg-slate-900" : "bg-slate-300"
-                    }`}
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 bg-white transform transition-transform ${
-                        currentFilters.inStock
-                          ? "translate-x-4"
-                          : "translate-x-1"
-                      }`}
-                    />
-                  </span>
-                </button>
-
                 {/* Promo / Collection Rectangular Cards */}
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                   <button

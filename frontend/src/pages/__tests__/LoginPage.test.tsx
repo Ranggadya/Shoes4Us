@@ -83,6 +83,7 @@ describe("LoginPage & AuthNavbar", () => {
     expect(
       screen.getByText(/100% Original · Verifikasi Produk Resmi/i)
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Stok Real-Time/i)).not.toBeInTheDocument();
 
     const authNav = screen.getByRole("navigation", {
       name: /Navigasi autentikasi/i,

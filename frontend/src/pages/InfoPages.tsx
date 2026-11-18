@@ -412,10 +412,10 @@ export default function InfoPages({ page }: { page: InfoPageSlug }) {
 
                     <section>
                       <h2 className="text-base font-bold text-slate-900 mb-2">
-                        2. Informasi Produk, Harga, dan Ketersediaan Stok
+                        2. Informasi Produk, Harga, dan Ketersediaan
                       </h2>
                       <p>
-                        Seluruh harga produk tercantum dalam mata uang Rupiah (IDR). Stok masing-masing ukuran sepatu diperbarui secara langsung (real-time). Apabila terjadi kendala stok habis saat pesanan diproses, tim kami akan segera menghubungi Anda untuk opsi penggantian ukuran/produk atau pengembalian dana penuh (100%).
+                        Seluruh harga produk tercantum dalam mata uang Rupiah (IDR). Apabila ukuran atau produk yang dipesan tidak lagi tersedia saat pesanan diproses, tim kami akan segera menghubungi Anda untuk opsi penggantian ukuran/produk atau pengembalian dana penuh (100%).
                       </p>
                     </section>
 

@@ -212,15 +212,17 @@ describe("CartContext guest cart management", () => {
     expect(screen.getByTestId("total-items")).toHaveTextContent("2");
     expect(screen.getByTestId("last-error")).toHaveTextContent("");
 
-    // Adding again exceeds maxStock (2)
+    // Adding again exceeds maxStock (2) without exposing numeric stock count
     await userEvent.click(screen.getByRole("button", { name: "Add Limited Max2" }));
     expect(screen.getByTestId("total-items")).toHaveTextContent("2");
     expect(screen.getByTestId("last-error").textContent).not.toBe("");
+    expect(screen.getByTestId("last-error").textContent).not.toMatch(/Stok tersisa/i);
 
     // Updating quantity above maxStock (5 > 2) also fails without changing qty
     await userEvent.click(screen.getByRole("button", { name: "Exceed Limited Qty" }));
     expect(screen.getByTestId("total-items")).toHaveTextContent("2");
     expect(screen.getByTestId("last-error").textContent).not.toBe("");
+    expect(screen.getByTestId("last-error").textContent).not.toMatch(/Stok tersisa/i);
   });
 
   it("surfaces syncWarnings and toast.error when guest cart items fail backend stock sync on login", async () => {

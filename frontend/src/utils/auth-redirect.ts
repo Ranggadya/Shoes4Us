@@ -1,5 +1,5 @@
 export const AUTH_MOBILE_ASSURANCE =
-  "100% Original · Stok Real-Time US/EU · Tukar Ukuran 7 Hari";
+  "100% Original · Pilihan Ukuran US/EU · Tukar Ukuran 7 Hari";
 
 export const AUTH_FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2";

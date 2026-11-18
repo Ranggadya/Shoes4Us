@@ -30,7 +30,6 @@ type ProductListFilters = {
   size: string;
   collection: string;
   isSale: boolean;
-  inStock: boolean;
   minPrice: number;
   maxPrice: number;
   sortBy: string;
@@ -50,7 +49,6 @@ export default function ProductListPage() {
   const saleQuery = searchParams?.get("sale") || searchParams?.get("isSale") || "";
   const isCollectionSale = rawCollectionQuery.toLowerCase() === "sale";
   const collectionQuery = isCollectionSale ? "" : rawCollectionQuery;
-  const inStockQuery = searchParams?.get("inStock") || "";
   const minPriceQuery = searchParams?.get("minPrice");
   const maxPriceQuery = searchParams?.get("maxPrice");
   const sortByQuery = searchParams?.get("sortBy") || "newest";
@@ -68,7 +66,6 @@ export default function ProductListPage() {
     size: sizeQuery,
     collection: collectionQuery,
     isSale: saleQuery === "true" || isCollectionSale,
-    inStock: inStockQuery === "true",
     minPrice: minPriceQuery ? Number(minPriceQuery) : 0,
     maxPrice: maxPriceQuery ? Number(maxPriceQuery) : 5000000,
     sortBy: sortByQuery,
@@ -81,7 +78,6 @@ export default function ProductListPage() {
     collectionQuery,
     saleQuery,
     isCollectionSale,
-    inStockQuery,
     minPriceQuery,
     maxPriceQuery,
     sortByQuery,
@@ -129,10 +125,6 @@ export default function ProductListPage() {
 
         if (filters.isSale) {
           params.append("isSale", "true");
-        }
-
-        if (filters.inStock) {
-          params.append("inStock", "true");
         }
         
         if (searchQuery) {
@@ -298,11 +290,7 @@ export default function ProductListPage() {
           }
         }
 
-        if (filterValues.inStock) {
-          nextParams.set("inStock", "true");
-        } else {
-          nextParams.delete("inStock");
-        }
+        nextParams.delete("inStock");
 
         if (filterValues.minPrice > 0) {
           nextParams.set("minPrice", String(filterValues.minPrice));

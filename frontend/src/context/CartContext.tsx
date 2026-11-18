@@ -185,7 +185,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const reason =
             err instanceof Error && err.message
               ? err.message
-              : "Stok tidak mencukupi";
+              : "Produk tidak tersedia";
           const sizeLabel = item.size ? ` (${item.size})` : "";
           if (isTransientCartSyncError(err)) {
             remainingItems.push(item);
@@ -205,7 +205,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const toastMsg =
           remainingItems.length > 0
             ? `${remainingItems.length} item keranjang tamu belum tersinkron karena gangguan koneksi/server dan tetap disimpan.`
-            : `${failedItems.length} item keranjang tamu gagal disinkronkan karena stok/ketersediaan.`;
+            : `${failedItems.length} item keranjang tamu gagal disinkronkan karena ketersediaan produk.`;
         toast.error(toastMsg, { duration: 6000 });
       }
     })().finally(() => {
@@ -341,8 +341,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ) {
           throw new Error(
             mergedProduct.maxStock <= 0
-              ? `Stok ${mergedProduct.name} sudah habis.`
-              : `Stok tersisa ${mergedProduct.maxStock} pasang untuk ukuran ini.`
+              ? `${mergedProduct.name} sudah habis.`
+              : `Jumlah melebihi ketersediaan untuk ukuran ini.`
           );
         }
 
@@ -385,8 +385,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ) {
           throw new Error(
             target.product.maxStock <= 0
-              ? `Stok ${target.product.name} sudah habis.`
-              : `Stok tersisa ${target.product.maxStock} pasang untuk ukuran ini.`
+              ? `${target.product.name} sudah habis.`
+              : `Jumlah melebihi ketersediaan untuk ukuran ini.`
           );
         }
 
