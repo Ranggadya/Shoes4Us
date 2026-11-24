@@ -41,6 +41,11 @@ yarn-error.log*
 # Backups
 *.bak
 
+# Playwright E2E artifacts
+playwright-report/
+test-results/
+blob-report/
+
 # AI Agents & skills
 .agents/
 .superpowers/
