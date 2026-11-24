@@ -51,16 +51,20 @@ test.describe("Guest-to-Member Cart Synchronization", () => {
     await page.locator("#login-password").fill(password);
     await page.getByRole("button", { name: /^Login$/i }).click();
 
-    // 5. Wait for navigation away from /login and verify synced cart persists after reload
-    await expect(page).not.toHaveURL(/\/login/);
+    // 5. Wait for redirect to /payment and post-login guest cart sync to finish
+    await expect(page).toHaveURL(/\/(payment|checkout)$/);
+    await expect(
+      page.getByRole("heading", { name: /Pembayaran & Pengiriman/i })
+    ).toBeVisible();
+
+    // Navigate to /cart and confirm synced item survives full reload from backend DB
     await page.goto("/cart");
     await expect(page.getByText(product.name).first()).toBeVisible();
 
-    // Confirm item survives full reload from backend DB
     await page.reload();
     await expect(page.getByText(product.name).first()).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Lanjut ke Pengiriman/i })
+      page.getByRole("button", { name: /^Lanjut ke Pengiriman/i })
     ).toBeVisible();
   });
 
@@ -102,13 +106,19 @@ test.describe("Guest-to-Member Cart Synchronization", () => {
     await expect(page.getByText(firstProduct.name).first()).toBeVisible();
     await expect(page.getByText(secondProduct.name).first()).toBeVisible();
 
-    // Log in and confirm both items synced to the backend account
+    // Log in and wait for backend cart sync to complete before reloading
     await page.goto("/login?redirect=%2Fcart");
     await page.locator("#login-email").fill(email);
     await page.locator("#login-password").fill(password);
     await page.getByRole("button", { name: /^Login$/i }).click();
 
     await expect(page).toHaveURL(/\/cart$/);
+    await expect(
+      page.getByRole("button", { name: /^Lanjut ke Pengiriman/i })
+    ).toBeVisible();
+    await expect(page.getByText(firstProduct.name).first()).toBeVisible();
+    await expect(page.getByText(secondProduct.name).first()).toBeVisible();
+
     await page.reload();
     await expect(page.getByText(firstProduct.name).first()).toBeVisible();
     await expect(page.getByText(secondProduct.name).first()).toBeVisible();

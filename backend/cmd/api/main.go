@@ -126,6 +126,7 @@ func main() {
 		Production:          cfg.IsProduction(),
 		AllowVercelPreviews: cfg.AllowVercelPreviews,
 		TrustedProxies:      cfg.TrustedProxies,
+		AuthRateLimitPerMin: cfg.AuthRateLimitPerMin,
 		UploadDir:           cfg.UploadDir,
 		JWTSecret:       cfg.JWTSecret,
 		JWTManager:      jwtMgr,

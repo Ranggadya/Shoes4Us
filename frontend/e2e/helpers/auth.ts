@@ -59,12 +59,16 @@ export async function getInStockProducts(
   request: APIRequestContext,
   minCount = 1
 ): Promise<SeededProduct[]> {
-  const res = await request.get(`${API_BASE_URL}/products?limit=20`);
+  const res = await request.get(
+    `${API_BASE_URL}/products?limit=20&includeDetails=true`
+  );
   expect(res.ok(), `List products API failed with status ${res.status()}`).toBeTruthy();
   const body = (await res.json()) as {
-    data?: { products?: SeededProduct[] };
+    data?: { items?: SeededProduct[]; products?: SeededProduct[] };
   };
-  const products = (body.data?.products ?? []).filter((p) => p.stock > 0);
+  const products = (body.data?.items ?? body.data?.products ?? []).filter(
+    (p) => p.stock > 0
+  );
   if (products.length < minCount) {
     throw new Error(
       `Expected at least ${minCount} in-stock seeded product(s), found ${products.length}. Run \`go run ./cmd/seed\` before E2E tests.`

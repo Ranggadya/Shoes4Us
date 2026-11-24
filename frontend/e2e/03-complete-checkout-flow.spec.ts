@@ -118,12 +118,17 @@ test.describe("Complete E-Commerce Checkout Flow", () => {
     await loginViaUI(page, email, password);
     await expect(page).toHaveURL(/\/$/);
 
-    // Use "BELI SEKARANG" shortcut directly to checkout
+    // Use "BELI SEKARANG" shortcut to add item and go straight to /cart, then checkout
     await page.goto(`/product/${product.id}`);
     await expect(
       page.getByRole("heading", { name: product.name })
     ).toBeVisible();
     await page.getByRole("button", { name: /BELI SEKARANG/i }).click();
+
+    await expect(page).toHaveURL(/\/cart$/);
+    await page
+      .getByRole("button", { name: /^Lanjut ke Pengiriman/i })
+      .click();
 
     await expect(page).toHaveURL(/\/(payment|checkout)$/);
     await expect(

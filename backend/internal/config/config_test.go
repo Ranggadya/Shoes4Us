@@ -63,3 +63,29 @@ func TestConfig_ValidateRuntimeSecurity(t *testing.T) {
 		}
 	})
 }
+
+func TestConfig_AuthRateLimitDefaults(t *testing.T) {
+	t.Run("defaults to strict 30/min in production", func(t *testing.T) {
+		t.Setenv("ENVIRONMENT", "production")
+		t.Setenv("AUTH_RATE_LIMIT_PER_MIN", "")
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatalf("Load failed: %v", err)
+		}
+		if cfg.AuthRateLimitPerMin != 30 {
+			t.Fatalf("expected 30 in production, got %d", cfg.AuthRateLimitPerMin)
+		}
+	})
+
+	t.Run("allows explicit override via AUTH_RATE_LIMIT_PER_MIN", func(t *testing.T) {
+		t.Setenv("ENVIRONMENT", "development")
+		t.Setenv("AUTH_RATE_LIMIT_PER_MIN", "300")
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatalf("Load failed: %v", err)
+		}
+		if cfg.AuthRateLimitPerMin != 300 {
+			t.Fatalf("expected 300 from env override, got %d", cfg.AuthRateLimitPerMin)
+		}
+	})
+}

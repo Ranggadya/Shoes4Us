@@ -117,10 +117,13 @@ test.describe("Wishlist, Product Reviews & Profile", () => {
 
     await page.getByRole("button", { name: /Edit Account/i }).click();
 
-    // First input in the Account form is "Nama Akun"
-    const nameInput = page.locator("form").first().locator("input").first();
+    // First input inside the Account form (not the Navbar search form) is "Nama Akun"
+    const accountForm = page
+      .locator("form")
+      .filter({ has: page.getByRole("button", { name: /Simpan Account/i }) });
+    const nameInput = accountForm.locator("input").first();
     await nameInput.fill(updatedName);
-    await page.getByRole("button", { name: /Simpan Account/i }).click();
+    await accountForm.getByRole("button", { name: /Simpan Account/i }).click();
 
     await expect(page.getByText(updatedName).first()).toBeVisible();
 

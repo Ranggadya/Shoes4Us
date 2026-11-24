@@ -82,6 +82,7 @@ jobs:
     env:
       DATABASE_URL: postgres://shoes4us:shoes4us_e2e_password@localhost:5432/shoes4us_e2e?sslmode=disable
       APP_ENV: development
+      AUTH_RATE_LIMIT_PER_MIN: "300"
       PORT: "8080"
       JWT_SECRET: shoes4us-ci-e2e-jwt-secret-key-at-least-32-chars
       ALLOWED_ORIGINS: http://localhost:3000

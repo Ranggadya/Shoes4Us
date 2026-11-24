@@ -52,8 +52,9 @@ test.describe("Cart Mutations & Coupon Edge Cases", () => {
     await expect(page.getByText(product.name).first()).toBeVisible();
 
     // Remove single item and click "Urungkan" (Undo)
+    const escapedName = product.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     await page
-      .getByRole("button", { name: new RegExp(`Hapus ${product.name}`, "i") })
+      .getByRole("button", { name: new RegExp(`Hapus ${escapedName}`, "i") })
       .click();
 
     const undoBtn = page.getByRole("button", { name: /Urungkan/i });

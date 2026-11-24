@@ -33,6 +33,7 @@ type Config struct {
 	HasExplicitCORS     bool
 	AllowVercelPreviews bool
 	TrustedProxies      []string
+	AuthRateLimitPerMin int
 	UploadDir           string
 	SMTPHost            string
 	SMTPPort            string
@@ -71,7 +72,7 @@ func Load() (*Config, error) {
 	allowVercelRaw := strings.TrimSpace(os.Getenv("CORS_ALLOW_VERCEL_PREVIEWS"))
 	allowVercel := strings.EqualFold(allowVercelRaw, "true") || allowVercelRaw == "1"
 
-	return &Config{
+	cfg := &Config{
 		Environment:         envName,
 		Port:                getEnv("PORT", "8080"),
 		DatabaseURL:         strings.TrimSpace(os.Getenv("DATABASE_URL")),
@@ -82,6 +83,7 @@ func Load() (*Config, error) {
 		HasExplicitCORS:     hasExplicitCORS,
 		AllowVercelPreviews: allowVercel,
 		TrustedProxies:      splitCSV(os.Getenv("TRUSTED_PROXIES")),
+		AuthRateLimitPerMin: 30,
 		UploadDir:           getEnv("UPLOAD_DIR", "./uploads"),
 		SMTPHost:            strings.TrimSpace(os.Getenv("MAIL_HOST")),
 		SMTPPort:            getEnv("MAIL_PORT", "587"),
@@ -93,7 +95,18 @@ func Load() (*Config, error) {
 		CFR2SecretKey:       strings.TrimSpace(os.Getenv("CF_R2_SECRET_ACCESS_KEY")),
 		CFR2BucketName:      strings.TrimSpace(os.Getenv("CF_R2_BUCKET_NAME")),
 		CFR2PublicURL:       strings.TrimSpace(os.Getenv("CF_R2_PUBLIC_URL")),
-	}, nil
+	}
+
+	if !cfg.IsProduction() {
+		cfg.AuthRateLimitPerMin = 120
+	}
+	if rawAuthLimit := strings.TrimSpace(os.Getenv("AUTH_RATE_LIMIT_PER_MIN")); rawAuthLimit != "" {
+		if parsed, err := strconv.Atoi(rawAuthLimit); err == nil && parsed > 0 {
+			cfg.AuthRateLimitPerMin = parsed
+		}
+	}
+
+	return cfg, nil
 }
 
 // IsProduction reports whether the configuration targets production or non-local HTTPS origins.

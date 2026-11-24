@@ -19,6 +19,7 @@ type RouterDependencies struct {
 	Production          bool
 	AllowVercelPreviews bool
 	TrustedProxies      []string
+	AuthRateLimitPerMin int
 	UploadDir           string
 	JWTSecret           string
 	JWTManager          *token.JWTManager
@@ -74,8 +75,12 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		fileServer.ServeHTTP(w, req)
 	})
 
+	authLimit := deps.AuthRateLimitPerMin
+	if authLimit <= 0 {
+		authLimit = 30
+	}
 	apiLimiter := middleware.NewRateLimiterWithTrustedProxies(600, time.Minute, deps.TrustedProxies)
-	authStrictLimiter := middleware.NewRateLimiterWithTrustedProxies(30, time.Minute, deps.TrustedProxies)
+	authStrictLimiter := middleware.NewRateLimiterWithTrustedProxies(authLimit, time.Minute, deps.TrustedProxies)
 
 	r.Route("/api", func(api chi.Router) {
 		api.Use(apiLimiter)
