@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { getInStockProduct } from "./helpers/auth";
+import { getInStockProduct, openCouponInput } from "./helpers/auth";
 
 test.describe("Cart Mutations & Coupon Edge Cases", () => {
   test("updates item quantity inside Slide-Over Cart Drawer and closes on Escape", async ({
@@ -94,16 +94,7 @@ test.describe("Cart Mutations & Coupon Edge Cases", () => {
 
     await page.goto("/cart");
 
-    const voucherToggle = page.getByRole("button", {
-      name: /Punya kode voucher\?/i,
-    });
-    if (await voucherToggle.isVisible()) {
-      await voucherToggle.click();
-    }
-
-    const couponInput = page.getByPlaceholder(
-      /Masukkan kode \(cth: DISKON10\)/i
-    );
+    let couponInput = await openCouponInput(page);
     const applyBtn = page.getByRole("button", { name: /^Pakai$/i });
 
     // 1. Invalid code must show error alert
@@ -118,16 +109,9 @@ test.describe("Cart Mutations & Coupon Edge Cases", () => {
 
     // 3. Remove HEMAT50RB and switch to GRATISONGKIR
     await page.getByRole("button", { name: /Hapus voucher HEMAT50RB/i }).click();
-    const reopenedToggle = page.getByRole("button", {
-      name: /Punya kode voucher\?/i,
-    });
-    if (await reopenedToggle.isVisible()) {
-      await reopenedToggle.click();
-    }
+    couponInput = await openCouponInput(page);
 
-    await page
-      .getByPlaceholder(/Masukkan kode \(cth: DISKON10\)/i)
-      .fill("GRATISONGKIR");
+    await couponInput.fill("GRATISONGKIR");
     await page.getByRole("button", { name: /^Pakai$/i }).click();
     await expect(page.getByText(/Subsidi Ongkir \(GRATISONGKIR\)/i)).toBeVisible();
   });

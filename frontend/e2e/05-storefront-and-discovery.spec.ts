@@ -34,7 +34,9 @@ test.describe("Storefront, Discovery & Privacy", () => {
     page,
   }) => {
     await page.goto("/product?search=Pegasus");
-    await expect(page.getByText(/Nike Air Pegasus 40/i).first()).toBeVisible();
+    await expect(
+      page.locator("main").getByText(/Nike Air Pegasus 40/i).first()
+    ).toBeVisible();
 
     // Unknown search term should render empty state with Reset Filter action
     await page.goto("/product?search=sepatu-tidak-ada-e2e-999");
@@ -44,7 +46,9 @@ test.describe("Storefront, Discovery & Privacy", () => {
 
     await page.getByRole("button", { name: /Reset Filter/i }).click();
     await expect(page).toHaveURL(/\/product$/);
-    await expect(page.getByText(/Nike Air/i).first()).toBeVisible();
+    await expect(
+      page.locator("main").getByRole("heading", { name: /Nike/i }).first()
+    ).toBeVisible();
   });
 
   test("tracks Recently Viewed shoes across visits, clears history, and hides numeric stock counts", async ({

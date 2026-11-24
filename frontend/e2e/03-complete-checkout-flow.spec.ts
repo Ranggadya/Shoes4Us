@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   getInStockProduct,
   loginViaUI,
+  openCouponInput,
   registerUserViaAPI,
   uniqueEmail,
 } from "./helpers/auth";
@@ -41,16 +42,8 @@ test.describe("Complete E-Commerce Checkout Flow", () => {
     await expect(page).toHaveURL(/\/cart$/);
 
     // 3. Apply DISKON10 promotional coupon on /cart
-    const voucherToggle = page.getByRole("button", {
-      name: /Punya kode voucher\?/i,
-    });
-    if (await voucherToggle.isVisible()) {
-      await voucherToggle.click();
-    }
-
-    await page
-      .getByPlaceholder(/Masukkan kode \(cth: DISKON10\)/i)
-      .fill("DISKON10");
+    const couponInput = await openCouponInput(page);
+    await couponInput.fill("DISKON10");
     await page.getByRole("button", { name: /^Pakai$/i }).click();
 
     await expect(page.getByText(/Diskon \(DISKON10\)/i)).toBeVisible();

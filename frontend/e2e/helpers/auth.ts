@@ -1,4 +1,9 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import {
+  expect,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 export const API_BASE_URL =
   process.env.E2E_API_URL || "http://localhost:8080/api";
@@ -148,4 +153,21 @@ export async function loginViaUI(
   await page.locator("#login-email").fill(email);
   await page.locator("#login-password").fill(password);
   await page.getByRole("button", { name: /^Login$/i }).click();
+}
+
+export async function openCouponInput(page: Page): Promise<Locator> {
+  const input = page.getByPlaceholder(/Masukkan kode \(cth: DISKON10\)/i);
+  if (await input.isVisible()) {
+    return input;
+  }
+  const toggle = page.getByRole("button", {
+    name: /Punya kode voucher\?/i,
+  });
+  await toggle.waitFor({ state: "visible", timeout: 15000 });
+  const isExpanded = await toggle.getAttribute("aria-expanded");
+  if (isExpanded === "false") {
+    await toggle.click();
+  }
+  await expect(input).toBeVisible();
+  return input;
 }
