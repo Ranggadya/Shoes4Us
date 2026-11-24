@@ -57,4 +57,36 @@ test.describe("Authentication & Protected Routes", () => {
       page.getByRole("heading", { name: /Pesanan/i }).first()
     ).toBeVisible();
   });
+
+  test("rejects wrong password on login and duplicate email on registration", async ({
+    page,
+  }) => {
+    await loginViaUI(page, SEEDED_USER.email, "WrongPassword!999");
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.locator("#login-form-error")).toBeVisible();
+
+    await page.goto("/register");
+    await page.locator("#register-name").fill("Duplicate User");
+    await page.locator("#register-email").fill(SEEDED_USER.email);
+    await page.locator("#register-password").fill("ValidPass123!");
+    await page.getByRole("button", { name: /^Daftar$/i }).click();
+
+    await expect(page).toHaveURL(/\/register$/);
+    await expect(page.getByRole("alert").first()).toBeVisible();
+  });
+
+  test("sanitizes unsafe external redirect parameter after login", async ({
+    page,
+  }) => {
+    await loginViaUI(
+      page,
+      SEEDED_USER.email,
+      SEEDED_USER.password,
+      "/login?redirect=https%3A%2F%2Fevil.example%2Fphish"
+    );
+
+    // Must never redirect to external domain; falls back safely to same-origin "/"
+    await expect(page).toHaveURL(/\/$/);
+    expect(new URL(page.url()).hostname).not.toBe("evil.example");
+  });
 });

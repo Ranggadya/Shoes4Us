@@ -96,6 +96,69 @@ test.describe("Complete E-Commerce Checkout Flow", () => {
 
     // 8. Verify cart has been cleared after checkout
     await page.goto("/cart");
-    await expect(page.getByText(/Keranjang Belanja Kosong|kosong/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Keranjang Belanja Kosong|kosong/i).first()
+    ).toBeVisible();
+  });
+
+  test("validates missing shipping fields and completes checkout via Transfer Bank", async ({
+    page,
+    request,
+  }) => {
+    const email = uniqueEmail("e2e-bank-transfer");
+    const password = "Checkout123!";
+    await registerUserViaAPI(request, {
+      name: "Bank Transfer Buyer",
+      email,
+      password,
+    });
+
+    const product = await getInStockProduct(request);
+
+    await loginViaUI(page, email, password);
+    await expect(page).toHaveURL(/\/$/);
+
+    // Use "BELI SEKARANG" shortcut directly to checkout
+    await page.goto(`/product/${product.id}`);
+    await expect(
+      page.getByRole("heading", { name: product.name })
+    ).toBeVisible();
+    await page.getByRole("button", { name: /BELI SEKARANG/i }).click();
+
+    await expect(page).toHaveURL(/\/(payment|checkout)$/);
+    await expect(
+      page.getByRole("heading", { name: /Pembayaran & Pengiriman/i })
+    ).toBeVisible();
+
+    // Submitting with incomplete shipping fields must show validation alert and keep modal closed
+    await page.getByRole("button", { name: /Bayar Sekarang/i }).click();
+    await expect(
+      page.getByText(/Lengkapi informasi pengiriman terlebih dahulu/i)
+    ).toBeVisible();
+    await expect(
+      page.getByRole("dialog", { name: /Detail Pembayaran/i })
+    ).not.toBeVisible();
+
+    // Complete shipping form & select Transfer Bank
+    await page
+      .getByPlaceholder("Masukkan alamat lengkap")
+      .fill("Jl. Braga No. 12");
+    await page.getByPlaceholder("Contoh: Bandung").fill("Bandung");
+    await page.getByPlaceholder("40115").fill("40111");
+    await page.getByPlaceholder("08xxxxxxxxxx").fill("081200011122");
+    await page.locator("select").last().selectOption("Transfer Bank");
+
+    await page.getByRole("button", { name: /Bayar Sekarang/i }).click();
+
+    const modal = page.getByRole("dialog", { name: /Detail Pembayaran/i });
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText(/Bank BCA \(SIMULASI\)/i);
+
+    await modal
+      .getByRole("button", { name: /Konfirmasi Pembayaran/i })
+      .click();
+
+    await expect(page).toHaveURL(/\/status-pesanan$/);
+    await expect(page.getByText(/Pembayaran Berhasil/i).first()).toBeVisible();
   });
 });

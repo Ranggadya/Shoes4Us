@@ -55,31 +55,83 @@ export async function loginViaAPI(
   return body.data;
 }
 
-export async function getInStockProduct(
-  request: APIRequestContext
-): Promise<SeededProduct> {
+export async function getInStockProducts(
+  request: APIRequestContext,
+  minCount = 1
+): Promise<SeededProduct[]> {
   const res = await request.get(`${API_BASE_URL}/products?limit=20`);
   expect(res.ok(), `List products API failed with status ${res.status()}`).toBeTruthy();
   const body = (await res.json()) as {
     data?: { products?: SeededProduct[] };
   };
-  const products = body.data?.products ?? [];
-  const preferred =
-    products.find(
-      (p) =>
-        p.stock > 0 &&
-        p.price >= 100_000 &&
-        p.name.toLowerCase().includes("pegasus")
-    ) ||
-    products.find((p) => p.stock > 0 && p.price >= 100_000) ||
-    products.find((p) => p.stock > 0);
-
-  if (!preferred) {
+  const products = (body.data?.products ?? []).filter((p) => p.stock > 0);
+  if (products.length < minCount) {
     throw new Error(
-      "No in-stock seeded product found. Run `go run ./cmd/seed` before E2E tests."
+      `Expected at least ${minCount} in-stock seeded product(s), found ${products.length}. Run \`go run ./cmd/seed\` before E2E tests.`
     );
   }
-  return preferred;
+  return products;
+}
+
+export async function getInStockProduct(
+  request: APIRequestContext
+): Promise<SeededProduct> {
+  const products = await getInStockProducts(request, 1);
+  return (
+    products.find(
+      (p) => p.price >= 300_000 && p.name.toLowerCase().includes("pegasus")
+    ) ||
+    products.find((p) => p.price >= 300_000) ||
+    products[0]
+  );
+}
+
+export async function createPaidOrderViaAPI(
+  request: APIRequestContext,
+  buyerToken: string,
+  product: SeededProduct
+): Promise<{ id: string; orderNumber: string }> {
+  const firstSize =
+    product.sizes?.find((s) => s.stock > 0)?.size ?? "42";
+
+  const addRes = await request.post(`${API_BASE_URL}/cart`, {
+    headers: { Authorization: `Bearer ${buyerToken}` },
+    data: { productId: product.id, quantity: 1, size: firstSize },
+  });
+  expect(addRes.ok(), `Add to cart API failed (${addRes.status()})`).toBeTruthy();
+
+  const orderRes = await request.post(`${API_BASE_URL}/orders`, {
+    headers: {
+      Authorization: `Bearer ${buyerToken}`,
+      "Idempotency-Key": `e2e-ord-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    },
+    data: {
+      shippingAddress: "Jl. Asia Afrika No. 88",
+      shippingCity: "Bandung",
+      shippingPostalCode: "40111",
+      shippingPhone: "081299988877",
+      shippingCourier: "JNE Reguler",
+      shippingCost: 18000,
+      couponCode: "",
+      paymentMethod: "QRIS",
+    },
+  });
+  expect(orderRes.ok(), `Create order API failed (${orderRes.status()})`).toBeTruthy();
+  const orderBody = (await orderRes.json()) as {
+    data: { order: { id: string; orderNumber: string } };
+  };
+  const order = orderBody.data.order;
+
+  const payRes = await request.post(`${API_BASE_URL}/payment`, {
+    headers: {
+      Authorization: `Bearer ${buyerToken}`,
+      "Idempotency-Key": `e2e-pay-${order.id}`,
+    },
+    data: { orderId: order.id },
+  });
+  expect(payRes.ok(), `Payment API failed (${payRes.status()})`).toBeTruthy();
+
+  return order;
 }
 
 export async function loginViaUI(
